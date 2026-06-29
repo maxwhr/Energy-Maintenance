@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.log
+.runtime/
+
+# Node
+node_modules/
+dist/
+.vite/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.tsbuildinfo
+frontend/vite.config.d.ts
+
+# Temporary frontend consolidation backups
+frontend_legacy_before_cupProject_*/
+frontend_legacy_file_list_*.txt
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project runtime
+backend/storage/uploads/*
+backend/storage/tmp/*
+backend/logs/
+!backend/storage/uploads/.gitkeep
+!backend/storage/uploads/documents/
+backend/storage/uploads/documents/*
+!backend/storage/uploads/documents/.gitkeep
+!backend/storage/uploads/media/
+backend/storage/uploads/media/*
+!backend/storage/uploads/media/.gitkeep
+!backend/storage/tmp/.gitkeep
+
+# Database backup
+backups/
+*.sql
+*.dump
+*.backup
+*.bak
+*.db
+*.sqlite
+*.sqlite3
+pgdata/
+postgres-data/
+postgresql-data/
+
+# Test and build cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage/
+
+# Delivery artifacts and local prompts
+delivery/
+delivery_staging/
+prompt.txt

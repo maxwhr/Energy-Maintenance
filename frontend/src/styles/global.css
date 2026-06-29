@@ -1,0 +1,432 @@
+:root {
+  color-scheme: light;
+  --scada-bg: #f6f9fc;
+  --scada-panel: #ffffff;
+  --scada-panel-2: #f8fbfe;
+  --scada-line: #dbe7f3;
+  --scada-grid: #d8e6f2;
+  --scada-cyan: #195fa8;
+  --scada-blue: #3a7bc8;
+  --scada-green: #23a55a;
+  --scada-amber: #c76013;
+  --scada-red: #d63b3b;
+  --scada-muted: #64788f;
+  --scada-ink: #172538;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow-x: hidden;
+  background: var(--scada-bg);
+  color: var(--scada-ink);
+  font-family: system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(111, 143, 172, 0.16);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #33485f;
+  font-size: 12px;
+  font-weight: 700;
+  background: #eef5fb;
+}
+
+td {
+  color: #33485f;
+}
+
+tr:hover td {
+  background: rgba(25, 95, 168, 0.05);
+}
+
+::selection {
+  background: rgba(25, 95, 168, 0.18);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #eef5fb;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c2d3e4;
+  border: 2px solid #eef5fb;
+  border-radius: 999px;
+}
+
+.scada-panel {
+  border: 1px solid var(--scada-line);
+  background: var(--scada-panel);
+  box-shadow: 0 8px 24px rgba(25, 95, 168, 0.06);
+}
+
+.scada-input {
+  width: 100%;
+  border: 1px solid #cbd9e7;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #172538;
+  outline: none;
+  padding: 10px 12px;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.scada-input::placeholder {
+  color: #7c8798;
+}
+
+.scada-input:focus {
+  border-color: var(--scada-cyan);
+  box-shadow: 0 0 0 3px rgba(25, 95, 168, 0.12);
+  background: #ffffff;
+}
+
+.scada-button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #cbd9e7;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #195fa8;
+  padding: 8px 12px;
+  font-weight: 700;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.scada-button:hover {
+  border-color: #195fa8;
+  background: #eef6ff;
+}
+
+.scada-button:active {
+  transform: translateY(1px);
+}
+
+.scada-button.primary {
+  border-color: #195fa8;
+  background: #195fa8;
+  color: #ffffff;
+}
+
+.auth-nav-link {
+  border-radius: 6px;
+  padding: 7px 12px;
+  transition: color 160ms ease, background 160ms ease;
+}
+
+.auth-nav-link:hover,
+.auth-nav-link.active {
+  background: #ffffff;
+  color: #195fa8;
+  box-shadow: inset 0 0 0 1px rgba(25, 95, 168, 0.16);
+}
+
+.auth-action-button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #195fa8;
+  color: #ffffff;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 800;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.auth-action-button:hover {
+  background: #0f3a6b;
+}
+
+.auth-action-button:active {
+  transform: translateY(1px);
+}
+
+.auth-portal .scada-input {
+  border-color: #cbd9e7;
+  background: #ffffff;
+  color: #172538;
+}
+
+.auth-portal .scada-input::placeholder {
+  color: #7c8798;
+}
+
+.auth-portal .scada-input:focus {
+  border-color: #195fa8;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(25, 95, 168, 0.12);
+}
+
+.auth-portal .scada-button.primary {
+  border-color: #195fa8;
+  background: #195fa8;
+  color: #ffffff;
+}
+
+.auth-portal .scada-button.primary:hover {
+  border-color: #0f3a6b;
+  background: #0f3a6b;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.synoptic-grid {
+  background-image:
+    linear-gradient(rgba(25, 95, 168, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(25, 95, 168, 0.08) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Light system theme compatibility for existing Tailwind utility markup. */
+[class~="bg-[#05080d]"],
+[class~="bg-[#08111a]"],
+[class~="bg-[#0b111a]"],
+[class~="bg-[#071019]"],
+[class~="bg-[#101821]"],
+[class~="bg-[#0a0f18]"] {
+  background-color: var(--scada-bg) !important;
+}
+
+[class~="bg-[#08111a]"],
+[class~="bg-[#0b111a]"],
+[class~="bg-[#071019]/72"],
+[class~="bg-[#0b111a]/95"] {
+  background-color: #ffffff !important;
+}
+
+[class~="bg-[#071019]/88"] {
+  background-color: rgb(255 255 255 / 0.92) !important;
+}
+
+[class~="bg-black/20"],
+[class~="bg-black/24"],
+[class~="bg-black/30"],
+[class~="bg-black/50"],
+[class~="bg-white/[0.03]"],
+[class~="bg-white/[0.04]"],
+[class~="bg-white/5"] {
+  background-color: #f8fbfe !important;
+}
+
+[class~="bg-cyan-300/8"],
+[class~="bg-cyan-300/10"],
+[class~="bg-cyan-400/10"],
+[class~="bg-cyan-400/14"] {
+  background-color: #eef6ff !important;
+}
+
+[class~="bg-emerald-300/8"],
+[class~="bg-emerald-400/10"] {
+  background-color: #eefaf3 !important;
+}
+
+[class~="bg-amber-300/8"],
+[class~="bg-amber-400/10"] {
+  background-color: #fff7ed !important;
+}
+
+[class~="bg-red-500/10"],
+[class~="bg-red-950/90"] {
+  background-color: #fff1f2 !important;
+}
+
+[class~="bg-slate-500/10"],
+[class~="bg-slate-950/90"] {
+  background-color: #f1f5f9 !important;
+}
+
+[class~="bg-slate-700/60"] {
+  background-color: #dbe7f3 !important;
+}
+
+[class~="bg-cyan-300"] {
+  background-color: #195fa8 !important;
+}
+
+[class~="border-slate-400/30"],
+[class~="border-slate-500/20"],
+[class~="border-slate-500/25"],
+[class~="border-slate-600/20"],
+[class~="border-slate-600/25"],
+[class~="border-slate-600/30"],
+[class~="border-slate-700/50"],
+[class~="border-white/10"] {
+  border-color: #dbe7f3 !important;
+}
+
+[class~="border-cyan-300/20"],
+[class~="border-cyan-300/25"],
+[class~="border-cyan-300/30"],
+[class~="border-cyan-300/40"],
+[class~="border-cyan-300/45"] {
+  border-color: #b9d6ee !important;
+}
+
+[class~="border-emerald-300/30"] {
+  border-color: #bfe7ce !important;
+}
+
+[class~="border-amber-300/30"] {
+  border-color: #ffd9b0 !important;
+}
+
+[class~="border-red-400/30"],
+[class~="border-red-400/40"] {
+  border-color: #fecdd3 !important;
+}
+
+[class~="text-white"],
+[class~="text-slate-50"],
+[class~="text-slate-100"],
+[class~="text-slate-200"] {
+  color: #172538 !important;
+}
+
+[class~="text-slate-300"],
+[class~="text-slate-400"],
+[class~="text-slate-500"] {
+  color: #53697f !important;
+}
+
+[class~="text-cyan-50"],
+[class~="text-cyan-100"],
+[class~="text-cyan-200"],
+[class~="text-cyan-200/70"],
+[class~="text-cyan-200/80"],
+[class~="text-cyan-300"] {
+  color: #195fa8 !important;
+}
+
+[class~="text-emerald-100"],
+[class~="text-emerald-200"],
+[class~="text-emerald-300"] {
+  color: #1b874c !important;
+}
+
+[class~="text-amber-100"],
+[class~="text-amber-200"] {
+  color: #c76013 !important;
+}
+
+[class~="text-red-50"],
+[class~="text-red-200"],
+[class~="text-red-300"] {
+  color: #b4232f !important;
+}
+
+[class~="hover:text-white"]:hover,
+[class~="hover:text-cyan-100"]:hover,
+[class~="hover:text-cyan-300"]:hover {
+  color: #0f3a6b !important;
+}
+
+[class~="hover:bg-white/5"]:hover {
+  background-color: #eef6ff !important;
+}
+
+[class~="bg-[#0078a8]"] {
+  background-color: #195fa8 !important;
+}
+
+[class~="bg-[#0078a8]"][class~="text-white"] {
+  color: #ffffff !important;
+}
+
+[class~="bg-[#195FA8]"][class~="text-white"],
+[class~="bg-[#195fa8]"][class~="text-white"] {
+  color: #ffffff !important;
+}
+
+.layout-light-rail {
+  background: linear-gradient(180deg, #ffffff, #f8fbfe);
+}
+
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.page-enter-from,
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
