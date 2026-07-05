@@ -159,7 +159,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Send } from '@lucide/vue'
-import { getDevicesApi, queryRetrievalApi } from '@/api'
+import { getDevicesApi, streamRetrievalApi } from '@/api'
 import DataPanel from '@/components/DataPanel.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import MediaEvidenceGallery from '@/components/MediaEvidenceGallery.vue'
@@ -207,6 +207,8 @@ async function submit() {
   error.value = ''
   const question = form.query
   messages.value.push({ id: crypto.randomUUID(), role: 'user', content: question, time: now() })
+  const assistantMessageId = crypto.randomUUID()
+  messages.value.push({ id: assistantMessageId, role: 'assistant', content: '', time: now() })
   try {
     const payload: Record<string, unknown> = { query: question, device_type: 'pv_inverter', top_k: form.top_k }
     if (form.device_id) payload.device_id = form.device_id
@@ -216,11 +218,27 @@ async function submit() {
     if (selectedMediaIds.value.length) payload.media_ids = selectedMediaIds.value
     payload.use_ocr_text = Boolean(selectedMediaIds.value.length && form.use_ocr_text)
     payload.enable_kg_enhancement = form.enable_kg_enhancement
-    const result = await queryRetrievalApi(payload)
-    lastResult.value = result
-    messages.value.push({ id: crypto.randomUUID(), role: 'assistant', content: result.answer, time: now() })
+    payload.enable_model_enhancement = true
+    payload.model_provider = 'cloud_openai'
+    payload.allow_model_fallback = false
+    await streamRetrievalApi(payload, (event) => {
+      if (event.type === 'retrieval' && event.response) {
+        lastResult.value = event.response
+      }
+      if (event.type === 'delta' && event.content) {
+        appendAssistantContent(assistantMessageId, event.content)
+      }
+      if (event.type === 'done' && event.response) {
+        lastResult.value = event.response
+        replaceAssistantContent(assistantMessageId, event.response.answer)
+      }
+      if (event.type === 'error') {
+        throw new Error(event.message || 'Model stream failed')
+      }
+    })
     form.query = ''
   } catch (err) {
+    messages.value = messages.value.filter((message) => message.id !== assistantMessageId || Boolean(message.content))
     error.value = err instanceof Error ? err.message : '检修问答请求失败'
   } finally {
     loading.value = false
@@ -234,6 +252,16 @@ async function loadDevices() {
   } catch {
     devices.value = []
   }
+}
+
+function appendAssistantContent(messageId: string, content: string) {
+  const message = messages.value.find((item) => item.id === messageId)
+  if (message) message.content += content
+}
+
+function replaceAssistantContent(messageId: string, content?: string) {
+  const message = messages.value.find((item) => item.id === messageId)
+  if (message && content) message.content = content
 }
 
 watch(

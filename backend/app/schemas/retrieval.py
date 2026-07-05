@@ -36,6 +36,7 @@ class RetrievalQueryRequest(BaseModel):
     use_ocr_text: bool = False
     top_k: int = 5
     include_history: bool = True
+    enable_vector_search: bool = True
     enable_kg_enhancement: bool = True
     enable_model_enhancement: bool = False
     model_provider: str = "rule_based"

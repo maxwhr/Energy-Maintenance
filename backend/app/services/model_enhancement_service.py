@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterator
 
 from sqlalchemy.orm import Session
 
@@ -95,6 +95,39 @@ class ModelEnhancementService:
             model_name=gateway_response.model_name,
             model_call_trace_id=gateway_response.trace_id,
             error_message=gateway_response.error_message,
+        )
+
+    def stream_enhance(
+        self,
+        *,
+        prompt: str,
+        task_type: str,
+        requested_provider: str | None,
+        allow_fallback: bool,
+        current_user: User,
+    ) -> Iterator[dict[str, Any]]:
+        provider = self._normalize_provider(requested_provider)
+        if current_user.role == "viewer" and provider != "rule_based":
+            provider = "rule_based"
+        bounded_prompt = self._bounded_prompt(prompt)
+        yield from self.gateway.stream_chat(
+            ModelGatewayChatRequest(
+                provider=provider,  # type: ignore[arg-type]
+                task_type=task_type,  # type: ignore[arg-type]
+                allow_fallback=allow_fallback,
+                messages=[
+                    ModelMessage(
+                        role="system",
+                        content=(
+                            "你是华为与阳光电源光伏逆变器检修作业辅助模型。"
+                            "必须严格基于提供的真实知识库片段、规则结果和 references 回答。"
+                            "不得编造来源、页码、chunk 或未给出的厂家要求。"
+                        ),
+                    ),
+                    ModelMessage(role="user", content=bounded_prompt),
+                ],
+            ),
+            current_user=current_user,
         )
 
     @staticmethod

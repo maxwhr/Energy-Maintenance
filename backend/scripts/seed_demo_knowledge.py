@@ -7,6 +7,7 @@ from app.core.database import SessionLocal
 from app.models import KnowledgeChunk, KnowledgeDocument
 from app.repositories.knowledge_repository import KnowledgeRepository
 from app.services.document_parser import ParsedDocument, ParsedPage
+from app.services.text_vector_service import TextVectorService
 from app.services.text_splitter import TextSplitter
 
 
@@ -82,6 +83,7 @@ After field correction, confirm generation recovery and archive the inspection r
 def seed_demo_knowledge() -> None:
     db = SessionLocal()
     splitter = TextSplitter(chunk_size=800, overlap=120)
+    vectorizer = TextVectorService()
     repository = KnowledgeRepository(db)
     inserted = 0
     try:
@@ -124,8 +126,8 @@ def seed_demo_knowledge() -> None:
                     section_title=chunk.section_title,
                     char_count=chunk.char_count,
                     page_number=chunk.page_number,
-                    embedding_status="pending",
-                    metadata_json=chunk.metadata,
+                    embedding_status="embedded",
+                    metadata_json=vectorizer.metadata_for_text(chunk.content, chunk.metadata),
                     status="active",
                 )
                 for chunk in chunks

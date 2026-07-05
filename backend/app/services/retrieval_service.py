@@ -30,6 +30,7 @@ from app.services.model_enhancement_service import ModelEnhancementService
 from app.services.model_prompt_builder import ModelPromptBuilder
 from app.services.knowledge_graph_service import KnowledgeGraphService
 from app.services.query_expansion_service import QueryExpansionService
+from app.services.text_vector_service import TextVectorService
 
 
 MODEL_PROVIDER = "rule_based"
@@ -47,6 +48,13 @@ class ScoredCandidate:
     score: float
 
 
+@dataclass
+class RetrievalQueryContext:
+    response: RetrievalQueryResponse
+    payload: RetrievalQueryRequest
+    media_items: list
+
+
 class RetrievalService:
     def __init__(self, db: Session):
         self.db = db
@@ -56,6 +64,7 @@ class RetrievalService:
         self.answer_service = AnswerGenerationService()
         self.prompt_builder = ModelPromptBuilder()
         self.media_service = MediaService(db)
+        self.vectorizer = TextVectorService()
 
     def query(self, payload: RetrievalQueryRequest, current_user: User) -> RetrievalQueryResponse:
         self._validate_request(payload)
@@ -79,6 +88,18 @@ class RetrievalService:
             candidate_limit=candidate_limit,
         )
         scored_candidates = self._score_candidates(candidates, resolved_payload, expansion.keywords)
+        if resolved_payload.enable_vector_search:
+            vector_candidates = self.repository.list_vector_candidates(
+                manufacturer=resolved_payload.manufacturer,
+                product_series=resolved_payload.product_series,
+                device_type=resolved_payload.device_type,
+                document_type=resolved_payload.document_type,
+                candidate_limit=max(candidate_limit * 3, 240),
+            )
+            scored_candidates = self._merge_scored_candidates(
+                scored_candidates,
+                self._score_vector_candidates(vector_candidates, search_payload.normalized_question),
+            )
         retrieved_chunks = [
             self._candidate_to_retrieved_chunk(candidate)
             for candidate in scored_candidates[: resolved_payload.top_k]
@@ -137,6 +158,7 @@ class RetrievalService:
                     "top_k": resolved_payload.top_k,
                     "media_ids": [str(media_id) for media_id in resolved_payload.media_ids],
                     "use_ocr_text": resolved_payload.use_ocr_text,
+                    "enable_vector_search": resolved_payload.enable_vector_search,
                     "enable_kg_enhancement": resolved_payload.enable_kg_enhancement,
                 },
             ),
@@ -146,6 +168,204 @@ class RetrievalService:
             response.answer = f"{response.answer}\n\n{response.media_notice}"
         self._save_qa_record(response, resolved_payload, current_user, media_items)
         return response
+
+    def query_stream_events(self, payload: RetrievalQueryRequest, current_user: User):
+        context = self._build_base_response(payload, current_user)
+        response = context.response
+        yield {
+            "type": "retrieval",
+            "response": response.model_dump(mode="json"),
+        }
+
+        if not context.payload.enable_model_enhancement:
+            response.model_enhanced = False
+            self._save_qa_record(response, context.payload, current_user, context.media_items)
+            yield {
+                "type": "delta",
+                "content": response.answer,
+            }
+            yield {
+                "type": "done",
+                "response": response.model_dump(mode="json"),
+            }
+            return
+
+        prompt = self.prompt_builder.build_retrieval_prompt(
+            question=response.question,
+            answer=response.answer,
+            suggested_steps=response.suggested_steps,
+            safety_notes=response.safety_notes,
+            references=response.references,
+            retrieved_chunks=response.retrieved_chunks,
+            media_context=response.media_items,
+            kg_context=response.kg_context,
+        )
+        content_parts: list[str] = []
+        last_model_event: dict | None = None
+        for event in ModelEnhancementService(self.db).stream_enhance(
+            prompt=prompt,
+            task_type="qa",
+            requested_provider=context.payload.model_provider,
+            allow_fallback=context.payload.allow_model_fallback,
+            current_user=current_user,
+        ):
+            event_type = event.get("type")
+            if event_type == "delta":
+                chunk = str(event.get("content") or "")
+                if not chunk:
+                    continue
+                content_parts.append(chunk)
+                yield {
+                    "type": "delta",
+                    "content": chunk,
+                    "model_call_trace_id": event.get("trace_id"),
+                    "model_provider": event.get("provider"),
+                    "model_name": event.get("model_name"),
+                }
+                continue
+            last_model_event = event
+            if event_type == "error":
+                response.model_call_trace_id = event.get("trace_id")
+                response.model_provider = event.get("provider") or response.model_provider
+                response.model_name = event.get("model_name") or response.model_name
+                response.fallback_used = False
+                partial_content = "".join(content_parts).strip()
+                if partial_content:
+                    response.answer = partial_content
+                    response.model_enhanced = True
+                self._save_qa_record(response, context.payload, current_user, context.media_items)
+                yield {
+                    "type": "error",
+                    "message": event.get("message") or "Model stream failed.",
+                    "response": response.model_dump(mode="json"),
+                }
+                return
+
+        final_content = "".join(content_parts).strip()
+        if last_model_event and last_model_event.get("content"):
+            final_content = str(last_model_event.get("content") or "").strip()
+        if final_content:
+            response.answer = final_content
+            response.model_enhanced = True
+            response.fallback_used = False
+        if response.media_notice and response.media_notice not in response.answer:
+            response.answer = f"{response.answer}\n\n{response.media_notice}"
+        if last_model_event:
+            response.model_call_trace_id = last_model_event.get("trace_id")
+            response.model_provider = last_model_event.get("provider") or response.model_provider
+            response.model_name = last_model_event.get("model_name") or response.model_name
+        self._save_qa_record(response, context.payload, current_user, context.media_items)
+        yield {
+            "type": "done",
+            "response": response.model_dump(mode="json"),
+        }
+
+    def _build_base_response(
+        self,
+        payload: RetrievalQueryRequest,
+        current_user: User,
+    ) -> RetrievalQueryContext:
+        self._validate_request(payload)
+        resolved_payload = self._resolve_device_context(payload)
+        try:
+            media_items = self.media_service.resolve_media_items(
+                resolved_payload.media_ids,
+                device_id=resolved_payload.device_id,
+            )
+        except MediaServiceError as exc:
+            raise RetrievalServiceError(str(exc)) from exc
+        search_payload = self._payload_with_media_context(resolved_payload, media_items)
+        expansion = self.expansion_service.expand(search_payload)
+        candidate_limit = max(resolved_payload.top_k * 20, 80)
+        candidates = self.repository.list_knowledge_candidates(
+            keywords=expansion.keywords,
+            manufacturer=resolved_payload.manufacturer,
+            product_series=resolved_payload.product_series,
+            device_type=resolved_payload.device_type,
+            document_type=resolved_payload.document_type,
+            candidate_limit=candidate_limit,
+        )
+        scored_candidates = self._score_candidates(candidates, resolved_payload, expansion.keywords)
+        if resolved_payload.enable_vector_search:
+            vector_candidates = self.repository.list_vector_candidates(
+                manufacturer=resolved_payload.manufacturer,
+                product_series=resolved_payload.product_series,
+                device_type=resolved_payload.device_type,
+                document_type=resolved_payload.document_type,
+                candidate_limit=max(candidate_limit * 3, 240),
+            )
+            scored_candidates = self._merge_scored_candidates(
+                scored_candidates,
+                self._score_vector_candidates(vector_candidates, search_payload.normalized_question),
+            )
+        retrieved_chunks = [
+            self._candidate_to_retrieved_chunk(candidate)
+            for candidate in scored_candidates[: resolved_payload.top_k]
+        ]
+        references = self._build_references(retrieved_chunks)
+        related_history = self._find_related_history(resolved_payload, expansion.keywords)
+        kg_context = self._resolve_kg_context(resolved_payload, current_user)
+        answer = self.answer_service.generate(
+            payload=resolved_payload,
+            retrieved_chunks=retrieved_chunks,
+            keywords=expansion.keywords,
+            kg_context=kg_context,
+        )
+        trace_id = self._new_trace_id()
+        media_context = [self.media_service.media_context(item) for item in media_items]
+        ocr_context = self.media_service.ocr_context(media_items) if resolved_payload.use_ocr_text else []
+        media_notice = self._media_notice(
+            media_context,
+            use_ocr_text=resolved_payload.use_ocr_text,
+            ocr_context=ocr_context,
+        )
+        answer_text = answer.answer
+        if media_notice:
+            answer_text = f"{answer_text}\n\n{media_notice}"
+        response = RetrievalQueryResponse(
+            trace_id=trace_id,
+            question=resolved_payload.normalized_question,
+            answer=answer_text,
+            suggested_steps=answer.suggested_steps,
+            safety_notes=answer.safety_notes,
+            references=references,
+            retrieved_chunks=retrieved_chunks,
+            related_history=related_history,
+            media_items=media_context,
+            media_notice=media_notice,
+            ocr_context=ocr_context,
+            kg_context=kg_context,
+            kg_nodes=kg_context.get("kg_nodes", []),
+            kg_edges=kg_context.get("kg_edges", []),
+            kg_evidence=kg_context.get("evidence", []),
+            kg_paths=kg_context.get("graph_paths", []),
+            confidence=answer.confidence,
+            model_provider=MODEL_PROVIDER,
+            model_name=MODEL_NAME,
+            query_analysis=RetrievalQueryAnalysis(
+                normalized_query=expansion.normalized_query,
+                keywords=expansion.keywords,
+                filters={
+                    "manufacturer": resolved_payload.manufacturer,
+                    "product_series": resolved_payload.product_series,
+                    "device_type": resolved_payload.device_type,
+                    "device_id": str(resolved_payload.device_id) if resolved_payload.device_id else None,
+                    "document_type": resolved_payload.document_type,
+                    "fault_type": resolved_payload.fault_type,
+                    "alarm_code": resolved_payload.alarm_code,
+                    "top_k": resolved_payload.top_k,
+                    "media_ids": [str(media_id) for media_id in resolved_payload.media_ids],
+                    "use_ocr_text": resolved_payload.use_ocr_text,
+                    "enable_vector_search": resolved_payload.enable_vector_search,
+                    "enable_kg_enhancement": resolved_payload.enable_kg_enhancement,
+                },
+            ),
+        )
+        return RetrievalQueryContext(
+            response=response,
+            payload=resolved_payload,
+            media_items=media_items,
+        )
 
     def list_records(
         self,
@@ -238,6 +458,45 @@ class RetrievalService:
             scored.append(ScoredCandidate(chunk=chunk, document=document, score=round(score, 2)))
         scored.sort(key=lambda item: item.score, reverse=True)
         return scored
+
+    def _score_vector_candidates(
+        self,
+        candidates: list[tuple[KnowledgeChunk, KnowledgeDocument]],
+        query: str,
+    ) -> list[ScoredCandidate]:
+        query_vector = self.vectorizer.vectorize(query)
+        if not query_vector:
+            return []
+        scored: list[ScoredCandidate] = []
+        for chunk, document in candidates:
+            chunk_vector = self.vectorizer.vector_from_metadata(chunk.metadata_json)
+            if not chunk_vector:
+                chunk_vector = self.vectorizer.vectorize(chunk.content or "")
+            similarity = self.vectorizer.cosine_similarity(query_vector, chunk_vector)
+            if similarity <= 0.02:
+                continue
+            score = 4.0 + similarity * 28.0
+            scored.append(ScoredCandidate(chunk=chunk, document=document, score=round(score, 2)))
+        scored.sort(key=lambda item: item.score, reverse=True)
+        return scored
+
+    @staticmethod
+    def _merge_scored_candidates(
+        keyword_candidates: list[ScoredCandidate],
+        vector_candidates: list[ScoredCandidate],
+    ) -> list[ScoredCandidate]:
+        merged: dict[UUID, ScoredCandidate] = {}
+        for candidate in keyword_candidates:
+            merged[candidate.chunk.id] = candidate
+        for candidate in vector_candidates:
+            existing = merged.get(candidate.chunk.id)
+            if existing:
+                existing.score = round(max(existing.score, candidate.score) + min(candidate.score, 8.0) * 0.25, 2)
+            else:
+                merged[candidate.chunk.id] = candidate
+        result = list(merged.values())
+        result.sort(key=lambda item: item.score, reverse=True)
+        return result
 
     def _score_candidate(
         self,
@@ -468,6 +727,7 @@ class RetrievalService:
             suggested_steps=response.suggested_steps,
             safety_notes=response.safety_notes,
             references=response.references,
+            retrieved_chunks=response.retrieved_chunks,
             media_context=response.media_items,
             kg_context=response.kg_context,
         )
