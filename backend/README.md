@@ -670,3 +670,20 @@ Delivery boundary:
 - Do not run `alembic upgrade head` during documentation cleanup tasks.
 - Cloud, local llama.cpp, and OCR checks must remain `blocked` unless the required external services are explicitly configured and the corresponding real checks pass.
 - Do not claim pgvector, embedding retrieval, Neo4j, image fault recognition, or LoongArch/Kylin real-machine acceptance.
+## Task 24B DashVector Hybrid RAG
+
+Task 24B uses `/api/vector-search` and DashVector index metadata tables. It does not use pgvector or store raw vectors in PostgreSQL. Local validation uses `fake_in_memory` plus `deterministic_test`; real DashVector and real embedding calls require explicit opt-in and configured environment variables.
+
+## Task 24D Security Hardening
+
+Backend startup now runs production security validation. In `APP_ENV=production`, unsafe placeholder `SECRET_KEY`, weak or missing `ADMIN_PASSWORD`, non-PostgreSQL `DATABASE_URL`, wildcard CORS origins, unwritable upload/log directories, or incomplete enabled real providers must be rejected or reported as blocked without exposing values.
+
+Security scripts:
+
+- `uv run python scripts/check_security_config_status.py`
+- `uv run python scripts/check_secret_leak_scan.py`
+- `uv run python scripts/check_log_sanitization.py`
+- `uv run python scripts/check_upload_security.py`
+- `uv run python scripts/check_rbac_security_matrix.py`
+
+The scripts write sanitized results under `.runtime/security/`. They must not print API keys, Authorization headers, tokens, passwords, local paths, or full secret values. The local `.env` may contain configured secrets for development, but those values must be rotated if ever exposed and must not be committed.

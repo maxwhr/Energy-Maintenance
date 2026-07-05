@@ -41,6 +41,14 @@
               <option v-for="item in documentTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
             </select>
           </label>
+          <label class="grid gap-1 text-sm font-bold text-slate-200">
+            检索模式
+            <select v-model="form.retrieval_mode" class="scada-input">
+              <option value="hybrid">混合检索</option>
+              <option value="keyword">关键词检索</option>
+              <option value="vector">向量检索</option>
+            </select>
+          </label>
           <label class="flex items-center gap-2 rounded-md border border-cyan-300/20 bg-cyan-400/10 px-3 py-2 text-sm font-bold text-cyan-100">
             <input v-model="form.enable_kg_enhancement" type="checkbox" />
             启用知识图谱增强
@@ -140,6 +148,13 @@
         <div class="rounded-md bg-white/[0.03] p-3">置信度（confidence）：{{ Math.round(lastResult.confidence * 100) }}%</div>
         <div class="rounded-md bg-white/[0.03] p-3">参考来源（references）：{{ lastResult.references.length }}</div>
         <div class="rounded-md bg-white/[0.03] p-3">检索片段（chunks）：{{ lastResult.retrieved_chunks.length }}</div>
+        <div class="rounded-md bg-white/[0.03] p-3">检索模式：{{ retrievalModeLabel(lastResult.retrieval_mode) }}</div>
+        <div class="rounded-md bg-white/[0.03] p-3">vector_backend：{{ lastResult.vector_backend || 'unavailable' }}</div>
+        <div class="rounded-md bg-white/[0.03] p-3">向量可用：{{ lastResult.vector_available ? '是' : '否' }}</div>
+        <div class="rounded-md bg-white/[0.03] p-3">fallback：{{ lastResult.vector_fallback_used ? '已回退关键词' : '无' }}</div>
+      </div>
+      <div v-if="lastResult.vector_fallback_used" class="mt-3 rounded-md border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+        向量检索不可用，已回退关键词检索。
       </div>
       <div v-if="lastResult.media_notice" class="mt-3 rounded-md border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
         {{ lastResult.media_notice }}
@@ -188,6 +203,7 @@ const form = reactive({
   product_series: '',
   document_type: '',
   top_k: 5,
+  retrieval_mode: 'hybrid',
   enable_kg_enhancement: true,
   use_ocr_text: false
 })
@@ -208,7 +224,13 @@ async function submit() {
   const question = form.query
   messages.value.push({ id: crypto.randomUUID(), role: 'user', content: question, time: now() })
   try {
-    const payload: Record<string, unknown> = { query: question, device_type: 'pv_inverter', top_k: form.top_k }
+    const payload: Record<string, unknown> = {
+      query: question,
+      device_type: 'pv_inverter',
+      top_k: form.top_k,
+      retrieval_mode: form.retrieval_mode,
+      enable_vector: form.retrieval_mode !== 'keyword'
+    }
     if (form.device_id) payload.device_id = form.device_id
     if (form.manufacturer) payload.manufacturer = form.manufacturer
     if (form.product_series) payload.product_series = form.product_series
@@ -253,6 +275,10 @@ function labelOf(value?: string | null) {
 
 function formatScore(value?: number) {
   return typeof value === 'number' ? value.toFixed(2) : '-'
+}
+
+function retrievalModeLabel(value?: string) {
+  return ({ keyword: '关键词', vector: '向量', hybrid: '混合' } as Record<string, string>)[value || ''] ?? value ?? '-'
 }
 
 function now() {

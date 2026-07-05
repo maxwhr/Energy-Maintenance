@@ -83,7 +83,11 @@
               <div class="flex flex-wrap items-center gap-2">
                 <StatusPill :value="doc.parse_status" />
                 <span class="rounded-full border border-cyan-300/30 bg-cyan-400/10 px-2.5 py-1 text-xs font-bold text-cyan-200">切片 {{ doc.chunk_count }}</span>
+                <span class="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-2.5 py-1 text-xs font-bold text-emerald-200">
+                  向量索引 {{ vectorStatusByDocument[doc.id]?.indexed_count ?? 0 }}/{{ doc.chunk_count }}
+                </span>
                 <button class="scada-button !min-h-8 !px-3" type="button" @click="selectDocument(doc)">查看切片</button>
+                <button v-if="canIndexVector" class="scada-button !min-h-8 !px-3" type="button" @click="indexDocumentVector(doc.id)">重新向量索引</button>
                 <button class="scada-button !min-h-8 !px-3" type="button" @click="reparseDocument(doc.id)">重新解析</button>
                 <button class="scada-button !min-h-8 !px-3" type="button" @click="removeDocument(doc.id)">归档/删除</button>
               </div>
@@ -144,17 +148,19 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RefreshCcw, Search, Upload } from '@lucide/vue'
-import { deleteDocumentApi, getDevicesApi, getDocumentChunksApi, getDocumentsApi, reparseDocumentApi, uploadDocumentApi } from '@/api'
+import { deleteDocumentApi, getDevicesApi, getDocumentChunksApi, getDocumentVectorStatusApi, getDocumentsApi, indexDocumentVectorApi, reparseDocumentApi, uploadDocumentApi } from '@/api'
 import DataPanel from '@/components/DataPanel.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import MediaEvidencePicker from '@/components/MediaEvidencePicker.vue'
 import PageFrame from '@/components/PageFrame.vue'
 import StatusPill from '@/components/StatusPill.vue'
+import { useUserStore } from '@/stores/user'
 import { documentTypeOptions, manufacturerOptions, productSeriesOptions } from '@/types'
-import type { DeviceItem, KnowledgeChunk, KnowledgeDocument } from '@/types'
+import type { DeviceItem, DocumentVectorIndexStatus, KnowledgeChunk, KnowledgeDocument } from '@/types'
 import { formatStatusLabel } from '@/utils/display'
 
 const documents = ref<KnowledgeDocument[]>([])
+const vectorStatusByDocument = ref<Record<string, DocumentVectorIndexStatus>>({})
 const devices = ref<DeviceItem[]>([])
 const chunks = ref<KnowledgeChunk[]>([])
 const selectedDocument = ref<KnowledgeDocument | null>(null)
@@ -165,6 +171,7 @@ const chunkTotal = ref(0)
 const loading = ref(false)
 const uploading = ref(false)
 const error = ref('')
+const userStore = useUserStore()
 const filters = reactive({ keyword: '', manufacturer: '', document_type: '' })
 const form = reactive({
   title: '',
@@ -176,6 +183,7 @@ const form = reactive({
 })
 
 const seriesOptions = computed(() => productSeriesOptions.filter((item) => item.manufacturer === form.manufacturer))
+const canIndexVector = computed(() => ['admin', 'expert'].includes(userStore.role || ''))
 
 watch(
   () => form.manufacturer,
@@ -194,12 +202,26 @@ async function loadDocuments() {
     if (filters.document_type) params.document_type = filters.document_type
     const result = await getDocumentsApi(params)
     documents.value = result.items
+    await loadVectorStatuses()
   } catch (err) {
     error.value = err instanceof Error ? err.message : '知识文档读取失败'
     documents.value = []
   } finally {
     loading.value = false
   }
+}
+
+async function loadVectorStatuses() {
+  const entries = await Promise.all(
+    documents.value.map(async (doc) => {
+      try {
+        return [doc.id, await getDocumentVectorStatusApi(doc.id)] as const
+      } catch {
+        return [doc.id, null] as const
+      }
+    })
+  )
+  vectorStatusByDocument.value = Object.fromEntries(entries.filter(([, value]) => Boolean(value))) as Record<string, DocumentVectorIndexStatus>
 }
 
 async function loadDevices() {
@@ -270,6 +292,25 @@ async function reparseDocument(documentId: string) {
     await loadDocuments()
   } catch (err) {
     error.value = err instanceof Error ? err.message : '重新解析提交失败'
+  }
+}
+
+async function indexDocumentVector(documentId: string) {
+  error.value = ''
+  try {
+    const result = await indexDocumentVectorApi(documentId, {
+      vector_backend: 'fake_in_memory',
+      provider: 'deterministic_test',
+      force: true
+    })
+    window.dispatchEvent(
+      new CustomEvent('app:toast', {
+        detail: { message: `向量索引完成：成功 ${result.succeeded}，跳过 ${result.skipped}，后端 ${result.vector_backend}` }
+      })
+    )
+    await loadVectorStatuses()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '向量索引提交失败'
   }
 }
 

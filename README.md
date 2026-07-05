@@ -253,3 +253,12 @@ The following modules still use rule-based placeholder logic, but their records 
 ## Next Work
 
 The next stage should add retrieval over persisted chunks, Safety-Gate rule persistence, document review/publish workflow, and richer device/task management pages.
+## Task 24B DashVector Note
+
+The current vector RAG enhancement route is DashVector metadata + hybrid retrieval. PostgreSQL remains the source of truth; DashVector is the future online vector recall service. Local tests use `fake_in_memory` and `deterministic_test` only. Real DashVector and real embedding APIs are not called by default and require explicit online acceptance.
+
+## Task 24D Security Hardening Note
+
+Task 24D adds production security checks, CORS configuration from settings, JSON/upload request size limits, lightweight in-memory rate limiting, secret-leak scanning, log sanitization, upload/path traversal checks, and an RBAC matrix script.
+
+The backend exposes only sanitized security status through `/api/system/status`; API keys, Authorization headers, tokens, passwords, local paths, and base64 payloads must not appear in responses or logs. Real DashVector, MIMO, OCR, Cloud LLM, and embedding calls remain opt-in and blocked unless explicitly configured and re-tested. Any previously exposed real keys must be rotated before production use.

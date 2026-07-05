@@ -1750,3 +1750,11 @@ Deployment boundary:
 - OCR extracts image text only; it is not image fault recognition.
 - OCR text must remain optional context and must not become approved knowledge automatically.
 - Do not add PaddleOCR, RapidOCR, deep-learning OCR runtimes, Docker, SQLite, pgvector, or embedding as first-version deployment requirements.
+
+## Task 24D Addendum: Production Security Baseline
+
+Before production startup on LoongArch + Kylin, set strong values for `SECRET_KEY` and `ADMIN_PASSWORD`, configure PostgreSQL `DATABASE_URL`, configure formal CORS origins, and verify upload/log directories are writable by the service account.
+
+Do not deploy with wildcard CORS, placeholder secrets, weak admin passwords, or real providers marked enabled without complete `base_url` / `api_key` / `model` configuration. Use Nginx or an upstream gateway for production-grade rate limiting; the application-level in-memory limiter is a single-instance safety net.
+
+Previously exposed real API keys must be rotated before any production or real-call acceptance.

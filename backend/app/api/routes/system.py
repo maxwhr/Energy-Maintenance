@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.config import get_settings
+from app.core.security_config import collect_security_status
 from app.models import (
     DiagnosisRecord,
     KnowledgeChunk,
@@ -55,6 +57,7 @@ def get_system_status(db: Session = Depends(get_db)) -> dict:
         "maintenance_task_count": 0,
         "media_count": 0,
         "sop_template_count": 0,
+        "security": collect_security_status(get_settings()),
     }
 
     try:

@@ -98,6 +98,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: TEXT.assistantHistory, roles: operatorRoles }
       },
       {
+        path: 'agents/workbench',
+        name: 'AgentWorkbench',
+        component: () => import('@/views/agent/Workbench.vue'),
+        meta: { title: '智能体工作台', roles: allRoles }
+      },
+      {
         path: 'diagnosis',
         name: 'Diagnosis',
         component: () => import('@/views/diagnosis/index.vue'),
@@ -150,6 +156,12 @@ const routes: RouteRecordRaw[] = [
         name: 'MediaLibrary',
         component: () => import('@/views/media/index.vue'),
         meta: { title: '媒体资料', roles: operatorRoles }
+      },
+      {
+        path: 'multimodal',
+        name: 'MultimodalEvidence',
+        component: () => import('@/views/multimodal/index.vue'),
+        meta: { title: '多模态证据中心', roles: allRoles }
       },
       {
         path: 'review/corrections',

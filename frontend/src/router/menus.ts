@@ -12,6 +12,7 @@ import {
   GitBranch,
   History,
   Image,
+  Images,
   LibraryBig,
   MessageSquare,
   Plus,
@@ -65,7 +66,8 @@ export const menuList: MenuItem[] = [
       { path: '/knowledge/graph', title: '知识图谱', icon: GitBranch, roles: allRoles },
       { path: '/knowledge/search', title: TEXT.search, icon: Search, roles: operatorRoles },
       { path: '/knowledge/cases', title: TEXT.cases, icon: BookOpen, roles: operatorRoles },
-      { path: '/media', title: '媒体资料', icon: Image, roles: operatorRoles }
+      { path: '/media', title: '媒体资料', icon: Image, roles: operatorRoles },
+      { path: '/multimodal', title: '多模态证据中心', icon: Images, roles: allRoles }
     ]
   },
   {
@@ -75,7 +77,8 @@ export const menuList: MenuItem[] = [
     roles: operatorRoles,
     children: [
       { path: '/assistant/chat', title: TEXT.assistantChat, icon: MessageSquare },
-      { path: '/assistant/history', title: TEXT.assistantHistory, icon: History }
+      { path: '/assistant/history', title: TEXT.assistantHistory, icon: History },
+      { path: '/agents/workbench', title: '智能体工作台', icon: Bot, roles: allRoles }
     ]
   },
   {

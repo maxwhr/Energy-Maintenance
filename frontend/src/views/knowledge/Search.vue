@@ -36,6 +36,14 @@
             返回片段数（top_k）
             <input v-model.number="form.top_k" class="scada-input" min="1" max="10" type="number" />
           </label>
+          <label class="grid gap-1 text-sm font-bold text-slate-200">
+            检索模式
+            <select v-model="form.retrieval_mode" class="scada-input">
+              <option value="hybrid">混合检索</option>
+              <option value="keyword">关键词检索</option>
+              <option value="vector">向量检索</option>
+            </select>
+          </label>
           <button class="scada-button primary" type="submit" :disabled="loading">
             <Search :size="16" />
             {{ loading ? '检索中' : '检索知识库' }}
@@ -49,7 +57,12 @@
             <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-cyan-200">
               <span>trace_id: {{ result.trace_id }}</span>
               <span>置信度（confidence）：{{ Math.round(result.confidence * 100) }}%</span>
+              <span>检索模式：{{ retrievalModeLabel(result.retrieval_mode) }}</span>
+              <span>vector_backend：{{ result.vector_backend || 'unavailable' }}</span>
             </div>
+            <p v-if="result.vector_fallback_used" class="mb-2 rounded border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
+              向量检索不可用，已回退关键词检索。
+            </p>
             <p class="whitespace-pre-wrap text-sm leading-7 text-slate-100">{{ result.answer }}</p>
           </div>
 
@@ -85,6 +98,10 @@
         <article v-for="chunk in result.retrieved_chunks" :key="chunk.chunk_id" class="rounded-md border border-slate-600/20 bg-black/20 p-4">
           <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
             <span class="font-mono text-cyan-200">相关度 {{ formatScore(chunk.score) }}</span>
+            <span>关键词 {{ formatScore(chunk.keyword_score ?? undefined) }}</span>
+            <span>向量 {{ formatScore(chunk.vector_score ?? undefined) }}</span>
+            <span>综合 {{ formatScore(chunk.hybrid_score ?? undefined) }}</span>
+            <span>来源 {{ retrievalSourceLabel(chunk.retrieval_source) }}</span>
             <span>{{ chunk.document_title }}</span>
             <span>{{ chunk.section_title || '未标注章节' }}</span>
           </div>
@@ -114,7 +131,8 @@ const form = reactive({
   product_series: '',
   device_type: 'pv_inverter',
   document_type: '',
-  top_k: 5
+  top_k: 5,
+  retrieval_mode: 'hybrid'
 })
 
 async function submit() {
@@ -122,7 +140,13 @@ async function submit() {
   error.value = ''
   result.value = null
   try {
-    const payload: Record<string, unknown> = { query: form.query, device_type: 'pv_inverter', top_k: Math.min(10, Math.max(1, form.top_k)) }
+    const payload: Record<string, unknown> = {
+      query: form.query,
+      device_type: 'pv_inverter',
+      top_k: Math.min(10, Math.max(1, form.top_k)),
+      retrieval_mode: form.retrieval_mode,
+      enable_vector: form.retrieval_mode !== 'keyword'
+    }
     if (form.manufacturer) payload.manufacturer = form.manufacturer
     if (form.product_series) payload.product_series = form.product_series
     if (form.document_type) payload.document_type = form.document_type
@@ -141,5 +165,13 @@ function labelOf(value?: string | null) {
 
 function formatScore(value?: number) {
   return typeof value === 'number' ? value.toFixed(2) : '-'
+}
+
+function retrievalModeLabel(value?: string) {
+  return ({ keyword: '关键词', vector: '向量', hybrid: '混合' } as Record<string, string>)[value || ''] ?? value ?? '-'
+}
+
+function retrievalSourceLabel(value?: string) {
+  return ({ keyword: '关键词', vector: '向量', hybrid: '混合命中' } as Record<string, string>)[value || ''] ?? value ?? '-'
 }
 </script>

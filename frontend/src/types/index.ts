@@ -7,6 +7,9 @@ export interface ApiResponse<T = unknown> {
   data: T
 }
 
+export * from './externalApi'
+export * from './multimodal'
+
 export interface PageResponse<T> {
   items: T[]
   total: number
@@ -100,6 +103,7 @@ export interface KnowledgeDocument {
   status: string
   created_at: string
   updated_at: string
+  vector_index_status?: DocumentVectorIndexStatus
 }
 
 export interface KnowledgeChunk {
@@ -118,6 +122,7 @@ export interface KnowledgeChunk {
   status: string
   created_at: string
   updated_at: string
+  vector_indexes?: ChunkVectorIndex[]
 }
 
 export interface KnowledgeUploadResult {
@@ -226,6 +231,11 @@ export interface RetrievedChunk {
   document_type: string
   source?: string | null
   created_at?: string
+  keyword_score?: number | null
+  vector_score?: number | null
+  hybrid_score?: number | null
+  retrieval_source?: 'keyword' | 'vector' | 'hybrid'
+  vector_backend?: string | null
 }
 
 export interface RetrievalResponse {
@@ -250,6 +260,113 @@ export interface RetrievalResponse {
   model_name: string
   model_enhanced: boolean
   model_call_trace_id?: string | null
+  retrieval_mode?: string
+  vector_enabled?: boolean
+  vector_available?: boolean
+  hybrid_used?: boolean
+  vector_fallback_used?: boolean
+  fallback_used?: boolean
+  vector_backend?: string
+  embedding_provider?: string | null
+  embedding_model?: string | null
+  retrieval_diagnostics?: Record<string, unknown>
+}
+
+export interface VectorSearchStatus {
+  vector_search_enabled: boolean
+  vector_backend: string
+  dashvector_enabled: boolean
+  dashvector_configured: boolean
+  dashvector_collection: string
+  dashvector_namespace?: string | null
+  dashvector_dimension: number
+  embedding_enabled: boolean
+  embedding_configured: boolean
+  embedding_provider: string
+  embedding_model?: string | null
+  embedding_dimension: number
+  deterministic_test_enabled: boolean
+  fake_adapter_available: boolean
+  real_adapter_available: boolean
+  status: string
+  blocked_reasons: string[]
+  warnings: string[]
+}
+
+export interface VectorIndexRun {
+  id: string
+  run_type: string
+  target_type: string
+  target_id?: string | null
+  vector_backend: string
+  collection_name: string
+  namespace?: string | null
+  embedding_model: string
+  embedding_provider: string
+  status: string
+  total_count: number
+  succeeded_count: number
+  failed_count: number
+  skipped_count: number
+  started_at?: string | null
+  finished_at?: string | null
+  error_message?: string | null
+  metadata_json?: Record<string, unknown> | null
+  created_by?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ChunkVectorIndex {
+  id: string
+  chunk_id: string
+  document_id?: string | null
+  vector_backend: string
+  collection_name: string
+  namespace?: string | null
+  vector_id: string
+  embedding_model: string
+  embedding_provider: string
+  embedding_dim: number
+  content_hash: string
+  index_status: string
+  last_indexed_at?: string | null
+  error_message?: string | null
+  metadata_json?: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DocumentVectorIndexStatus {
+  document_id: string
+  chunk_count: number
+  indexed_count: number
+  stale_count: number
+  failed_count: number
+  indexes: ChunkVectorIndex[]
+}
+
+export interface VectorIndexJobResult {
+  run: VectorIndexRun
+  processed: number
+  succeeded: number
+  skipped: number
+  failed: number
+  vector_backend: string
+  embedding_provider: string
+  embedding_model: string
+  embedding_dimension: number
+  warnings: string[]
+}
+
+export interface VectorTestQueryResult {
+  vector_backend: string
+  embedding_provider: string
+  embedding_model: string
+  embedding_dimension: number
+  vector_available: boolean
+  hits: Array<Record<string, unknown>>
+  warnings: string[]
 }
 
 export interface DiagnosisResponse {
@@ -615,6 +732,7 @@ export interface SystemStatus {
   status?: string
   version?: string
   environment?: string
+  security?: Record<string, unknown>
 }
 
 export interface SystemStatistics {

@@ -2014,3 +2014,357 @@ The script must:
 - exit with code 0 only when core business checks have no `failed` items.
 
 Task 18I must not execute `alembic upgrade head`, create migrations, introduce Docker, introduce SQLite, introduce pgvector/embedding, download models, install OCR engines, or claim blocked external capabilities as passed.
+## Task 22A Agent Runtime Acceptance
+
+Task 22A acceptance must verify:
+
+- Alembic head upgrades from `20260601_0003` to `20260601_0004`.
+- `agent_definitions`, `agent_tools`, `agent_runs`, `agent_steps`, `agent_tool_calls`, `agent_approvals`, `agent_artifacts`, and `agent_event_logs` exist.
+- `seed_agent_runtime.py` can run twice idempotently.
+- `GET /api/agents/definitions` works.
+- `GET /api/agents/tools` works.
+- `engineer` can create a dry-run agent run.
+- run detail, steps, tool calls, artifacts, approvals, and events are readable.
+- `viewer` cannot create an agent run.
+- `expert` or `admin` can approve a pending approval.
+- `media_mimo_analysis` is marked disabled / external blocked.
+- No real external model API is called.
+- Frontend build still passes.
+- Existing final smoke test still passes.
+- No delivery zip is generated.
+
+Recommended commands:
+
+```powershell
+cd backend
+$env:DATABASE_URL="postgresql+psycopg://energy_user:energy_password@127.0.0.1:55432/energy_maintenance"
+uv run python -m compileall app scripts
+uv run python -m alembic -c alembic.ini heads
+uv run python -m alembic -c alembic.ini current
+uv run python -m alembic -c alembic.ini upgrade head
+uv run python scripts\seed_agent_runtime.py
+uv run python scripts\seed_agent_runtime.py
+uv run python scripts\check_agent_runtime_flow.py
+```
+## Task 22B Agent Business Tool Acceptance
+
+Task 22B validates the agent business tool execution layer without packaging and without new migrations.
+
+Commands:
+
+```powershell
+cd backend
+uv run python -m compileall app scripts
+uv run python -m alembic -c alembic.ini current
+uv run python scripts\seed_agent_runtime.py
+uv run python scripts\check_agent_runtime_flow.py
+uv run python scripts\check_agent_business_tools_flow.py
+
+cd ..\frontend
+npm.cmd run build
+
+cd ..
+powershell -ExecutionPolicy Bypass -File .\scripts\final_smoke_test.ps1 -BaseUrl http://127.0.0.1:8010
+```
+
+Acceptance points:
+
+- all 16 registered agent tools exist.
+- `media_mimo_analysis` remains disabled/blocked and does not call external services.
+- `media_ocr` returns existing OCR text or blocked status when OCR is disabled.
+- high-risk tools create draft artifacts and approval records only.
+- `POST /api/agents/runs/{run_id}/execute-tool` blocks viewer users.
+- no `alembic upgrade head`, delivery zip, Docker, SQLite, embedding, pgvector, cloud model call, or real OCR execution is required.
+
+---
+
+## Task 22C External API Gateway Acceptance
+
+Task 22C acceptance requires:
+
+- Alembic migration reaches `20260601_0005`.
+- `external_api_providers`, `external_api_routes`, `external_api_call_logs`, and `external_api_health_checks` exist.
+- `seed_external_api_providers.py` is idempotent.
+- `/api/external-apis/status` is readable.
+- `/api/external-apis/dry-run` is available to engineer/expert/admin users and forbidden to viewer users.
+- Dry-run does not call real external APIs.
+- Logs are sanitized and must not contain API keys, Authorization headers, full image base64, or local file paths.
+- `check_external_api_gateway_flow.py` passes.
+- `check_agent_business_tools_flow.py` still passes.
+- Frontend build and final smoke test still pass.
+- No delivery zip is generated.
+
+## Task 22D Multimodal Evidence Center Acceptance
+
+Task 22D acceptance requires:
+
+- Alembic migration reaches `20260601_0006`.
+- `media_processing_jobs`, `media_ocr_results`, `media_ai_analyses`, and `media_evidence_links` exist.
+- OCR job creation works and returns `blocked` when OCR providers are disabled or not configured.
+- Multimodal analysis job creation works and returns `blocked` when `mimo_2_5` and vision providers are not configured.
+- Job detail, job list, OCR result list, analysis list, evidence link list, and media multimodal summary endpoints are readable.
+- Expert/admin review of AI analysis works.
+- Viewer review is rejected.
+- Agent media tools can read evidence center results or provider blocked status.
+- `check_multimodal_evidence_flow.py`, `check_external_api_gateway_flow.py`, and `check_agent_business_tools_flow.py` pass.
+- No real external API is called.
+- No delivery zip is generated.
+## Task 22E Acceptance Checks
+
+Task 22E must be verified without delivery packaging:
+
+```powershell
+cd "D:\Work Space\Energy-Maintenance\backend"
+$env:DATABASE_URL="postgresql+psycopg2://energy_user:energy_password@127.0.0.1:55432/energy_maintenance"
+uv run python -m compileall app scripts
+uv run python -m alembic -c alembic.ini current
+uv run python scripts\seed_external_api_providers.py
+uv run python scripts\check_external_api_gateway_flow.py
+uv run python scripts\check_multimodal_evidence_flow.py
+uv run python scripts\check_multimodal_adapter_contract.py
+uv run python scripts\check_agent_business_tools_flow.py
+```
+
+Expected boundaries:
+
+- dry-run and mock-run do not call external APIs.
+- mocked results contain `mocked=true` and `not_for_production=true`.
+- logs do not contain API keys, Authorization headers, base64 images, or local paths.
+- no Alembic migration is added for Task 22E.
+- no delivery zip is generated.
+
+## Task 22F Acceptance Addendum
+
+Task 22F acceptance must verify the frontend page with a real browser or headless Chrome / Edge CDP run.
+
+Required script:
+
+```powershell
+cd "D:\Work Space\Energy-Maintenance\backend"
+node .\scripts\check_task22f_multimodal_frontend_browser.mjs
+```
+
+The script must not generate delivery zip files and must not update `delivery/`.
+
+Expected browser checks:
+
+- admin can log in and open `/multimodal`;
+- image upload through the media page works;
+- OCR dry-run and AI dry-run create real processing jobs;
+- OCR mock-run and AI mock-run persist explicitly mocked records;
+- AI analysis review persists;
+- evidence link creation persists;
+- Agent Run dry-run displays steps, tool calls, artifacts, and approvals;
+- viewer controls are read-only;
+- no blocking console/runtime error is present.
+
+This does not prove real OCR or real external multimodal API capability.
+## Task 22G Addendum: Multimodal Evidence Agent Acceptance
+
+Task 22G acceptance checks must verify the real backend API flow, not only file existence.
+
+Required checks:
+
+```powershell
+cd "D:\Work Space\Energy-Maintenance\backend"
+$env:DATABASE_URL="postgresql+psycopg://energy_user:energy_password@127.0.0.1:55432/energy_maintenance"
+uv run python -m compileall app scripts
+uv run python -m alembic -c alembic.ini current
+uv run python scripts\seed_agent_runtime.py
+uv run python scripts\seed_external_api_providers.py
+uv run python scripts\check_multimodal_evidence_agent_flow.py
+```
+
+Browser acceptance:
+
+```powershell
+node backend\scripts\check_task22g_multimodal_agent_browser.mjs
+```
+
+The checks must confirm dry-run, mock-run, full steps, tool calls, at least three artifacts, evidence links, safety checklist, blocked/mocked boundaries, viewer blocking, and no delivery package generation.
+
+Do not run `alembic upgrade head` for Task 22G unless a later task explicitly requests database migration verification.
+
+## Task 22H Addendum: Diagnosis / SOP / Task Agent Acceptance
+
+Task 22H acceptance must verify dedicated agent orchestration without packaging and without database migration changes.
+
+Required backend checks:
+
+```powershell
+cd "D:\Work Space\Energy-Maintenance\backend"
+$env:DATABASE_URL="postgresql+psycopg://energy_user:energy_password@127.0.0.1:55432/energy_maintenance"
+uv run python -m compileall app scripts
+uv run python -m alembic -c alembic.ini current
+uv run python scripts\seed_agent_runtime.py
+uv run python scripts\seed_external_api_providers.py
+uv run python scripts\check_diagnosis_sop_task_agent_flow.py
+uv run python scripts\check_multimodal_evidence_agent_flow.py
+uv run python scripts\check_multimodal_adapter_contract.py
+uv run python scripts\check_multimodal_evidence_flow.py
+uv run python scripts\check_external_api_gateway_flow.py
+uv run python scripts\check_agent_business_tools_flow.py
+```
+
+Required frontend and browser checks:
+
+```powershell
+cd "D:\Work Space\Energy-Maintenance\frontend"
+npm.cmd install
+npm.cmd audit
+npm.cmd run build
+
+cd "D:\Work Space\Energy-Maintenance"
+powershell -ExecutionPolicy Bypass -File .\backend\scripts\build_and_install_frontend.ps1
+node backend\scripts\check_task22h_diagnosis_sop_task_agent_browser.mjs
+powershell -ExecutionPolicy Bypass -File .\scripts\final_smoke_test.ps1 -BaseUrl http://127.0.0.1:8010
+```
+
+Acceptance points:
+
+- `fault_diagnosis_agent`, `sop_planner_agent`, and `task_orchestration_agent` can run in dry-run mode.
+- Required steps are recorded in `agent_steps`.
+- Required tool calls are recorded in `agent_tool_calls`.
+- `diagnosis_summary`, `sop_draft`, `task_draft`, `safety_checklist`, and `evidence_trace_summary` artifacts are created.
+- SOP and task draft approvals are created with pending status.
+- expert/admin can approve or reject draft approvals.
+- viewer users cannot create agent runs or approve drafts.
+- No formal `maintenance_tasks` row is automatically created by the task orchestration agent.
+- No SOP execution or formal SOP template is automatically created.
+- No real external API is called.
+- No delivery zip or `delivery_staging` directory is generated.
+
+## Task 22I Addendum: Knowledge Curator Agent Acceptance
+
+Task 22I acceptance must verify knowledge-curation draft generation without packaging and without database migration changes.
+
+Required backend checks:
+
+```powershell
+cd "D:\Work Space\Energy-Maintenance\backend"
+$env:DATABASE_URL="postgresql+psycopg://energy_user:energy_password@127.0.0.1:55432/energy_maintenance"
+uv run python -m compileall app scripts
+uv run python -m alembic -c alembic.ini current
+uv run python scripts\seed_agent_runtime.py
+uv run python scripts\seed_external_api_providers.py
+uv run python scripts\check_knowledge_curator_agent_flow.py
+uv run python scripts\check_diagnosis_sop_task_agent_flow.py
+uv run python scripts\check_multimodal_evidence_agent_flow.py
+uv run python scripts\check_multimodal_adapter_contract.py
+uv run python scripts\check_multimodal_evidence_flow.py
+uv run python scripts\check_external_api_gateway_flow.py
+uv run python scripts\check_agent_business_tools_flow.py
+```
+
+Required frontend and browser checks:
+
+```powershell
+cd "D:\Work Space\Energy-Maintenance\frontend"
+npm.cmd install
+npm.cmd audit
+npm.cmd run build
+
+cd "D:\Work Space\Energy-Maintenance"
+powershell -ExecutionPolicy Bypass -File .\backend\scripts\build_and_install_frontend.ps1
+node backend\scripts\check_task22i_knowledge_curator_agent_browser.mjs
+powershell -ExecutionPolicy Bypass -File .\scripts\final_smoke_test.ps1 -BaseUrl http://127.0.0.1:8010
+```
+
+Acceptance points:
+
+- `knowledge_curator_agent` can run in dry-run mode.
+- Required steps are recorded in `agent_steps`.
+- Required tool calls are recorded in `agent_tool_calls`.
+- `maintenance_case_summary`, `knowledge_contribution_draft`, `kg_candidate_suggestion`, `safety_checklist`, and `evidence_trace_summary` artifacts are created.
+- One pending `knowledge_contribution_draft_review` approval is created.
+- expert/admin can approve or reject the draft approval.
+- viewer users cannot create curator runs or approve drafts.
+- Formal `knowledge_contributions`, `knowledge_documents`, `knowledge_chunks`, and formal knowledge-graph nodes/edges are not created by this agent.
+- No real external API is called.
+- No delivery zip or `delivery_staging` directory is generated.
+
+## Task 22J Addendum: Agent Artifact Conversion Acceptance
+
+Task 22J acceptance must verify explicit draft conversion without packaging and without database migration changes.
+
+Required backend checks:
+
+```powershell
+cd "D:\Work Space\Energy-Maintenance\backend"
+$env:DATABASE_URL="postgresql+psycopg://energy_user:energy_password@127.0.0.1:55432/energy_maintenance"
+uv run python -m compileall app scripts
+uv run python -m alembic -c alembic.ini current
+uv run python scripts\seed_agent_runtime.py
+uv run python scripts\seed_external_api_providers.py
+uv run python scripts\check_agent_artifact_conversion_flow.py
+uv run python scripts\check_knowledge_curator_agent_flow.py
+uv run python scripts\check_diagnosis_sop_task_agent_flow.py
+uv run python scripts\check_multimodal_evidence_agent_flow.py
+uv run python scripts\check_multimodal_adapter_contract.py
+uv run python scripts\check_multimodal_evidence_flow.py
+uv run python scripts\check_external_api_gateway_flow.py
+uv run python scripts\check_agent_business_tools_flow.py
+```
+
+Required frontend and browser checks:
+
+```powershell
+cd "D:\Work Space\Energy-Maintenance\frontend"
+npm.cmd install
+npm.cmd audit
+npm.cmd run build
+
+cd "D:\Work Space\Energy-Maintenance"
+powershell -ExecutionPolicy Bypass -File .\backend\scripts\build_and_install_frontend.ps1
+node backend\scripts\check_task22j_artifact_conversion_browser.mjs
+powershell -ExecutionPolicy Bypass -File .\scripts\final_smoke_test.ps1 -BaseUrl http://127.0.0.1:8010
+```
+
+Acceptance points:
+
+- approval alone does not convert draft artifacts;
+- `expert` or `admin` can explicitly convert approved drafts;
+- `viewer` and `engineer` conversion attempts are blocked;
+- duplicate conversion of the same artifact and target type is blocked;
+- `knowledge_contribution_draft` conversion creates `knowledge_contributions` only;
+- `sop_draft` conversion creates `sop_templates` only;
+- `task_draft` conversion creates a pending `maintenance_tasks` row only;
+- `kg_candidate_suggestion` conversion creates pending `kg_candidates` only;
+- conversion events are recorded with `event_type=draft_converted_to_formal_object`;
+- no real external API is called;
+- no delivery zip or `delivery_staging` directory is generated.
+## Task 24B Addendum: DashVector Recovery Acceptance
+
+Task 24B acceptance must verify the DashVector metadata route without default real external calls:
+
+- Alembic head is `20260601_0007`.
+- Migration creates `knowledge_chunk_vector_indexes` and `vector_index_runs`.
+- No pgvector extension, local `vector` column, `knowledge_chunk_embeddings`, or `embedding_runs` table is introduced.
+- `check_dashvector_config_status.py` reports real DashVector/embedding as blocked by default.
+- `check_dashvector_hybrid_rag_flow.py` uses `fake_in_memory` and `deterministic_test` only.
+- `check_dashvector_real_optional.py` is skipped unless `--allow-real-api` is explicitly passed.
+- No delivery package is generated.
+
+## Task 24D Addendum: Security Acceptance
+
+Security acceptance requires these checks:
+
+- `uv run python scripts/check_security_config_status.py`
+- `uv run python scripts/check_secret_leak_scan.py`
+- `uv run python scripts/check_log_sanitization.py`
+- `uv run python scripts/check_upload_security.py`
+- `uv run python scripts/check_rbac_security_matrix.py`
+
+Expected results: no raw key output, `.env` values not printed, production guard present, CORS restricted, request-body limit active, rate limit active, upload traversal blocked or sanitized, viewer write operations rejected, and RBAC expected/actual matrix passed.
+
+The scripts may record local `.env` as `passed_with_notes` if configured secrets exist there, but repository docs/code/scripts must not contain real secrets. Any previously exposed real key must be rotated outside the repository before production use.
+
+## Task 24E Addendum: Agent Conversion Concurrency Acceptance
+
+Required 24E checks:
+
+- `uv run python scripts/check_agent_artifact_conversion_flow.py`
+- `uv run python scripts/check_agent_conversion_concurrency_flow.py`
+- `node backend/scripts/check_task24e_conversion_history_browser.mjs`
+
+Acceptance requires exactly one formal business object for concurrent conversion of the same artifact and target, one conversion audit row, preserved event-log compatibility, blocked viewer/engineer conversion, blocked pending/rejected approval conversion, failed conversion audit when target creation fails, and no delivery package generation.

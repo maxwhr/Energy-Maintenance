@@ -2014,3 +2014,243 @@ Record detail pages may display saved `knowledge_graph` summaries when retrieval
 - Do not fabricate graph nodes, edges, references, or evidence in the frontend.
 - `viewer` remains read-only.
 - Expert/admin graph write actions remain role-gated by backend permissions.
+## Task 22A Frontend API Addendum
+
+Task 22A only adds frontend API/type wrappers for Agent Runtime. It does not add the full Agent Workbench page.
+
+New files:
+
+```text
+frontend/src/api/agents.ts
+frontend/src/types/agent.ts
+```
+
+Available frontend API functions:
+
+- `getAgentDefinitions`
+- `getAgentDefinition`
+- `getAgentTools`
+- `createAgentRun`
+- `getAgentRuns`
+- `getAgentRunDetail`
+- `cancelAgentRun`
+- `getAgentRunSteps`
+- `getAgentRunToolCalls`
+- `getAgentRunApprovals`
+- `approveAgentApproval`
+- `rejectAgentApproval`
+- `getAgentArtifacts`
+- `getAgentEvents`
+
+The complete Agent Workbench UI remains reserved for a later task.
+# Task 22B Frontend Contract Note
+
+The frontend agent API wrapper now supports `tools`, `media_ids`, `tool_inputs`, and:
+
+```text
+POST /api/agents/runs/{run_id}/execute-tool
+```
+
+Task 22B does not add a full agent workbench page. It only updates frontend TypeScript types and API wrappers so later pages can display tool calls, draft artifacts, approvals, blocked tools, and manual single-tool execution results.
+
+---
+
+## Task 22C Frontend API Reservation
+
+Task 22C adds frontend API client functions and types for `/api/external-apis`.
+
+No full Provider Gateway page is introduced in this task. Future agent workspace pages can use:
+
+- `getExternalApiProviders`
+- `getExternalApiProvider`
+- `getExternalApiRoutes`
+- `getExternalApiStatus`
+- `checkExternalApiProvider`
+- `dryRunExternalApi`
+- `getExternalApiLogs`
+- `getExternalApiLogDetail`
+- `getExternalApiHealthChecks`
+
+Provider keys, model names, and trace IDs may be displayed as technical fields. Real API keys must never be displayed.
+
+## Task 22D Multimodal Evidence API Reservation
+
+Task 22D adds frontend API client functions and types for `/api/multimodal`.
+
+No full multimodal evidence center page is introduced in this task. Future UI work can use:
+
+- `getMediaJobs`
+- `createMediaProcessingJob`
+- `getProcessingJob`
+- `cancelProcessingJob`
+- `getMediaOcrResults`
+- `getOcrResult`
+- `getMediaAnalyses`
+- `getAnalysis`
+- `reviewAnalysis`
+- `getEvidenceLinks`
+- `createEvidenceLink`
+- `getMediaMultimodalSummary`
+
+Machine OCR and multimodal analysis outputs must be presented as auxiliary evidence, not as final fault conclusions.
+## Task 22E Addendum: Adapter API Types
+
+Frontend API wrappers reserve external adapter calls for future UI surfaces:
+
+```text
+dryRunExternalApi
+mockRunExternalApi
+createMediaProcessingJob
+```
+
+No full external-provider UI page is added in Task 22E. Any future UI must clearly label mock results as local verification output and must not display them as real machine-recognition success.
+
+## Task 22F Frontend Interaction Update
+
+Task 22F adds the page `/multimodal` named 多模态证据中心.
+
+The page is placed near 媒体资料 and supports:
+
+- provider status and dry-run/mock-run entry;
+- media filtering and selection;
+- processing job list;
+- OCR dry-run, AI dry-run, OCR mock-run, and AI mock-run actions;
+- OCR result and AI analysis display;
+- expert/admin human review;
+- evidence link creation;
+- Agent Run dry-run entry with steps, tool calls, artifacts, and approvals display.
+
+Viewer users can open the page but must remain read-only. The page must not show fake success if any backend API fails.
+## Task 22G Addendum: Multimodal Evidence Agent Entry
+
+The `/multimodal` page includes a controlled entry for `multimodal_evidence_agent`.
+
+The page supports:
+
+- selecting uploaded PV inverter media evidence;
+- entering site description and observed fault symptoms;
+- selecting the default tool chain: `media_lookup`, `media_ocr`, `media_mimo_analysis`, `safety_guard`;
+- toggling dry-run and mock-run mode;
+- creating a multimodal evidence agent run;
+- displaying timeline, tool calls, artifacts, safety checklist, evidence links, and final answer.
+
+Role behavior:
+
+- viewer: read-only, create controls disabled or hidden;
+- engineer: dry-run only;
+- expert/admin: dry-run and mock-run, plus review actions.
+
+Technical identifiers such as `run_id`, `trace_id`, provider codes, and model names may remain visible as technical fields. User-facing status, safety, and evidence summaries should be presented in Chinese.
+
+## Task 22H Addendum: Agent Workbench
+
+Task 22H adds the route:
+
+```text
+/agents/workbench
+```
+
+Page name:
+
+```text
+智能体工作台
+```
+
+The page provides a controlled frontend entry for:
+
+- `multimodal_evidence_agent`
+- `fault_diagnosis_agent`
+- `sop_planner_agent`
+- `task_orchestration_agent`
+
+Required interactions:
+
+- choose an agent;
+- choose a PV inverter device;
+- choose media evidence where available;
+- enter fault symptoms, alarm code, manufacturer, product series, and fault type;
+- choose dry-run / mock-run mode according to role permissions;
+- create an agent run;
+- display final answer, timeline, steps, tool calls, artifacts, approvals, and safety checklist;
+- display `diagnosis_summary`, `sop_draft`, and `task_draft` with business-readable panels;
+- allow expert/admin users to approve or reject pending draft approvals.
+
+Role behavior:
+
+- viewer: read-only; cannot create runs or approve/reject drafts;
+- engineer: can create dry-run runs;
+- expert/admin: can create permitted runs and review draft approvals.
+
+The page must not show generated drafts as formal work orders or executed SOP records. All high-risk outputs remain draft artifacts plus human approval.
+
+## Task 22I Addendum: Knowledge Curator Agent Entry
+
+The `/agents/workbench` page includes a controlled entry for `knowledge_curator_agent`.
+
+The page supports:
+
+- selecting the knowledge curator agent;
+- selecting a Huawei/Sungrow PV inverter device;
+- selecting related media evidence where available;
+- entering fault symptoms, alarm code, manufacturer, product series, fault type, and engineer notes;
+- entering source Agent Run IDs and source Artifact IDs from diagnosis, SOP, task, or multimodal evidence runs;
+- creating a dry-run knowledge curation run;
+- displaying `maintenance_case_summary`, `knowledge_contribution_draft`, `kg_candidate_suggestion`, `evidence_trace_summary`, and `safety_checklist`;
+- displaying duplicate-risk, mocked-evidence, unreviewed-AI-evidence, limitation, and source-tracing information where returned by the backend;
+- allowing expert/admin users to approve or reject the pending knowledge-contribution draft approval.
+
+## Task 22J Addendum: Agent Artifact Conversion Panel
+
+The `/agents/workbench` page includes a controlled conversion panel for approved draft artifacts.
+
+The panel appears when the current Agent Run contains one of:
+
+- `knowledge_contribution_draft`
+- `sop_draft`
+- `task_draft`
+- `kg_candidate_suggestion`
+
+Required behavior:
+
+- show the conversion target type for each convertible artifact;
+- show approval status and converted target ID where available;
+- disable conversion until the matching approval is `approved`;
+- hide conversion buttons from `viewer` and `engineer` users;
+- allow `expert` users to convert approved non-risky drafts;
+- allow `admin` users to use `override_warnings` for mocked or unreviewed evidence;
+- refresh timeline and conversion status after a successful conversion;
+- never display a draft as a formal business object before the backend conversion API succeeds.
+
+The frontend must keep API enum values in English and submit them unchanged:
+
+```text
+knowledge_contribution
+sop_template
+maintenance_task
+kg_candidate
+```
+
+The panel does not create documents, chunks, SOP execution records, completed maintenance records, or formal graph nodes/edges in the frontend.
+
+Role behavior:
+
+- viewer: read-only; cannot create runs or approve/reject drafts;
+- engineer: can create dry-run curator runs;
+- expert/admin: can create permitted runs and review draft approvals.
+
+The page must not present generated drafts as formal knowledge-base contributions, formal documents, approved chunks, or formal knowledge-graph records. Formal conversion from an approved draft is reserved for Task 22J.
+## Task 24B Addendum: DashVector Hybrid Retrieval UI
+
+Frontend pages may display vector-index status and hybrid retrieval diagnostics, but must label `fake_in_memory` and `deterministic_test` as local test modes. The UI must use `/api/vector-search` API functions, must not expose raw vectors or API keys, and must not present fake local testing as real DashVector online success.
+
+## Task 24D Addendum: Security UI
+
+The System Status page should display sanitized security status from `/api/system/status`, including production guard, CORS policy, request-size limits, rate limit, log-dir configuration, and warning messages. It must not display secret values, Authorization tokens, database passwords, local file paths, or raw provider keys.
+
+Model, vector, multimodal, and external-provider views should keep blocked / not_configured / dry-run / fake_in_memory / deterministic_test labels visible in Chinese, so users do not mistake test-mode behavior for production online capability. Viewer users must remain read-only and should not see high-risk write or approval actions.
+
+## Task 24E Addendum: Agent Conversion History UI
+
+The Agent Workbench conversion panel should display conversion history from backend conversion APIs, including conversion status, `conversion_trace_id`, target id, completion/failure time, and failure reason. After a successful conversion, the same artifact and target must not show a second active conversion button.
+
+Viewer and engineer accounts remain unable to convert artifacts. Expert/admin users may convert only after the matching approval is approved.

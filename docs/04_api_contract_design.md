@@ -2390,3 +2390,295 @@ Rules:
 - If no relevant graph context is found, graph fields should be empty or null; the backend must not fabricate graph facts.
 - `enable_kg_enhancement=false` keeps the original non-graph business behavior.
 - Neo4j, pgvector, embedding, OCR, and real model graph extraction are not required by this API contract.
+## Task 22A Agent Runtime API Addendum
+
+Task 22A adds the first Agent Runtime API foundation under the existing `/api` prefix. These APIs use the same unified response envelope as existing modules.
+
+New endpoints:
+
+```text
+GET  /api/agents/definitions
+GET  /api/agents/definitions/{agent_code}
+GET  /api/agents/tools
+GET  /api/agents/runs
+POST /api/agents/runs
+GET  /api/agents/runs/{run_id}
+POST /api/agents/runs/{run_id}/cancel
+GET  /api/agents/runs/{run_id}/steps
+GET  /api/agents/runs/{run_id}/tool-calls
+GET  /api/agents/runs/{run_id}/approvals
+POST /api/agents/approvals/{approval_id}/approve
+POST /api/agents/approvals/{approval_id}/reject
+GET  /api/agents/runs/{run_id}/artifacts
+GET  /api/agents/events
+```
+
+Boundary:
+
+- `POST /api/agents/runs` only creates `rule_based_demo` / `dry_run` runs in Task 22A.
+- `media_mimo_analysis` is a disabled, external-blocked tool placeholder.
+- Real `mimo-2.5`, cloud model, local model, embedding, pgvector, and OCR execution are not claimed as completed by this API addendum.
+# Task 22B Agent Business Tool API Note
+
+Task 22B keeps the public API prefix as `/api` and enhances the existing agent runtime APIs without changing earlier business API paths.
+
+Enhanced:
+
+```text
+POST /api/agents/runs
+```
+
+The payload may include `tools`, `tool_names`, `media_ids`, `input_media_ids`, `tool_inputs`, `context`, and `dry_run`.
+
+Added:
+
+```text
+POST /api/agents/runs/{run_id}/execute-tool
+```
+
+This endpoint executes one registered business tool against an existing agent run. It is restricted to `admin`, `expert`, and `engineer`; `viewer` is blocked.
+
+No Task 22B API calls use `/api/v1`, Docker, SQLite, embedding, pgvector, cloud model calls, or real OCR execution.
+
+---
+
+## Task 22C External API Provider Gateway
+
+The following endpoints are available for reserved external API provider management and dry-run verification. They do not call real external APIs in Task 22C.
+
+- `GET /api/external-apis/providers`
+- `GET /api/external-apis/providers/{provider_code}`
+- `GET /api/external-apis/routes`
+- `GET /api/external-apis/status`
+- `POST /api/external-apis/providers/{provider_code}/check`
+- `POST /api/external-apis/dry-run`
+- `GET /api/external-apis/logs`
+- `GET /api/external-apis/logs/{trace_id}`
+- `GET /api/external-apis/health-checks`
+
+Response data must not include real API keys, Authorization headers, full image base64 data, or local file paths. `dry-run` returns `blocked` or `would_call` semantics and always sets `external_api_called=false` during Task 22C.
+
+## Task 22D Multimodal Evidence Center
+
+The multimodal evidence center provides media processing jobs, OCR result records, AI analysis records, evidence links, and media evidence summaries.
+
+New endpoints:
+
+- `GET /api/multimodal/media/{media_id}/jobs`
+- `POST /api/multimodal/media/{media_id}/jobs`
+- `GET /api/multimodal/jobs/{job_id}`
+- `POST /api/multimodal/jobs/{job_id}/cancel`
+- `GET /api/multimodal/media/{media_id}/ocr-results`
+- `GET /api/multimodal/ocr-results/{result_id}`
+- `GET /api/multimodal/media/{media_id}/analyses`
+- `GET /api/multimodal/analyses/{analysis_id}`
+- `POST /api/multimodal/analyses/{analysis_id}/review`
+- `GET /api/multimodal/evidence-links`
+- `POST /api/multimodal/evidence-links`
+- `GET /api/multimodal/media/{media_id}/summary`
+
+In Task 22D, job creation records provider blocked/dry-run status through the External API Provider Gateway. It does not perform real OCR, mimo-2.5, or cloud vision calls.
+## Task 22E Addendum: External API Adapter Contract
+
+The current public API keeps the `/api` prefix. Task 22E adds a local-only mock-run endpoint while preserving existing paths:
+
+```text
+POST /api/external-apis/dry-run
+POST /api/external-apis/mock-run
+POST /api/multimodal/media/{media_id}/jobs
+```
+
+`/api/external-apis/mock-run` is restricted to admin/expert users and returns `status=mocked`, `external_api_called=false`, and a normalized result with `mocked=true`.
+
+`POST /api/multimodal/media/{media_id}/jobs` accepts `dry_run`, `mock_run`, `capability`, and `analysis_type`. Mock-run can persist local contract results to `media_ai_analyses` or `media_ocr_results`; these results are marked as mocked and not for production.
+
+No real mimo-2.5, cloud vision, or OCR external API call is claimed in this stage.
+
+## Task 22F Frontend API Usage Update
+
+Task 22F adds a frontend route `/multimodal` and uses the existing `/api/multimodal`, `/api/external-apis`, `/api/media`, and `/api/agents` contracts.
+
+No public API path was renamed. The page calls real backend APIs for provider status, dry-run, mock-run, media processing jobs, OCR results, AI analyses, evidence links, and Agent Run details.
+
+The frontend must keep provider keys, trace fields, model names, and enum values unchanged when submitting requests. User-facing labels may be localized, but API payload values remain English keys.
+
+Real external API calls remain blocked/not configured unless a later task supplies credentials and validates the provider.
+## Task 22G Addendum: Multimodal Evidence Agent Timeline
+
+Task 22G keeps the existing public API prefix `/api` and reuses `POST /api/agents/runs`.
+
+When `agent_code=multimodal_evidence_agent`, the backend runs the dedicated multimodal evidence orchestration flow. The request may include `media_ids`, `tools`, `dry_run`, `mock_run`, and PV inverter context fields. `mock_run` is limited to expert/admin users.
+
+Added read endpoint:
+
+```text
+GET /api/agents/runs/{run_id}/timeline
+```
+
+The response aggregates `run`, `steps`, `tool_calls`, `artifacts`, `approvals`, and `events`. It does not expose API keys, Authorization headers, base64 image payloads, or local file paths.
+
+## Task 22H Addendum: Diagnosis / SOP / Task Agent Orchestration
+
+Task 22H keeps the existing public API prefix `/api` and reuses the Agent Runtime API.
+
+Dedicated orchestration is selected by `POST /api/agents/runs` with one of these `agent_code` values:
+
+```text
+fault_diagnosis_agent
+sop_planner_agent
+task_orchestration_agent
+```
+
+The request may include `device_id`, `media_ids`, `input_text`, `dry_run`, `mock_run`, `tools`, and PV inverter context fields such as `manufacturer`, `product_series`, `fault_type`, and `alarm_code`.
+
+Read APIs remain the existing Agent Runtime APIs:
+
+```text
+GET /api/agents/runs/{run_id}
+GET /api/agents/runs/{run_id}/timeline
+GET /api/agents/runs/{run_id}/steps
+GET /api/agents/runs/{run_id}/tool-calls
+GET /api/agents/runs/{run_id}/artifacts
+GET /api/agents/runs/{run_id}/approvals
+POST /api/agents/approvals/{approval_id}/approve
+POST /api/agents/approvals/{approval_id}/reject
+```
+
+Generated artifact types include:
+
+- `diagnosis_summary`
+- `sop_draft`
+- `task_draft`
+- `safety_checklist`
+- `evidence_trace_summary`
+
+Approval records are created for high-risk draft outputs:
+
+- `approval_type=sop_draft_review`, `requested_action=review_sop_draft`
+- `approval_type=task_draft_review`, `requested_action=review_task_draft`
+
+Approving or rejecting these records only changes `agent_approvals`. It does not create formal SOP executions, formal SOP templates, formal maintenance tasks, or maintenance task status changes.
+
+No real external API, OCR, pgvector, embedding, Neo4j, Docker, or SQLite capability is introduced by this addendum.
+
+## Task 22J Addendum: Agent Artifact Conversion
+
+Task 22J keeps the existing public API prefix `/api` and adds controlled conversion APIs for approved Agent draft artifacts.
+
+New endpoints:
+
+```text
+GET  /api/agents/artifacts/{artifact_id}/conversion-status
+POST /api/agents/artifacts/{artifact_id}/convert
+GET  /api/agents/conversions
+GET  /api/agents/conversions/{conversion_trace_id}
+```
+
+Request body for conversion:
+
+```json
+{
+  "target_type": "knowledge_contribution | sop_template | maintenance_task | kg_candidate",
+  "approval_id": "uuid",
+  "override_warnings": false,
+  "comment": "manual conversion note"
+}
+```
+
+Supported artifact-to-target mapping:
+
+- `knowledge_contribution_draft` -> `knowledge_contribution`
+- `sop_draft` -> `sop_template`
+- `task_draft` -> `maintenance_task`
+- `kg_candidate_suggestion` -> `kg_candidate`
+
+Approval does not automatically convert artifacts. `expert` or `admin` must explicitly call the conversion endpoint. `viewer` and `engineer` are blocked from conversion.
+
+Conversion records are audited through `agent_event_logs` with `event_type=draft_converted_to_formal_object`. Duplicate conversion of the same artifact to the same target type is blocked.
+
+Boundary:
+
+- knowledge contribution conversion does not create `knowledge_documents` or `knowledge_chunks`;
+- SOP conversion does not create `sop_execution_records`;
+- task conversion does not start/complete a task and does not create `device_maintenance_records`;
+- KG conversion creates pending `kg_candidates` only, not formal `kg_nodes` or `kg_edges`;
+- no real external API, OCR, embedding, pgvector, Neo4j, Docker, SQLite, or delivery package generation is introduced.
+
+## Task 22I Addendum: Knowledge Curator Agent
+
+Task 22I keeps the existing public API prefix `/api` and reuses the Agent Runtime API.
+
+Dedicated orchestration is selected by `POST /api/agents/runs` with:
+
+```text
+agent_code=knowledge_curator_agent
+```
+
+The request may include `device_id`, `media_ids`, `input_text`, `dry_run`, `tools`, PV inverter context fields, `engineer_notes`, `source_agent_run_ids`, and `source_artifact_ids`.
+
+Read and approval APIs remain the existing Agent Runtime APIs:
+
+```text
+GET /api/agents/runs/{run_id}
+GET /api/agents/runs/{run_id}/timeline
+GET /api/agents/runs/{run_id}/steps
+GET /api/agents/runs/{run_id}/tool-calls
+GET /api/agents/runs/{run_id}/artifacts
+GET /api/agents/runs/{run_id}/approvals
+POST /api/agents/approvals/{approval_id}/approve
+POST /api/agents/approvals/{approval_id}/reject
+```
+
+Generated artifact types include:
+
+- `maintenance_case_summary`
+- `knowledge_contribution_draft`
+- `kg_candidate_suggestion`
+- `safety_checklist`
+- `evidence_trace_summary`
+
+The orchestrator creates one pending approval record:
+
+- `approval_type=knowledge_contribution_draft_review`
+- `requested_action=review_knowledge_contribution_draft`
+
+Approving or rejecting this record only changes `agent_approvals`. Task 22I does not create formal `knowledge_contributions`, `knowledge_documents`, approved chunks, or formal knowledge-graph nodes/edges. Explicit formal conversion is handled by Task 22J.
+
+No real external API, OCR, pgvector, embedding, Neo4j, Docker, or SQLite capability is introduced by this addendum.
+## Task 24B Addendum: DashVector Hybrid RAG API
+
+Task 24B uses `/api/vector-search` as the vector-index API prefix. The route stores only DashVector index metadata in PostgreSQL and does not expose raw vectors or API keys. The active endpoints are:
+
+- `GET /api/vector-search/status`
+- `GET /api/vector-search/runs`
+- `GET /api/vector-search/runs/{run_id}`
+- `GET /api/vector-search/documents/{document_id}/status`
+- `GET /api/vector-search/chunks/{chunk_id}/status`
+- `POST /api/vector-search/documents/{document_id}/index`
+- `POST /api/vector-search/chunks/{chunk_id}/index`
+- `POST /api/vector-search/reindex-stale`
+- `POST /api/vector-search/test-query`
+
+This API does not use `/api/embeddings` as the public Task 24B route and does not introduce pgvector. Real DashVector and real embedding API calls remain opt-in only and require separate online acceptance.
+
+## Task 24D Addendum: Security Status and Sanitized Responses
+
+`GET /api/system/status` now includes a sanitized `security` object for deployment and acceptance checks. It may expose boolean/configuration-status fields such as `cors_configured`, `rate_limit_enabled`, `request_size_limit_enabled`, `secret_key_configured`, `admin_password_configured`, `dashvector_key_configured`, `embedding_key_configured`, `cloud_llm_key_configured`, `mimo_key_configured`, and `ocr_key_configured`.
+
+The API contract forbids returning raw API keys, Authorization headers, tokens, passwords, local absolute paths, or base64 media payloads. External provider, model gateway, vector, OCR, MIMO, and agent log endpoints must expose only sanitized summaries and blocked/configured status.
+
+Oversized JSON requests should return HTTP 413 with the unified response shape. Rate-limited requests should return HTTP 429. These protections do not change public route paths.
+
+## Task 24E Addendum: Agent Artifact Conversion Audit APIs
+
+Agent draft conversion now uses `agent_artifact_conversions` as the primary audit source. The API keeps existing conversion routes and adds history/detail lookup:
+
+- `GET /api/agents/artifacts/{artifact_id}/conversion-status`
+- `POST /api/agents/artifacts/{artifact_id}/convert`
+- `GET /api/agents/conversions`
+- `GET /api/agents/conversions/{conversion_trace_id}`
+- `GET /api/agents/conversions/{conversion_id}/detail`
+- `GET /api/agents/runs/{run_id}/conversions`
+- `GET /api/agents/artifacts/{artifact_id}/conversions`
+
+Approval and conversion remain separate. Only expert/admin users may convert approved artifacts. Duplicate or concurrent conversion of the same `source_artifact_id + target_type` must not create duplicate formal business objects.

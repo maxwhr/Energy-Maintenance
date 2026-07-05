@@ -148,6 +148,32 @@
         <div class="text-xs font-bold text-slate-400">OCR 文本摘录</div>
         <p class="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-200">{{ detail.ocr_text }}</p>
       </div>
+      <div class="mt-4 rounded-md border border-violet-300/20 bg-violet-400/10 p-3">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div class="text-xs font-bold text-violet-100">多模态证据摘要</div>
+            <p class="mt-1 text-xs leading-5 text-slate-200">
+              jobs={{ multimodalSummary?.jobs.length ?? 0 }} /
+              OCR={{ multimodalSummary?.ocr_results.length ?? 0 }} /
+              AI={{ multimodalSummary?.analyses.length ?? 0 }} /
+              evidence={{ multimodalSummary?.evidence_links.length ?? 0 }}
+            </p>
+            <p class="mt-1 text-xs text-amber-100">机器识别仅作为辅助证据，mock-run 会明确标记为模拟结果。</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button class="scada-button !min-h-8 !px-3" type="button" :disabled="multimodalBusy || !canRunOcr" @click="createMultimodalJob('ocr', false)">
+              OCR dry-run
+            </button>
+            <button class="scada-button !min-h-8 !px-3" type="button" :disabled="multimodalBusy || !canRunOcr" @click="createMultimodalJob('multimodal_analysis', false)">
+              AI dry-run
+            </button>
+            <button class="scada-button primary !min-h-8 !px-3" type="button" :disabled="multimodalBusy || !canMockRun" @click="createMultimodalJob('multimodal_analysis', true)">
+              AI mock-run
+            </button>
+            <RouterLink class="scada-button !min-h-8 !px-3" :to="`/multimodal?media_id=${detail.id}`">查看完整证据</RouterLink>
+          </div>
+        </div>
+      </div>
       <MediaEvidenceGallery :items="[detail]" class="mt-4" />
     </DataPanel>
   </PageFrame>
@@ -156,7 +182,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RefreshCcw, ScanText, Search, Upload } from '@lucide/vue'
-import { getDevicesApi, getMediaApi, getMediaDetailApi, getOCRStatusApi, runMediaOCRApi, uploadMediaApi } from '@/api'
+import { createMediaProcessingJob, getDevicesApi, getMediaApi, getMediaDetailApi, getMediaMultimodalSummary, getOCRStatusApi, runMediaOCRApi, uploadMediaApi } from '@/api'
 import DataPanel from '@/components/DataPanel.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import MediaEvidenceGallery from '@/components/MediaEvidenceGallery.vue'
@@ -164,6 +190,7 @@ import PageFrame from '@/components/PageFrame.vue'
 import { useUserStore } from '@/stores/user'
 import { faultTypeOptions, manufacturerOptions, productSeriesOptions } from '@/types'
 import type { DeviceItem, OCRStatusResult, UploadedMediaItem } from '@/types'
+import type { MediaMultimodalSummary } from '@/types/multimodal'
 import { formatDeviceTypeLabel, formatFaultTypeLabel, formatMediaTypeLabel, formatStatusLabel } from '@/utils/display'
 
 const mediaItems = ref<UploadedMediaItem[]>([])
@@ -174,8 +201,10 @@ const selectedFile = ref<File | null>(null)
 const loading = ref(false)
 const uploading = ref(false)
 const ocrRunning = ref(false)
+const multimodalBusy = ref(false)
 const error = ref('')
 const userStore = useUserStore()
+const multimodalSummary = ref<MediaMultimodalSummary | null>(null)
 const filters = reactive({ media_type: '', manufacturer: '', device_id: '', fault_type: '', keyword: '' })
 const form = reactive({
   media_type: 'fault_image',
@@ -190,6 +219,7 @@ const form = reactive({
 
 const seriesOptions = computed(() => productSeriesOptions.filter((item) => item.manufacturer === form.manufacturer))
 const canRunOcr = computed(() => userStore.role !== 'viewer')
+const canMockRun = computed(() => ['admin', 'expert'].includes(userStore.role || ''))
 const detailRows = computed(() => {
   if (!detail.value) return []
   return [
@@ -284,8 +314,17 @@ async function showDetail(id: string) {
   error.value = ''
   try {
     detail.value = await getMediaDetailApi(id)
+    await loadMultimodalSummary(id)
   } catch (err) {
     error.value = err instanceof Error ? err.message : '媒体详情读取失败'
+  }
+}
+
+async function loadMultimodalSummary(id: string) {
+  try {
+    multimodalSummary.value = await getMediaMultimodalSummary(id)
+  } catch {
+    multimodalSummary.value = null
   }
 }
 
@@ -310,6 +349,33 @@ async function runOcr(id: string) {
     error.value = err instanceof Error ? err.message : 'OCR 处理失败'
   } finally {
     ocrRunning.value = false
+  }
+}
+
+async function createMultimodalJob(jobType: 'ocr' | 'multimodal_analysis', mockRun: boolean) {
+  if (!detail.value) return
+  if (mockRun && !canMockRun.value) {
+    error.value = '当前账号没有 mock-run 权限'
+    return
+  }
+  multimodalBusy.value = true
+  error.value = ''
+  try {
+    await createMediaProcessingJob(String(detail.value.id), {
+      job_type: jobType,
+      provider_code: jobType === 'ocr' ? 'tesseract_ocr' : 'mimo_2_5',
+      capability: jobType === 'ocr' ? 'ocr' : 'fault_scene_analysis',
+      analysis_type: jobType === 'ocr' ? undefined : 'fault_scene',
+      dry_run: !mockRun,
+      mock_run: mockRun,
+      input_summary: { source: 'media_page', media_id: detail.value.id }
+    })
+    await loadMultimodalSummary(String(detail.value.id))
+    toast(mockRun ? '多模态 mock-run 已完成，结果已标记为模拟证据' : '多模态 dry-run 任务已创建')
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '多模态处理任务创建失败'
+  } finally {
+    multimodalBusy.value = false
   }
 }
 

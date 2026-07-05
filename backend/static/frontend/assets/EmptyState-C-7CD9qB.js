@@ -1,0 +1,1 @@
+import{J as e,U as t,st as n,z as r}from"./index-DEe96xFZ.js";var i={class:`rounded-md border border-slate-600/20 bg-black/10 px-4 py-6 text-center text-sm text-slate-400`},a=t({__name:`EmptyState`,props:{text:{}},setup(t){return(a,o)=>(e(),r(`div`,i,n(t.text),1))}});export{a as t};

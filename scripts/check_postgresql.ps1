@@ -97,13 +97,14 @@ if ($pgIsReady) {
 if ($psql) {
     $oldPassword = $env:PGPASSWORD
     if (-not $env:PGPASSWORD) {
-        $env:PGPASSWORD = "energy_password"
-    }
-    & $psql -h $HostName -p $Port -U $User -d $Database -v ON_ERROR_STOP=1 -c "select current_database(), current_user;" | Write-Output
-    if ($LASTEXITCODE -eq 0) {
-        Write-Check "energy_maintenance connection" "passed"
+        Write-Check "energy_maintenance connection" "skipped" "PGPASSWORD is not set in the current shell"
     } else {
-        Write-Check "energy_maintenance connection" "failed" "exit_code=$LASTEXITCODE"
+        & $psql -w -h $HostName -p $Port -U $User -d $Database -v ON_ERROR_STOP=1 -c "select current_database(), current_user;" | Write-Output
+        if ($LASTEXITCODE -eq 0) {
+            Write-Check "energy_maintenance connection" "passed"
+        } else {
+            Write-Check "energy_maintenance connection" "failed" "exit_code=$LASTEXITCODE"
+        }
     }
     $env:PGPASSWORD = $oldPassword
 }

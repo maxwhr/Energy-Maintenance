@@ -1160,18 +1160,17 @@ created_at
 
 第一版不强制开启 pgvector。
 
-后续若进入向量检索阶段，可增加：
+Task 24B 采用 DashVector 作为后续向量召回路线，不在 PostgreSQL 中启用 pgvector 扩展，也不在本地表中保存 raw vector。
 
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-```
+若后续进入真实 DashVector 在线验收阶段，可继续复用 `knowledge_chunk_vector_indexes` 与 `vector_index_runs` 保存索引元数据和运行记录，并由外部向量库保存向量内容。
 
-并在 `knowledge_chunks` 中增加：
+旧的 PostgreSQL pgvector 扩展示例已废弃，不作为当前迁移或部署指引。
+
+当前不在 `knowledge_chunks` 中新增本地向量字段。DashVector 路线使用独立元数据表记录外部索引状态：
 
 ```text
-embedding vector(1024)
-embedding_model String(128)
-embedded_at DateTime
+knowledge_chunk_vector_indexes
+vector_index_runs
 ```
 
 但该能力不属于第一版 MVP，不能阻塞当前基于关键词的真实闭环。

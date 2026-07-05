@@ -51,6 +51,21 @@
       </DataPanel>
     </div>
 
+    <DataPanel title="安全配置" subtitle="展示后端脱敏后的安全配置状态，不显示密钥、令牌、数据库口令或本地文件路径。">
+      <div class="grid gap-3 md:grid-cols-3">
+        <div v-for="item in securityDetails" :key="item.label" class="rounded-md border border-slate-600/20 bg-black/20 p-3">
+          <div class="text-xs font-bold text-slate-400">{{ item.label }}</div>
+          <div class="mt-1 break-words text-sm font-bold text-white">{{ item.value }}</div>
+        </div>
+      </div>
+      <div v-if="securityWarnings.length" class="mt-4 rounded-md border border-amber-400/30 bg-amber-500/10 p-3">
+        <div class="text-xs font-black text-amber-100">安全提示</div>
+        <ul class="mt-2 space-y-1 text-xs leading-5 text-amber-100">
+          <li v-for="warning in securityWarnings" :key="warning">{{ warning }}</li>
+        </ul>
+      </div>
+    </DataPanel>
+
     <div class="grid gap-4 lg:grid-cols-2">
       <DataPanel title="业务统计概览">
         <div v-if="statistics" class="grid gap-3 md:grid-cols-2">
@@ -151,6 +166,33 @@ const databaseDetails = computed(() => [
   { label: '错误类型', value: status.value?.database_error || '无' }
 ])
 
+const securityDetails = computed(() => {
+  const security = status.value?.security ?? {}
+  return [
+    { label: '安全校验', value: formatStatusLabel(readSecurityValue(security, 'status')) },
+    { label: '运行环境', value: readSecurityValue(security, 'app_env') },
+    { label: '调试模式', value: formatBoolean(readRawSecurityValue(security, 'debug_enabled')) },
+    { label: '生产强校验', value: formatBoolean(readRawSecurityValue(security, 'production_guard_enabled')) },
+    { label: 'CORS 来源', value: readSecurityValue(security, 'cors_origin_policy') },
+    { label: '请求体限制', value: formatBoolean(readRawSecurityValue(security, 'request_size_limit_enabled')) },
+    { label: '限流保护', value: formatBoolean(readRawSecurityValue(security, 'rate_limit_enabled')) },
+    { label: '外部真实调用', value: formatStatusLabel(readSecurityValue(security, 'external_real_call_status')) },
+    { label: '日志目录', value: formatBoolean(readRawSecurityValue(security, 'log_dir_configured')) },
+    { label: 'DashVector Key', value: formatConfigured(readRawSecurityValue(security, 'dashvector_key_configured')) },
+    { label: 'Embedding Key', value: formatConfigured(readRawSecurityValue(security, 'embedding_key_configured')) },
+    { label: '云端模型 Key', value: formatConfigured(readRawSecurityValue(security, 'cloud_llm_key_configured')) },
+    { label: 'MIMO Key', value: formatConfigured(readRawSecurityValue(security, 'mimo_key_configured')) },
+    { label: 'OCR API Key', value: formatConfigured(readRawSecurityValue(security, 'ocr_key_configured')) },
+    { label: '本地模型', value: formatBoolean(readRawSecurityValue(security, 'local_llm_enabled')) }
+  ]
+})
+
+const securityWarnings = computed(() => {
+  const security = status.value?.security ?? {}
+  const warnings = readRawSecurityValue(security, 'warnings')
+  return Array.isArray(warnings) ? warnings.map((item) => formatSecurityWarning(String(item))) : []
+})
+
 const countItems = computed(() => [
   { label: '文档', value: status.value?.document_count ?? 0 },
   { label: '切片', value: status.value?.chunk_count ?? 0 },
@@ -200,6 +242,34 @@ async function loadStatus() {
 
 function formatTime(value?: string | null) {
   return value ? new Date(value).toLocaleString('zh-CN') : '-'
+}
+
+function readSecurityValue(source: Record<string, unknown>, key: string) {
+  return String(source[key] ?? '-')
+}
+
+function readRawSecurityValue(source: Record<string, unknown>, key: string) {
+  return source[key]
+}
+
+function formatBoolean(value: unknown) {
+  if (value === true) return '已启用'
+  if (value === false) return '未启用'
+  return String(value ?? '-')
+}
+
+function formatConfigured(value: unknown) {
+  if (value === true) return '已配置（不显示值）'
+  if (value === false) return '未配置'
+  return String(value ?? '-')
+}
+
+function formatSecurityWarning(value: string) {
+  const knownWarnings: Record<string, string> = {
+    'ADMIN_PASSWORD is not configured; local scripts may use development fallback': '管理员初始密码未通过环境变量配置；本地脚本可能使用开发兜底值。',
+    'SECRET_KEY is missing or uses a placeholder value': 'SECRET_KEY 仍为空或占位值，生产环境必须替换为高强度随机值。'
+  }
+  return knownWarnings[value] ?? value
 }
 
 onMounted(loadStatus)

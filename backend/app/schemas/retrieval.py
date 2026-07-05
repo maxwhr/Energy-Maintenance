@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -40,6 +40,12 @@ class RetrievalQueryRequest(BaseModel):
     enable_model_enhancement: bool = False
     model_provider: str = "rule_based"
     allow_model_fallback: bool = True
+    retrieval_mode: Literal["keyword", "vector", "hybrid"] = "hybrid"
+    enable_vector: bool = True
+    vector_top_k: int = 8
+    hybrid_keyword_weight: float = 0.35
+    hybrid_vector_weight: float = 0.65
+    min_score: float = 0.20
 
     @field_validator("query", "question", "manufacturer", "product_series", "device_type", "document_type", "fault_type", "alarm_code", "model_provider")
     @classmethod
@@ -92,6 +98,11 @@ class RetrievedChunk(BaseModel):
     document_type: str
     source: str | None = None
     created_at: datetime
+    keyword_score: float | None = None
+    vector_score: float | None = None
+    hybrid_score: float | None = None
+    retrieval_source: Literal["keyword", "vector", "hybrid"] = "keyword"
+    vector_backend: str | None = None
 
 
 class RelatedHistoryItem(BaseModel):
@@ -135,7 +146,17 @@ class RetrievalQueryResponse(BaseModel):
     model_name: str = "keyword_retrieval_v1"
     model_enhanced: bool = False
     fallback_used: bool = False
+    fallback_reason: str | None = None
     model_call_trace_id: str | None = None
+    retrieval_mode: str = "keyword"
+    vector_enabled: bool = False
+    vector_available: bool = False
+    hybrid_used: bool = False
+    vector_fallback_used: bool = False
+    vector_backend: str = "unavailable"
+    embedding_provider: str | None = None
+    embedding_model: str | None = None
+    retrieval_diagnostics: dict[str, Any] = Field(default_factory=dict)
     query_analysis: RetrievalQueryAnalysis | None = None
 
 

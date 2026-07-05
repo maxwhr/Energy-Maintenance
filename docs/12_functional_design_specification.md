@@ -1432,3 +1432,207 @@ Task 15：LoongArch + Kylin 部署与演示验收
 ### C. 设计一致性要求
 
 前端页面、后端模块、数据库表和 API 合同应围绕同一组领域字段设计：manufacturer、product_series、model、device_type、fault_type、alarm_code、references、retrieved_chunks、trace_id、source_trace_id。
+## Task 22A Agent Runtime Functional Addendum
+
+The Agent Runtime foundation introduces a traceable orchestration layer for future multi-agent maintenance workflows.
+
+Current functional boundary:
+
+- Store agent definitions.
+- Store tool registry metadata.
+- Create rule-based demo / dry-run agent runs.
+- Record steps, tool calls, approvals, artifacts, and event logs.
+- Require human approval for high-risk or approval-marked tools.
+- Preserve RBAC boundaries.
+
+Deferred capabilities:
+
+- Real `mimo-2.5` integration.
+- Real multimodal inference.
+- Direct business service tool execution.
+- Agent Workbench UI.
+- Embedding / pgvector.
+- External graph database.
+
+Future tasks must connect agent tools through existing service-layer modules rather than directly through repositories or SQLAlchemy models.
+# Task 22B Agent Tool Functional Boundary
+
+The agent runtime can orchestrate registered business tools over the existing Huawei/Sungrow PV inverter maintenance modules: knowledge retrieval, knowledge graph business context, device lookup, device history, media metadata lookup, OCR text lookup or blocked status, blocked mimo-2.5 placeholder, rule-based diagnosis, SOP generation, task draft creation, knowledge contribution draft creation, record-center lookup, safety guard, rule-based model gateway chat, correction draft creation, and human approval placeholder.
+
+The runtime records every tool step and tool call. It does not finalize high-risk write actions; it creates draft artifacts and waits for human approval.
+
+This remains a first-version service orchestration layer, not a real autonomous external-model agent.
+
+---
+
+## Task 22C External API Provider Gateway Functional Boundary
+
+The External API Provider Gateway is a reserved integration layer for future multi-agent external API access. It provides provider definitions, tool-to-provider routes, dry-run checks, sanitized call logs, and health check records.
+
+In Task 22C, the gateway does not perform real mimo-2.5, cloud model, local llama.cpp, or OCR calls. Agent tools can read route status and return blocked/dry-run results while preserving traceability.
+
+Future integration only requires explicit configuration through environment variables and adapter completion. The database must never store real API keys.
+
+## Task 22D Multimodal Evidence Center Functional Boundary
+
+The multimodal evidence center stores media-side processing state and auxiliary evidence:
+
+- media processing jobs
+- OCR result records
+- AI analysis records
+- evidence links
+- media multimodal summary
+
+The center is connected to the External API Provider Gateway for provider route status and dry-run/blocked logging.
+
+In Task 22D, real OCR and mimo-2.5 analysis are not executed. Machine outputs, when present from manual or future providers, are auxiliary evidence and require human review before being used in maintenance decisions.
+## Task 22E Functional Addendum
+
+The multimodal capability is now represented by a provider-adapter contract rather than direct external API calls in business services.
+
+Functional behavior:
+
+- External provider routing remains centralized in `ExternalApiGateway`.
+- Adapter implementations construct sanitized request summaries for mimo-2.5, OpenAI-compatible vision/text, and OCR HTTP providers.
+- Mock-run is available only for local workflow verification and persists explicitly mocked OCR or AI-analysis evidence.
+- Agent tools read unified evidence-center results instead of directly coupling to provider-specific request formats.
+
+The system still does not claim real cloud vision, real mimo-2.5, or real OCR recognition.
+
+## Task 22F Functional Design Update
+
+The first-version frontend now includes a 多模态证据中心 page.
+
+The page acts as the operational entry for media-based evidence around PV inverter maintenance:
+
+- media evidence selection;
+- provider status visibility;
+- processing-job lifecycle visibility;
+- OCR and AI analysis result review;
+- evidence links to diagnosis, retrieval, maintenance, record-center, and Agent Run sources;
+- Agent workbench entry for dry-run tool orchestration.
+
+All actions are backed by PostgreSQL-persisted backend APIs. The page does not perform real image fault recognition unless a later provider-integration task enables and validates real external calls.
+## Task 22G Addendum: Multimodal Evidence Agent
+
+The multimodal evidence agent coordinates media metadata, OCR evidence, visual analysis evidence, and safety review for Huawei/Sungrow PV inverter maintenance scenarios.
+
+The agent does not directly call external APIs. It uses registered tools and Provider Gateway dry-run/mock-run contracts. When providers are not configured, OCR and visual analysis return blocked status. Mock-run results are explicitly marked and require human review.
+
+Functional outputs:
+
+- multimodal evidence summary artifact;
+- safety checklist artifact;
+- evidence trace summary artifact;
+- media evidence links from media to agent run and generated artifacts;
+- final answer explaining succeeded tools, blocked tools, mocked outputs, review requirements, and next steps.
+
+## Task 22H Addendum: Diagnosis, SOP, and Task Agent Orchestration
+
+Task 22H extends the Agent Runtime from evidence gathering into maintenance-assistance orchestration for Huawei/Sungrow PV inverter scenarios.
+
+New dedicated agent flows:
+
+- `fault_diagnosis_agent`: validates diagnosis context, loads device/history/media evidence, retrieves approved knowledge, queries graph context, runs rule-based diagnosis, runs the safety guard, and generates `diagnosis_summary`, `safety_checklist`, and `evidence_trace_summary` artifacts.
+- `sop_planner_agent`: loads device and diagnosis context, retrieves SOP-related knowledge, queries graph context, generates an SOP draft, creates a safety checklist, and creates a pending `sop_draft_review` approval.
+- `task_orchestration_agent`: loads device and history context, generates a maintenance task draft, creates a safety checklist, and creates a pending `task_draft_review` approval.
+
+Functional boundaries:
+
+- Diagnosis output is an assisted recommendation, not the final repair conclusion.
+- SOP output is a draft artifact, not an executed SOP.
+- Task output is a draft artifact, not a formal maintenance task.
+- Approval changes only the agent approval record in this task.
+- No real external API, OCR, embedding, pgvector, Neo4j, Docker, or SQLite capability is introduced.
+
+## Task 22I Addendum: Knowledge Curator Agent
+
+Task 22I adds `knowledge_curator_agent` as a draft-only knowledge curation workflow for Huawei/Sungrow PV inverter maintenance experience.
+
+The agent consumes:
+
+- engineer notes and fault symptoms;
+- device context and recent maintenance history;
+- source agent runs and artifacts from diagnosis, SOP, task, or multimodal evidence workflows;
+- media evidence metadata;
+- existing approved knowledge search results;
+- knowledge graph business context;
+- safety guard output.
+
+Functional outputs:
+
+- `maintenance_case_summary`: structured maintenance case summary;
+- `knowledge_contribution_draft`: draft contribution for expert review;
+- `kg_candidate_suggestion`: candidate concept/relation suggestions for a future graph update;
+- `safety_checklist`: safety items for expert review;
+- `evidence_trace_summary`: traceability summary linking source runs, artifacts, media, knowledge references, graph context, and approval state.
+
+The workflow creates a pending approval:
+
+- `approval_type=knowledge_contribution_draft_review`
+- `requested_action=review_knowledge_contribution_draft`
+
+Functional boundaries:
+
+- Generated knowledge remains an Agent Artifact, not a formal knowledge contribution.
+- Approval only updates the Agent Approval record.
+- The agent does not create formal `knowledge_contributions`.
+- The agent does not create formal `knowledge_documents` or `knowledge_chunks`.
+- The agent does not create formal knowledge-graph nodes or edges.
+- Formal conversion from an approved draft is handled by Task 22J.
+- No real external API, OCR, embedding, pgvector, Neo4j, Docker, or SQLite capability is introduced.
+
+## Task 22J Addendum: Approved Draft Conversion
+
+Task 22J adds an explicit service layer for converting approved Agent draft artifacts into formal business objects.
+
+Functional flow:
+
+```text
+Agent Artifact
+  -> matching Agent Approval approved
+  -> expert/admin explicit conversion request
+  -> formal business object creation
+  -> agent_event_logs conversion audit event
+```
+
+Supported conversions:
+
+- `knowledge_contribution_draft` becomes a pending-review `knowledge_contributions` record.
+- `sop_draft` becomes a draft `sop_templates` record.
+- `task_draft` becomes a pending `maintenance_tasks` record.
+- `kg_candidate_suggestion` becomes pending `kg_candidates` under a `kg_extraction_runs` record.
+
+Safety boundaries:
+
+- approval alone never creates formal objects;
+- rejected, cancelled, missing, or non-approved approvals cannot be converted;
+- duplicate conversion of the same artifact to the same target type is blocked;
+- `viewer` and `engineer` users cannot convert artifacts;
+- mocked or unreviewed AI evidence requires admin override;
+- conversion does not create knowledge documents, knowledge chunks, SOP execution records, completed maintenance records, formal KG nodes, or formal KG edges.
+
+This task does not introduce real external API calls, OCR, embedding, pgvector, Neo4j, Docker, SQLite, or delivery package generation.
+## Task 24B Addendum: DashVector-Based Hybrid RAG
+
+The selected Task 24B design uses PostgreSQL for business facts and DashVector for vector recall. PostgreSQL stores document, chunk, review, QA, KG, agent, and vector-index metadata; DashVector stores vector index data. Retrieval combines keyword candidates with vector candidates and then revalidates every vector hit against PostgreSQL approved / parsed / active state.
+
+This design does not introduce pgvector, local vector columns, or an independent local vector database.
+
+## Task 24D Addendum: Security and Secret Governance
+
+The functional baseline now includes production startup validation, sanitized system status, secret-leak scanning, log sanitization, upload/path traversal verification, request body limits, lightweight rate limiting, and RBAC matrix acceptance.
+
+Security behavior is intentionally conservative:
+
+- real provider keys are accepted only from environment configuration and are never returned to frontend responses;
+- external-provider, vector, model, OCR, and multimodal logs store sanitized summaries only;
+- large JSON requests and oversized uploads are rejected before business processing;
+- viewer users remain read-only;
+- real DashVector / MIMO / OCR / Cloud LLM calls remain blocked unless explicitly configured and separately accepted.
+
+## Task 24E Addendum: Agent Draft Conversion Audit
+
+Agent-generated drafts can be converted into formal business objects only after human approval. Conversion now has a dedicated audit table, conversion trace id, status lifecycle, target object pointer, source artifact snapshot, and failure recording.
+
+The conversion lifecycle is independent from approval. Approval does not automatically create formal objects. Duplicate and concurrent conversion requests for the same artifact and target are prevented by database constraint and service-level locking.

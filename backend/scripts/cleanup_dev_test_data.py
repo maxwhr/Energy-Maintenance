@@ -29,6 +29,7 @@ from app.models import (
     SOPExecutionRecord,
     SOPTemplate,
     UploadedMedia,
+    User,
 )
 
 
@@ -41,6 +42,8 @@ PATTERNS = (
     "Task17B",
     "Task18B",
     "Task18I_",
+    "Task21C_",
+    "Task21D_",
     "probe",
     "permission probe",
     "verification",
@@ -57,6 +60,7 @@ class TableSpec:
 
 
 TABLES: tuple[TableSpec, ...] = (
+    TableSpec("users", User, ("username", "display_name", "role", "status")),
     TableSpec("operation_logs", OperationLog, ("module", "action", "target_type", "target_id", "operator", "request_id", "trace_id")),
     TableSpec("model_call_logs", ModelCallLog, ("trace_id", "module", "provider", "model_name", "prompt", "response", "error_message")),
     TableSpec("model_output_corrections", ModelOutputCorrection, ("source_type", "source_trace_id", "correction_reason", "review_status")),
@@ -99,13 +103,19 @@ def main() -> int:
     )
     parser.add_argument("--limit", type=int, default=5000, help="Maximum rows scanned per table.")
     parser.add_argument("--pattern", action="append", default=[], help="Additional marker pattern to match.")
+    parser.add_argument(
+        "--only-pattern",
+        action="append",
+        default=[],
+        help="When provided, ignore default patterns and match only the given marker pattern.",
+    )
     args = parser.parse_args()
 
     if args.execute and args.confirm != "CLEAN_DEV_TEST_DATA":
         print("--execute requires --confirm CLEAN_DEV_TEST_DATA")
         return 2
 
-    patterns = tuple(PATTERNS) + tuple(args.pattern)
+    patterns = tuple(args.only_pattern) if args.only_pattern else tuple(PATTERNS) + tuple(args.pattern)
     db = SessionLocal()
     total = 0
     matched_rows: list[tuple[TableSpec, object]] = []
@@ -153,13 +163,19 @@ def main() -> int:
 
 
 def soft_archive(row: object) -> bool:
+    if isinstance(row, User):
+        row.status = "inactive"
+        row.is_active = False
+        return True
     if isinstance(row, MaintenanceTask):
         row.status = "cancelled"
         row.task_status = "cancelled"
         row.completion_notes = append_note(row.completion_notes, "Archived by cleanup_dev_test_data.py.")
         return True
     if isinstance(row, Device):
-        return False
+        row.status = "retired"
+        row.description = append_note(row.description, "Retired by cleanup_dev_test_data.py.")
+        return True
     if isinstance(row, DeviceMaintenanceRecord):
         return False
     if isinstance(row, (QARecord, DiagnosisRecord, ModelCallLog, OperationLog, KnowledgeReviewRecord)):
@@ -199,6 +215,10 @@ def is_already_cleaned(row: object) -> bool:
     status = getattr(row, "status", None)
     review_status = getattr(row, "review_status", None)
     task_status = getattr(row, "task_status", None)
+    if isinstance(row, User) and (status == "inactive" or getattr(row, "is_active", True) is False):
+        return True
+    if isinstance(row, Device) and status == "retired":
+        return True
     if status == "archived" or review_status == "archived":
         return True
     if isinstance(row, MaintenanceTask) and (status == "cancelled" or task_status == "cancelled"):

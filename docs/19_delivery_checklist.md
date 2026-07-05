@@ -203,3 +203,34 @@ Test-NetConnection 127.0.0.1 -Port 5432
 - [x] Task20C test device was retired, converted document was archived, and SOP template was archived.
 - [x] QA, diagnosis, task, maintenance, SOP execution, media, contribution, and correction records were retained as audit traces.
 - [ ] Clean or reseed final demo data before public recording; current UI can expose old Task markers and some encoded text from historical records.
+
+# Task 24D Security Hardening Checklist
+
+- [x] Production startup security validation was added.
+- [x] CORS settings are loaded from backend settings and wildcard production origins are blocked.
+- [x] Request body size middleware is present and oversized JSON requests return 413.
+- [x] Lightweight in-memory rate limit middleware is present.
+- [x] Secret scan script writes sanitized results and does not print key values.
+- [x] Log sanitization script verifies API key, Authorization, token, password, base64, and local path redaction.
+- [x] Upload security script verifies extension, size, traversal, absolute-path filename, viewer write blocking, and preview behavior.
+- [x] RBAC matrix script verifies admin, expert, engineer, viewer, and anonymous boundaries across core modules.
+- [x] `/api/system/status` exposes only sanitized security status.
+- [x] Frontend system status page displays sanitized security state without secrets.
+- [x] No migration was added for Task 24D.
+- [x] No delivery zip was generated for Task 24D.
+- [x] No `git add` or `git commit` was executed for Task 24D.
+- [ ] Rotate any real DashVector / model / OCR / MIMO keys that were exposed outside the repository before production use.
+- [ ] Run LoongArch/Kylin real-machine acceptance before claiming native deployment completion.
+
+# Task 24E Agent Conversion Audit Checklist
+
+- [x] `agent_artifact_conversions` migration added with unique artifact-target constraint.
+- [x] Agent conversion service uses conversion records as the primary audit source.
+- [x] Duplicate/concurrent conversion is blocked from creating duplicate formal objects.
+- [x] Conversion history APIs are available for artifact and run lookup.
+- [x] Frontend Agent Workbench displays conversion history and trace information.
+- [x] Viewer/engineer conversion is blocked.
+- [x] Pending/rejected approval conversion is blocked.
+- [x] Failed conversion is recorded as `failed` with sanitized error message.
+- [x] No delivery zip was generated for Task 24E.
+- [x] No `git add` or `git commit` was executed for Task 24E.

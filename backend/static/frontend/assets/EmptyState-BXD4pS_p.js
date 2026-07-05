@@ -1,1 +1,0 @@
-import{H as e,R as t,at as n,q as r}from"./index-Bpj3mVCy.js";var i={class:`rounded-md border border-slate-600/20 bg-black/10 px-4 py-6 text-center text-sm text-slate-400`},a=e({__name:`EmptyState`,props:{text:{}},setup(e){return(a,o)=>(r(),t(`div`,i,n(e.text),1))}});export{a as t};
