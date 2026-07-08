@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 import time
-from typing import Any
+from typing import Any, Iterator
 from urllib import error, request
 
 from app.core.config import Settings
@@ -115,6 +115,55 @@ class CloudOpenAIAdapter:
         except OSError as exc:
             return self._call_failed(started_at, self._sanitize_error(f"Cloud model call failed: {exc}"))
 
+    def stream_chat(self, adapter_request: ModelAdapterRequest) -> Iterator[str]:
+        self._validate_ready()
+        endpoint = self._chat_completions_url(self.settings.CLOUD_LLM_BASE_URL)
+        payload = {
+            "model": self.settings.CLOUD_LLM_MODEL,
+            "messages": [
+                {"role": message.role, "content": message.content}
+                for message in adapter_request.messages
+            ],
+            "temperature": self.settings.CLOUD_LLM_TEMPERATURE,
+            "max_tokens": self.settings.CLOUD_LLM_MAX_TOKENS,
+            "stream": True,
+        }
+        data = json.dumps(payload).encode("utf-8")
+        http_request = request.Request(
+            endpoint,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.settings.CLOUD_LLM_API_KEY}",
+            },
+            method="POST",
+        )
+        try:
+            with request.urlopen(http_request, timeout=self.settings.CLOUD_LLM_TIMEOUT_SECONDS) as response:
+                for raw_line in response:
+                    line = raw_line.decode("utf-8", errors="replace").strip()
+                    if not line or not line.startswith("data:"):
+                        continue
+                    data_text = line[5:].strip()
+                    if data_text == "[DONE]":
+                        break
+                    try:
+                        parsed = json.loads(data_text)
+                    except json.JSONDecodeError:
+                        continue
+                    chunk = self._extract_stream_delta(parsed)
+                    if chunk:
+                        yield chunk
+        except error.HTTPError as exc:
+            raise RuntimeError(self._sanitize_error(self._format_http_error(exc))) from exc
+        except error.URLError as exc:
+            reason = getattr(exc, "reason", exc)
+            raise RuntimeError(self._sanitize_error(f"Cloud model network error: {reason}")) from exc
+        except TimeoutError as exc:
+            raise RuntimeError("Cloud model stream timed out.") from exc
+        except OSError as exc:
+            raise RuntimeError(self._sanitize_error(f"Cloud model stream failed: {exc}")) from exc
+
     @staticmethod
     def _chat_completions_url(base_url: str) -> str:
         normalized = base_url.rstrip("/")
@@ -130,6 +179,16 @@ class CloudOpenAIAdapter:
             sanitized = sanitized.replace(self.settings.CLOUD_LLM_API_KEY, "***")
         sanitized = re.sub(r"Bearer\s+[A-Za-z0-9._~+/=-]+", "Bearer ***", sanitized)
         return sanitized[:500]
+
+    def _validate_ready(self) -> None:
+        if not self.settings.CLOUD_LLM_ENABLED:
+            raise RuntimeError("Cloud model provider is disabled.")
+        if not self.settings.CLOUD_LLM_BASE_URL:
+            raise RuntimeError("Cloud model base URL is not configured.")
+        if not self.settings.CLOUD_LLM_API_KEY:
+            raise RuntimeError("Cloud model API key is not configured.")
+        if not self.settings.CLOUD_LLM_MODEL:
+            raise RuntimeError("Cloud model name is not configured.")
 
     @staticmethod
     def _masked_url(base_url: str) -> str:
@@ -201,3 +260,24 @@ class CloudOpenAIAdapter:
                 return content.strip()
         content = first.get("text")
         return content.strip() if isinstance(content, str) else ""
+
+    @staticmethod
+    def _extract_stream_delta(payload: dict) -> str:
+        choices = payload.get("choices")
+        if not isinstance(choices, list) or not choices:
+            return ""
+        first = choices[0]
+        if not isinstance(first, dict):
+            return ""
+        delta = first.get("delta")
+        if isinstance(delta, dict):
+            content = delta.get("content")
+            if isinstance(content, str):
+                return content
+        message = first.get("message")
+        if isinstance(message, dict):
+            content = message.get("content")
+            if isinstance(content, str):
+                return content
+        text = first.get("text")
+        return text if isinstance(text, str) else ""

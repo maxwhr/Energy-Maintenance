@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -27,6 +29,36 @@ def query_retrieval(
     except RetrievalServiceError as exc:
         return error_response(str(exc), 40070)
     return success_response(result.model_dump(mode="json"))
+
+
+@router.post("/query/stream")
+def stream_retrieval(
+    payload: RetrievalQueryRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    payload_data = payload.model_dump()
+    payload_data["enable_model_enhancement"] = True
+    if payload.model_provider == "rule_based":
+        payload_data["model_provider"] = "cloud_openai"
+    stream_payload = RetrievalQueryRequest(**payload_data)
+
+    def event_stream():
+        try:
+            for event in RetrievalService(db).query_stream_events(stream_payload, current_user):
+                event_type = str(event.get("type") or "message")
+                yield _sse_event(event_type, event)
+        except RetrievalServiceError as exc:
+            yield _sse_event("error", {"type": "error", "message": str(exc), "code": 40072})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/records")
@@ -64,3 +96,7 @@ def get_retrieval_record(
     if not result:
         return error_response("Retrieval record not found", 40470)
     return success_response(result)
+
+
+def _sse_event(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False, default=str)}\n\n"

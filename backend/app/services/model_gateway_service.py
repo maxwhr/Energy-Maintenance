@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+import time
+from typing import Any, Iterator
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -60,6 +61,137 @@ class ModelGatewayService:
 
     def chat(self, payload: ModelGatewayChatRequest, current_user: User) -> ModelGatewayResponse:
         return self._execute(payload, current_user=current_user)
+
+    def stream_chat(
+        self,
+        payload: ModelGatewayChatRequest,
+        *,
+        current_user: User,
+    ) -> Iterator[dict[str, Any]]:
+        trace_id = self._new_trace_id()
+        requested_provider = payload.provider or self._default_provider()
+        adapter_request = self._build_adapter_request(payload, trace_id)
+        adapter = self.adapters.get(requested_provider)
+        started_at = time.perf_counter()
+        content_parts: list[str] = []
+        result = ModelAdapterResponse(
+            provider=requested_provider,
+            model_name=requested_provider,
+            content="",
+            success=False,
+        )
+        if not adapter:
+            result.error_message = f"Unsupported model provider: {requested_provider}"
+            self._save_log(
+                result=result,
+                adapter_request=adapter_request,
+                requested_provider=requested_provider,
+                current_user=current_user,
+                fallback_used=False,
+                provider_error=None,
+            )
+            yield {
+                "type": "error",
+                "trace_id": trace_id,
+                "provider": requested_provider,
+                "message": result.error_message,
+            }
+            return
+
+        if not hasattr(adapter, "stream_chat"):
+            result = adapter.chat(adapter_request)
+            if result.success and result.content:
+                yield {
+                    "type": "delta",
+                    "trace_id": trace_id,
+                    "provider": result.provider,
+                    "model_name": result.model_name,
+                    "content": result.content,
+                }
+            self._save_log(
+                result=result,
+                adapter_request=adapter_request,
+                requested_provider=requested_provider,
+                current_user=current_user,
+                fallback_used=False,
+                provider_error=None,
+            )
+            yield {
+                "type": "done" if result.success else "error",
+                "trace_id": trace_id,
+                "provider": result.provider,
+                "model_name": result.model_name,
+                "content": result.content,
+                "message": result.error_message,
+            }
+            return
+
+        try:
+            for chunk in adapter.stream_chat(adapter_request):  # type: ignore[attr-defined]
+                if not chunk:
+                    continue
+                content_parts.append(chunk)
+                yield {
+                    "type": "delta",
+                    "trace_id": trace_id,
+                    "provider": adapter.provider,
+                    "model_name": adapter.model_name,
+                    "content": chunk,
+                }
+            full_content = "".join(content_parts).strip()
+            latency_ms = int((time.perf_counter() - started_at) * 1000)
+            result = ModelAdapterResponse(
+                provider=adapter.provider,
+                model_name=adapter.model_name,
+                content=full_content,
+                success=bool(full_content),
+                latency_ms=latency_ms,
+                error_message=None if full_content else "Model provider returned empty stream content.",
+                raw_payload={"stream": True},
+            )
+            self._save_log(
+                result=result,
+                adapter_request=adapter_request,
+                requested_provider=requested_provider,
+                current_user=current_user,
+                fallback_used=False,
+                provider_error=None,
+            )
+            yield {
+                "type": "done" if result.success else "error",
+                "trace_id": trace_id,
+                "provider": result.provider,
+                "model_name": result.model_name,
+                "content": full_content,
+                "message": result.error_message,
+            }
+        except Exception as exc:
+            latency_ms = int((time.perf_counter() - started_at) * 1000)
+            result = ModelAdapterResponse(
+                provider=adapter.provider,
+                model_name=adapter.model_name,
+                content="".join(content_parts).strip(),
+                success=False,
+                latency_ms=latency_ms,
+                error_message=str(exc)[:500],
+                raw_payload={"stream": True},
+            )
+            self._save_log(
+                result=result,
+                adapter_request=adapter_request,
+                requested_provider=requested_provider,
+                current_user=current_user,
+                fallback_used=False,
+                provider_error=None,
+            )
+            yield {
+                "type": "error",
+                "trace_id": trace_id,
+                "provider": result.provider,
+                "model_name": result.model_name,
+                "content": result.content,
+                "message": result.error_message,
+            }
 
     def list_logs(
         self,

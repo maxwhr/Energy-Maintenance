@@ -65,6 +65,39 @@ class RetrievalRepository:
         )
         return [(row[0], row[1]) for row in self.db.execute(statement).all()]
 
+    def list_vector_candidates(
+        self,
+        *,
+        manufacturer: str | None = None,
+        product_series: str | None = None,
+        device_type: str | None = "pv_inverter",
+        document_type: str | None = None,
+        candidate_limit: int = 500,
+    ) -> list[tuple[KnowledgeChunk, KnowledgeDocument]]:
+        filters = [
+            KnowledgeDocument.parse_status == "parsed",
+            KnowledgeDocument.status == "active",
+            KnowledgeDocument.review_status == "approved",
+            KnowledgeChunk.status == "active",
+        ]
+        if manufacturer:
+            filters.append(KnowledgeDocument.manufacturer == manufacturer)
+        if product_series and product_series != "other":
+            filters.append(KnowledgeDocument.product_series == product_series)
+        if device_type:
+            filters.append(KnowledgeDocument.device_type == device_type)
+        if document_type:
+            filters.append(KnowledgeDocument.document_type == document_type)
+
+        statement = (
+            select(KnowledgeChunk, KnowledgeDocument)
+            .join(KnowledgeDocument, KnowledgeChunk.document_id == KnowledgeDocument.id)
+            .where(*filters)
+            .order_by(KnowledgeDocument.created_at.desc(), KnowledgeChunk.chunk_index.asc())
+            .limit(candidate_limit)
+        )
+        return [(row[0], row[1]) for row in self.db.execute(statement).all()]
+
     def list_history_candidates(
         self,
         *,

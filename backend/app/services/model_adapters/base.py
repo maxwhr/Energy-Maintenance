@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Iterator, Protocol
 
 from app.schemas.model_gateway import ModelMessage, ModelProvider, ModelProviderStatus, ModelTaskType
 
@@ -34,4 +34,7 @@ class ModelAdapter(Protocol):
         ...
 
     def chat(self, request: ModelAdapterRequest) -> ModelAdapterResponse:
+        ...
+
+    def stream_chat(self, request: ModelAdapterRequest) -> Iterator[str]:
         ...

@@ -13,6 +13,7 @@ class ModelPromptBuilder:
         suggested_steps: list[str],
         safety_notes: list[str],
         references: list[Any],
+        retrieved_chunks: list[Any] | None = None,
         media_context: list[Any] | None = None,
         kg_context: dict[str, Any] | None = None,
     ) -> str:
@@ -31,6 +32,7 @@ class ModelPromptBuilder:
                 "- Images are human-review attachments unless a real OCR result is explicitly present.",
                 "- Knowledge graph context is an approved active graph summary only; do not invent graph facts outside it.",
                 "- Keep knowledge graph evidence separate from document references.",
+                "- Use retrieved chunk content as grounded context; do not add facts outside it.",
                 "- Do not include local file paths or binary image data.",
                 "",
                 "Recommended output structure:",
@@ -53,6 +55,9 @@ class ModelPromptBuilder:
                 "",
                 "Traceable references:",
                 self._format_references(references),
+                "",
+                "Retrieved chunk content:",
+                self._format_retrieved_chunks(retrieved_chunks or []),
                 "",
                 "Media metadata context:",
                 self._format_media_context(media_context or []),
@@ -278,6 +283,37 @@ class ModelPromptBuilder:
             summary = {key: payload.get(key) for key in safe_keys if payload.get(key) is not None}
             lines.append(f"{index}. {json.dumps(summary, ensure_ascii=False)}")
         return "\n".join(lines) if lines else "No safe media metadata was available."
+
+    @staticmethod
+    def _format_retrieved_chunks(items: list[Any]) -> str:
+        if not items:
+            return "No retrieved chunk content was provided."
+        lines: list[str] = []
+        for index, item in enumerate(items[:6], start=1):
+            if hasattr(item, "model_dump"):
+                payload = item.model_dump(mode="json")
+            elif isinstance(item, dict):
+                payload = item
+            else:
+                continue
+            summary = {
+                key: payload.get(key)
+                for key in [
+                    "document_id",
+                    "document_title",
+                    "chunk_id",
+                    "chunk_index",
+                    "page_number",
+                    "section_title",
+                    "source",
+                    "score",
+                ]
+                if payload.get(key) is not None
+            }
+            content = str(payload.get("content") or "")
+            summary["content"] = content[:900]
+            lines.append(f"{index}. {json.dumps(summary, ensure_ascii=False)}")
+        return "\n".join(lines) if lines else "No retrieved chunk content was available."
 
     @staticmethod
     def _format_kg_context(context: dict[str, Any]) -> str:

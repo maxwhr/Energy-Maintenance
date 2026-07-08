@@ -16,6 +16,7 @@ from app.models import KnowledgeChunk, KnowledgeDocument, User
 from app.repositories.knowledge_repository import KnowledgeRepository
 from app.schemas.knowledge import KnowledgeDocumentCreate
 from app.services.document_parser import DocumentParser, DocumentParserError
+from app.services.text_vector_service import TextVectorService
 from app.services.text_splitter import TextSplitter
 
 
@@ -52,6 +53,7 @@ class KnowledgeService:
         self.repository = KnowledgeRepository(db)
         self.settings = get_settings()
         self.parser = DocumentParser()
+        self.vectorizer = TextVectorService()
         self.splitter = TextSplitter(
             chunk_size=self.settings.DEFAULT_CHUNK_SIZE,
             overlap=self.settings.DEFAULT_CHUNK_OVERLAP,
@@ -268,8 +270,8 @@ class KnowledgeService:
                 section_title=chunk.section_title,
                 char_count=chunk.char_count,
                 page_number=chunk.page_number,
-                embedding_status="pending",
-                metadata_json=chunk.metadata,
+                embedding_status="embedded",
+                metadata_json=self.vectorizer.metadata_for_text(chunk.content, chunk.metadata),
                 status="active",
             )
             for chunk in chunks
