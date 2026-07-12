@@ -4,9 +4,9 @@
       class="fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-[#dbe7f3] bg-white transition-transform duration-200 lg:static lg:translate-x-0"
       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
     >
-      <div class="flex h-16 items-center gap-3 border-b border-[#dbe7f3] px-4">
-        <div class="grid h-10 w-10 place-items-center rounded-md bg-[#195FA8] font-black text-white">EM</div>
-        <div class="min-w-0">
+      <div class="flex h-16 w-full items-center gap-3 border-b border-[#dbe7f3] px-2 sm:px-2.5">
+        <div class="grid h-10 w-10 -translate-x-1 place-items-center rounded-md bg-[#195FA8] font-black text-white">EM</div>
+        <div class="min-w-0 -translate-x-1">
           <div class="truncate text-sm font-black text-[#172538]">Energy-Maintenance</div>
           <div class="truncate text-[11px] text-[#4f6f8f]">光伏逆变器检修工作台</div>
         </div>
