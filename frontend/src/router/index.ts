@@ -15,6 +15,12 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true, title: TEXT.login }
   },
   {
+    path: '/auth/login',
+    name: 'AuthLogin',
+    component: () => import('@/views/AuthLogin.vue'),
+    meta: { public: true, title: '进入系统' }
+  },
+  {
     path: '/register',
     name: 'Register',
     component: () => import('@/views/Register.vue'),

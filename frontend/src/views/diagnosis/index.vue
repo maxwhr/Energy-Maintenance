@@ -118,6 +118,7 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, reactive, ref, watch, type PropType } from 'vue'
+import { useRoute } from 'vue-router'
 import { Stethoscope } from '@lucide/vue'
 import { analyzeDiagnosisApi, getDevicesApi } from '@/api'
 import DataPanel from '@/components/DataPanel.vue'
@@ -173,6 +174,7 @@ const KgNodeList = defineComponent({
 })
 
 const devices = ref<DeviceItem[]>([])
+const route = useRoute()
 const result = ref<DiagnosisResponse | null>(null)
 const selectedMediaIds = ref<string[]>([])
 const loading = ref(false)
@@ -182,12 +184,19 @@ const form = reactive({
   manufacturer: 'huawei',
   product_series: 'SUN2000',
   device_type: 'pv_inverter',
-  fault_type: 'unknown',
-  alarm_code: '',
+  fault_type: String(route.query.fault_type || faultTypeOptions[0]?.value || 'alarm_code_query'),
+  alarm_code: String(route.query.alarm_code || ''),
   fault_description: '',
   enable_kg_enhancement: true,
   use_ocr_text: false
 })
+
+if (route.query.manufacturer && manufacturerOptions.some((item) => item.value === route.query.manufacturer)) {
+  form.manufacturer = String(route.query.manufacturer)
+}
+if (route.query.product_series && productSeriesOptions.some((item) => item.value === route.query.product_series)) {
+  form.product_series = String(route.query.product_series)
+}
 const hasKgContext = computed(() => Boolean((result.value?.kg_context?.summary?.matched_node_count as number | undefined) || result.value?.kg_evidence?.length))
 
 const seriesOptions = computed(() => productSeriesOptions.filter((item) => item.manufacturer === form.manufacturer))
