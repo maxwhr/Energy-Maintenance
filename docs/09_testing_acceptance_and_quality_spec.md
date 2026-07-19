@@ -2337,7 +2337,7 @@ Acceptance points:
 
 Task 24B acceptance must verify the DashVector metadata route without default real external calls:
 
-- Alembic head is `20260601_0007`.
+- Alembic head is `20260601_0008`.
 - Migration creates `knowledge_chunk_vector_indexes` and `vector_index_runs`.
 - No pgvector extension, local `vector` column, `knowledge_chunk_embeddings`, or `embedding_runs` table is introduced.
 - `check_dashvector_config_status.py` reports real DashVector/embedding as blocked by default.
@@ -2368,3 +2368,94 @@ Required 24E checks:
 - `node backend/scripts/check_task24e_conversion_history_browser.mjs`
 
 Acceptance requires exactly one formal business object for concurrent conversion of the same artifact and target, one conversion audit row, preserved event-log compatibility, blocked viewer/engineer conversion, blocked pending/rejected approval conversion, failed conversion audit when target creation fails, and no delivery package generation.
+
+## Task 24C Addendum: Real External API Acceptance
+
+Task 24C acceptance requires both non-real status inspection and explicit real-call verification:
+
+- `uv run python scripts/check_real_external_api_acceptance.py`
+- `uv run python scripts/check_real_external_api_acceptance.py --allow-real-api --base-url http://127.0.0.1:8010/api`
+- `uv run python scripts/check_real_agent_provider_integration.py --allow-real-api --base-url http://127.0.0.1:8010/api`
+
+Each provider must be classified as `passed`, `blocked`, or `failed`. Blocked providers are acceptable only when disabled or incompletely configured. Configured providers that fail calls, parsing, persistence, sanitization, or fallback must be failed.
+
+Current Task 24C verified result:
+
+- passed: Cloud LLM, MIMO/Vision, OCR API
+- blocked: DashVector, Embedding
+- failed: none
+
+Task 24C did not add a migration, did not execute `alembic upgrade head`, and did not generate a delivery package. Alembic current remains `20260601_0008`.
+
+## Task 25B Acceptance Addendum
+
+Task 25B advances Alembic to the single head `20260601_0009`. Mandatory tests include the Task 25B unit/integration pytest suite, real embedding and DashVector scripts, controlled index lifecycle, retrieval evaluation, multimodal retrieval, quality gate, frontend type/build/static install, real browser checks, Task 25A-R1 security/RBAC/business regressions, final smoke, and performance baseline.
+
+The quality gate is metric-based: R@5>=0.85, R@10>=0.95, MRR>=0.80, nDCG@10>=0.85, exact model/fault=1.0, leakage=0, citation>=0.98, online p95<=3500 ms, errors=0. Current hybrid_rerank fails R@10/MRR/nDCG/p95, so the task is not fully accepted.
+
+<!-- TASK25B_R1_BEGIN -->
+## Task 25B-R1 controlled blind acceptance (2026-07-11T02:32:50.109583+00:00)
+
+- test_v1 is exposed and regression-only; test_v2 is independently frozen with SHA-256 `2cdf413a1ca58fc77ea3ca64f117f1b909c6bd2ab8ca556ca2fd2bba25bfbe5b`.
+- Corpus: 24 documents, 192 active chunks, 48 hard negatives.
+- Adaptive blind metrics: R@5=1.000000, R@10=1.000000, MRR=0.981481, nDCG@10=0.986331, warm p95=704.712 ms.
+- Reranker disabled: no measurable dev gain. Default retrieval strategy remains keyword.
+- Canary uses an isolated partition because the provider collection quota is exhausted; v1 default partitions remain intact.
+- Formal full reindex, package generation and Git commit were not executed. LoongArch real-machine testing remains outstanding.
+<!-- TASK25B_R1_END -->
+
+
+<!-- TASK25B_R2_BEGIN -->
+## Task 25B-R2 正式知识 Pilot 状态
+
+- 状态：`BLOCKED_CONFIG`；正式可用语料只有 6 份文档、11 个 active Chunk，未达到 300。
+- 独立 Pilot Collection `energy_kn_te_v4_1024_pilot1` 创建被服务商 2 个 Collection 配额阻断；未删除或复用现有 Collection。
+- 已生成 150 条 `draft` 候选；`expert_verified=0`，未冻结或运行 `official_pilot_test_v1`。
+- 默认 Collection 与 `keyword` 策略未改变；`TASK25B_ALLOW_FULL_REINDEX=false`，全量重建决策为 NO-GO。
+- 本任务未打包、未提交 Git；LoongArch/Kylin 仍未实机验收。
+<!-- TASK25B_R2_END -->
+
+## Task 25B-R2-U3 人工门禁验收
+
+- 自动阶段必须停在 `AWAITING_HUMAN_DOCUMENT_APPROVAL`，不得把 pending 候选计为 active formal Chunk。
+- 文档批量批准每次最多 10 份，只允许 `READY_FOR_HUMAN_REVIEW`，由 expert/admin 明确操作并逐文档记录审计。
+- viewer/engineer 可只读查看审核队列，但任何批准、退回、标记和归档写操作必须被隐藏并由后端 403 阻断。
+- 恢复 Pilot 需要 approved documents>=15、active chunks>=300、expert_verified>=100、second reviewed>=20、vector-heavy>=20、no-answer>=15。
+- `TASK25B_ALLOW_FULL_REINDEX=false`、默认 Partition 未写入、无营销/pending/未知来源泄漏是硬门禁。
+
+<!-- TASK25B_R3_DEV_BEGIN -->
+## Task 25B-R2-U3-R3-DEV 中文工程 Pilot 更新
+
+- 中文 Corpus Gate：`CHINESE_CORPUS_GATE_PASSED`，16 份文档、1262 个当前 Chunk。
+- 开发工程审批与真实专家审批严格分离；`expert_verified=false`。
+- 英文保留但不进入默认检索或 `pilot_r2`。
+- Pilot 索引：1262 upserted；恢复阶段未重复索引，正式全量重建未执行。
+- 质量门原 run 已完整产生 600/600 条结果；最终判定 `DEVELOPMENT_ENGINEERING_QUALITY_GATE_FAILED`。
+- 中断来自 Codex 模型容量，不是项目服务故障；恢复时未重复工程审批。
+<!-- TASK25B_R3_DEV_END -->
+
+<!-- TASK25B_R3_DEV_R1_BEGIN -->
+## Task 25B-R3-DEV-R1 检索治理更新
+
+- v1 run `f1941ec2-9878-45a1-b554-8d9f2f2ec911` 失败且保留；v2 run `3e40e25f-f1f1-4146-9e1e-629d2ce76045` 独立保存。
+- Benchmark 数据集状态：`BENCHMARK_DATASET_READY`；质量门状态：`QUALITY_GATE_FAILED`，二者不得混淆。
+- Scope：`chinese_engineering_pilot_r2`；Canary：`CANARY_PASSED`；正式 v2：`DEVELOPMENT_ENGINEERING_QUALITY_GATE_FAILED`。
+- Pilot 对账：1262/1262，re-embedded=0、re-upserted=0。
+- 工程审批不等于专家验证；正式全量重建未执行；不打包、不提交 Git。
+<!-- TASK25B_R3_DEV_R1_END -->
+
+<!-- Task25B-R3-DEV-R2 -->
+
+Task 25B-R3-DEV-R2 preserves raw P@5, evaluates single-relevant cases with Hit/MRR, evaluates multi-relevant cases with precision/recall, and separately reports surfaced precision and irrelevant-result rate.
+
+<!-- TASK25B_R3_DEV_R3 -->
+## Task 25B-R3-DEV-R3 semantic recall diagnosis
+
+- R2 Canary remains `CANARY_FAILED` and its artifacts are preserved read-only.
+- Raw Chunk representation dilution was diagnosed with train/dev-only embedding pairs; DashVector filtering and mapping were not the root cause.
+- An isolated `pilot_r3_semantic` A/B partition was created with 416 source-only anchors. `pilot_r2`, the default partition, and the original 1,262 vectors were not changed.
+- The independent Canary failed: semantic Candidate Recall@50 = 0.444444, below 0.90. `test_v3_1` was not created or frozen and no formal quality run or full reindex occurred.
+- `expert_verified=false`; no package, Git commit, or LoongArch physical verification occurred.
+# R4 grounded semantic acceptance addendum
+
+The R4 A/B route is accepted only when source-unit quality and reconciliation pass, Candidate Recall@50 is at least 0.90, grounded semantic Recall@5 is at least 0.80, adaptive grounded Recall@5 is at least 0.85, adaptive MRR is at least 0.75, adaptive nDCG@10 is at least 0.80, warm p95 is at most 3500 ms, leakage/errors are zero, and citations resolve to original active chunks. At most two Train/Dev Canary iterations are permitted. A failed second iteration blocks formal v4 creation and all staged/full reindex work.

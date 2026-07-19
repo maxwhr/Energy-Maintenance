@@ -1,0 +1,5 @@
+Rollback changes only /opt/energy-maintenance/current to a retained release.
+The database is never downgraded automatically.
+Before switching, confirm the target code supports database revision 20260712_0015.
+The shared virtual environment must match the selected release's requirements manifest.
+

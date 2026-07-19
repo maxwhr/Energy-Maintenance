@@ -16,7 +16,8 @@ from app.models import KnowledgeChunk, KnowledgeDocument, User
 from app.repositories.knowledge_repository import KnowledgeRepository
 from app.schemas.knowledge import KnowledgeDocumentCreate
 from app.services.document_parser import DocumentParser, DocumentParserError
-from app.services.text_splitter import TextSplitter
+from app.services.semantic_chunker import SemanticChunker
+from app.services.candidate_hydration_service import CandidateHydrationService
 
 
 ALLOWED_MANUFACTURERS = {"huawei", "sungrow"}
@@ -52,7 +53,7 @@ class KnowledgeService:
         self.repository = KnowledgeRepository(db)
         self.settings = get_settings()
         self.parser = DocumentParser()
-        self.splitter = TextSplitter(
+        self.splitter = SemanticChunker(
             chunk_size=self.settings.DEFAULT_CHUNK_SIZE,
             overlap=self.settings.DEFAULT_CHUNK_OVERLAP,
         )
@@ -113,11 +114,13 @@ class KnowledgeService:
             self.db.refresh(document)
         except SQLAlchemyError as exc:
             self.db.rollback()
+            self._remove_unreferenced_stored_file(stored_file)
             raise KnowledgeServiceError(f"Database write failed: {exc}") from exc
 
         try:
             result = self._parse_and_replace_chunks(document)
             self.db.commit()
+            CandidateHydrationService.invalidate_scope_cache()
             return result
         except (DocumentParserError, KnowledgeServiceError) as exc:
             self.db.rollback()
@@ -209,6 +212,7 @@ class KnowledgeService:
             self.repository.update_document(document)
             result = self._parse_and_replace_chunks(document)
             self.db.commit()
+            CandidateHydrationService.invalidate_scope_cache()
             return result
         except (DocumentParserError, KnowledgeServiceError) as exc:
             self.db.rollback()
@@ -227,6 +231,7 @@ class KnowledgeService:
         self.repository.archive_chunks_by_document(document.id)
         document = self.repository.update_document(document)
         self.db.commit()
+        CandidateHydrationService.invalidate_scope_cache()
         return document
 
     def create_document_metadata(self, payload: KnowledgeDocumentCreate) -> KnowledgeDocument:
@@ -239,6 +244,7 @@ class KnowledgeService:
         document = KnowledgeDocument(**payload.model_dump())
         document = self.repository.create_document(document)
         self.db.commit()
+        CandidateHydrationService.invalidate_scope_cache()
         return document
 
     def _parse_and_replace_chunks(self, document: KnowledgeDocument) -> dict:
@@ -396,8 +402,21 @@ class KnowledgeService:
             managed.metadata_json = metadata
             self.repository.update_document(managed)
             self.db.commit()
+            CandidateHydrationService.invalidate_scope_cache()
         except SQLAlchemyError:
             self.db.rollback()
+
+    def _remove_unreferenced_stored_file(self, stored_file: StoredFile) -> None:
+        try:
+            candidate = (self._backend_root() / stored_file.file_path).resolve()
+            upload_root = Path(self.settings.UPLOAD_DIR)
+            if not upload_root.is_absolute():
+                upload_root = self._backend_root() / upload_root
+            candidate.relative_to(upload_root.resolve())
+            candidate.unlink(missing_ok=True)
+        except (OSError, ValueError):
+            # The database error remains authoritative; never broaden cleanup outside uploads.
+            return
 
     @staticmethod
     def _backend_root() -> Path:

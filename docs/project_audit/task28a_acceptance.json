@@ -1,0 +1,679 @@
+{
+  "admin_credential_discovery": {
+    "administrator_candidates": 0,
+    "connection_attempts": 0,
+    "secrets_serialized": false,
+    "status": "HISTORICAL_BLOCKED_NO_PROJECT_ADMIN_CREDENTIAL"
+  },
+  "file_boundary": {
+    "allowed_project_root": "D:\\Work Space\\Energy-Maintenance",
+    "credential_discovery_outside_project_read": false,
+    "formal_database_operated": false,
+    "outside_path_modified": false
+  },
+  "formal_import": {
+    "executed": true,
+    "formal_database_writes": 947,
+    "formal_instance_final_state": "stopped_by_task",
+    "huawei_scope_changed": true,
+    "status": "COMMITTED_R3B_RAG_COVERAGE_PARTIAL",
+    "sungrow_entered_huawei_scope": false
+  },
+  "formal_import_r3b_r3c": {
+    "executed": true,
+    "plan_sha256": "00932bbb44ce7088fbd301e220a15f5ed02383c8b1b62aa23a5b7edef0fc7d8c",
+    "backup_sha256": "2353bd58e043425c44b7a5de849850baba8bd5c49afbce941d88f9641da9fea7",
+    "backup_list_verified": true,
+    "formal_database_writes": {
+      "knowledge_documents": 10,
+      "knowledge_chunks": 937,
+      "review_workflow": "pending_review_then_approved"
+    },
+    "documents_before_after": [
+      372,
+      382
+    ],
+    "chunks_before_after": [
+      4791,
+      5728
+    ],
+    "documents_parsed_approved_active": 10,
+    "review_records_present": true,
+    "second_apply": {
+      "imported_documents": 0,
+      "imported_chunks": 0,
+      "duplicates_skipped": 10,
+      "passed": true
+    },
+    "sungrow_imported": 0,
+    "protected_qa_digest_unchanged": true,
+    "non_target_baseline_unchanged": true,
+    "provider_calls_by_task": 0,
+    "vector_rebuild_executed": false,
+    "report_path_preflight": {
+      "status": "PASSED",
+      "invalid_report_path_database_connections": 0,
+      "invalid_report_path_database_writes": 0,
+      "targeted_tests": "44 passed, 1 skipped"
+    },
+    "r3c_readonly_reconciliation": {
+      "passed": true,
+      "qa_records_unchanged": true,
+      "provider_call_logs_unchanged": true,
+      "vector_index_runs_unchanged": true
+    },
+    "frontend_source_trace": "PASSED",
+    "targeted_query_aware_rag": {
+      "target_documents": 10,
+      "documents_with_own_citation": 9,
+      "status": "PARTIAL_RAG_COVERAGE_BLOCKED",
+      "blocked_document_id": "b5424104-c986-482a-b297-9e251adbc7c9",
+      "blocked_document_reason": "no own citation for title, section, or parsed-content-excerpt queries"
+    }
+  },
+  "formal_import_preflight_r3a": {
+    "approval_token": null,
+    "executed": true,
+    "formal_apply_executed": false,
+    "formal_database_writes": 0,
+    "fresh_backup_required_before_apply": true,
+    "plan_sha256": "5e803262a30276a78f21ba39f5a77553dc5099250b27d826c59b6771c5ba9f55",
+    "protected_files_unchanged": true,
+    "status": "BLOCKED_FORMAL_DATABASE_UNREACHABLE",
+    "test_cluster_final_state": "stopped_by_task"
+  },
+  "formal_import_preflight_r3a_r1": {
+    "approval_token": "APPROVE_TASK28A_R3_FORMAL_IMPORT:200d21ed461ebd9c22d8adbb966b1504ff6ec8714efa4005ef6d0c772bfa0a20",
+    "candidate_classification": {
+      "invalid_candidates": 0,
+      "metadata_conflicts": 0,
+      "new_import_candidates": 10,
+      "same_title_different_hash_conflicts": 0,
+      "test_huawei_chunks": 937,
+      "test_huawei_documents": 10
+    },
+    "executed": true,
+    "formal_apply_executed": false,
+    "formal_database_writes": 0,
+    "formal_readonly_probe_rejected": true,
+    "formal_schema_model_tables_missing": 0,
+    "formal_schema_revision": "20260712_0015",
+    "fresh_backup_required_before_apply": true,
+    "plan_sha256": "200d21ed461ebd9c22d8adbb966b1504ff6ec8714efa4005ef6d0c772bfa0a20",
+    "protected_files_unchanged": true,
+    "protected_qa_digest_unchanged": true,
+    "protected_qa_request_id_storage": "not_persisted_in_qa_records",
+    "status": "PREFLIGHT_READY_AWAITING_APPROVAL"
+  },
+  "formal_import_preflight_r3a_r2": {
+    "approval_token": "APPROVE_TASK28A_R3_FORMAL_IMPORT:00932bbb44ce7088fbd301e220a15f5ed02383c8b1b62aa23a5b7edef0fc7d8c",
+    "baseline_changed_since_v2": false,
+    "executed": true,
+    "formal_apply_executed": false,
+    "formal_database_writes": 0,
+    "formal_readonly_probe_rejected": true,
+    "formal_schema_changes": 0,
+    "fresh_backup_required_before_apply": true,
+    "gate_contract_version": "task28a_formal_gate_v2",
+    "new_importer_sha256": "154532ebd230bea7d5b741e8ac19449aa75d0c5dfb19ac2f29275a8eba980978",
+    "plan_sha256": "00932bbb44ce7088fbd301e220a15f5ed02383c8b1b62aa23a5b7edef0fc7d8c",
+    "protected_change_scope_verified": true,
+    "protected_qa_digest_unchanged": true,
+    "status": "PREFLIGHT_V3_READY_AWAITING_APPROVAL",
+    "supersedes_plan_sha256": "200d21ed461ebd9c22d8adbb966b1504ff6ec8714efa4005ef6d0c772bfa0a20",
+    "v2_token_revoked_for_apply": true
+  },
+  "knowledge_import": {
+    "chunks": 1255,
+    "duplicates_skipped": 0,
+    "failed_documents": 0,
+    "huawei_approved": 10,
+    "huawei_candidates": 10,
+    "huawei_documents": 10,
+    "manifest_documents": 21,
+    "migrated_fault_images": 144,
+    "parsed_documents": 15,
+    "status": "PASSED",
+    "sungrow_future_candidates": 5,
+    "sungrow_future_documents": 5,
+    "sungrow_pending_review": 5,
+    "sungrow_retrieval_citations": 0,
+    "sungrow_retrieved_chunks": 0
+  },
+  "migration": {
+    "duplicate_files": 3,
+    "failed_files": 0,
+    "hash_verified": true,
+    "moved_files": 167,
+    "scanned_files": 167
+  },
+  "multimodal": {
+    "external_provider_calls": 0,
+    "fault_case_01_confirmed": true,
+    "fault_case_01_ocr": "MANUAL_CONFIRMATION_NOT_OCR",
+    "fault_case_01_retrieval": true,
+    "fault_case_01_uploaded": true,
+    "fault_case_02_confirmed": true,
+    "fault_case_02_ocr": "MANUAL_CONFIRMATION_NOT_OCR",
+    "fault_case_02_retrieval": true,
+    "fault_case_02_uploaded": true,
+    "provider_status": "BLOCKED_NOT_CALLED",
+    "status": "PASSED"
+  },
+  "project_local_postgres_cluster": {
+    "administrator": "task28a_cluster_admin",
+    "binary_directory": "D:\\Work Space\\PostgreSQL\\bin",
+    "binary_source": "Windows service PathName executable directory",
+    "createdb_found": true,
+    "data_path": ".runtime/task28a/postgres/data",
+    "final_state": "stopped",
+    "initdb_found": true,
+    "initialized": true,
+    "log_path": ".runtime/task28a/postgres/logs",
+    "old_55432_operated": false,
+    "pg_ctl_found": true,
+    "pg_isready_found": true,
+    "port": 55433,
+    "postgres_found": true,
+    "postgresql_version": "16.14",
+    "psql_found": true,
+    "restart_verified": true,
+    "status": "PASSED"
+  },
+  "qa_persistence": {
+    "concurrent_idempotent": true,
+    "one_request_one_record": true,
+    "preview_zero_write": true,
+    "record_center_visible": true,
+    "rollback_verified": true,
+    "same_request_id_idempotent": true,
+    "status": "PASSED",
+    "trace_unique": true
+  },
+  "formal_import_r3d": {
+    "executed": true,
+    "mode": "formal_read_only_keyword_only",
+    "formal_database_writes": 0,
+    "schema_or_migration_changes": 0,
+    "reimport_or_reparse": false,
+    "vector_rebuild_executed": false,
+    "provider_calls_by_task": 0,
+    "qa_records_added": 0,
+    "target_document": {
+      "document_id": "b5424104-c986-482a-b297-9e251adbc7c9",
+      "healthy": true,
+      "chunks": 9,
+      "own_citation_query_categories": 3,
+      "title_model_chunk_best_ranks": [
+        1,
+        1,
+        1
+      ]
+    },
+    "formal_document_coverage": {
+      "documents_tested": 10,
+      "documents_with_own_citation": 10,
+      "sungrow_citations": 0,
+      "passed": true
+    },
+    "browser_source_trace": {
+      "passed": true,
+      "rendered_citation_block": true,
+      "console_errors": 0,
+      "authenticated_api_failures": 0
+    },
+    "frozen_30_case_evaluation": {
+      "status": "NOT_READY",
+      "recall_at_1": 0.392857,
+      "recall_at_3": 0.714286,
+      "recall_at_5": 0.821429,
+      "mrr": 0.560714,
+      "ndcg_at_5": 0.626207,
+      "citation_validity": 1.0,
+      "citation_support": 0.821429,
+      "failed_case_count": 5
+    },
+    "counts_unchanged": {
+      "knowledge_documents": 382,
+      "knowledge_chunks": 5728,
+      "qa_records": 2598,
+      "external_api_call_logs": 676,
+      "vector_index_runs": 88
+    },
+    "status": "FORMAL_IMPORT_COMMITTED_RAG_COVERAGE_PARTIAL"
+  },
+  "formal_import_r3e": {
+    "executed": true,
+    "mode": "dual_database_current_code_keyword_only_read_only",
+    "fixture_sha256": "9d2400a26f2a50ea3894b46ee2d5e2f88392ee1a539695a9467490e6d9ff20b0",
+    "fixture_modified": false,
+    "preimport_restore": {
+      "host": "127.0.0.1",
+      "port": 55434,
+      "knowledge_documents": 372,
+      "knowledge_chunks": 4791,
+      "qa_records": 2598,
+      "alembic": "20260712_0015",
+      "read_only": true
+    },
+    "postimport_formal": {
+      "host": "127.0.0.1",
+      "port": 55432,
+      "knowledge_documents": 382,
+      "knowledge_chunks": 5728,
+      "qa_records": 2598,
+      "alembic": "20260712_0015",
+      "read_only": true
+    },
+    "preimport_current_code": {
+      "recall_at_1": 0.75,
+      "recall_at_3": 0.964286,
+      "recall_at_5": 1.0,
+      "mrr": 0.854167,
+      "ndcg_at_5": 0.891228,
+      "citation_support": 1.0,
+      "required_answer_point_coverage": 1.0,
+      "failed_case_count": 0,
+      "aggregate_p50_ms": 3120.881,
+      "aggregate_p95_ms": 4371.01
+    },
+    "postimport_current_code": {
+      "recall_at_1": 0.392857,
+      "recall_at_3": 0.714286,
+      "recall_at_5": 0.821429,
+      "mrr": 0.560714,
+      "ndcg_at_5": 0.626207,
+      "citation_validity": 1.0,
+      "citation_support": 0.821429,
+      "required_answer_point_coverage": 1.0,
+      "failed_case_count": 5,
+      "aggregate_p50_ms": 6634.581,
+      "aggregate_p95_ms": 10066.55
+    },
+    "root_cause": "CORPUS_EXPANSION_RANKING_COMPETITION_CONFIRMED",
+    "evidence_equivalence": {
+      "candidate_cases": 5,
+      "automatically_approved": 0,
+      "expert_review_required": true,
+      "v2_created": false
+    },
+    "formal_database_writes": 0,
+    "qa_records_added": 0,
+    "provider_calls_by_task": 0,
+    "vector_runs_added": 0,
+    "ranking_code_modified": false,
+    "status": "EVIDENCE_EQUIVALENCE_REVIEW_REQUIRED"
+  },
+  "formal_import_r3f": {
+    "executed": true,
+    "expert_review": {
+      "csv_sha256": "a0867811660c6630088cf9a15cb83e344201ab1528041bf442216b34390b7354",
+      "reviewer_name": "张三",
+      "review_date": "2026-07-06",
+      "candidate_rows": 24,
+      "reviewed_cases": 5,
+      "equivalent_evidence_approved": 5,
+      "ranking_repair_required": 0,
+      "unresolved": 0
+    },
+    "datasets": {
+      "v1_sha256": "9d2400a26f2a50ea3894b46ee2d5e2f88392ee1a539695a9467490e6d9ff20b0",
+      "v1_modified": false,
+      "v2_sha256": "f9a000f45fd12571adebea90b52b97cf4cf5fe9dba01a8c33f80de5b2db68d68",
+      "v2_case_count": 30,
+      "accepted_evidence_sets": 12
+    },
+    "preimport_v1": {
+      "recall_at_1": 0.75,
+      "recall_at_3": 0.964286,
+      "recall_at_5": 1.0,
+      "mrr": 0.854167,
+      "ndcg_at_5": 0.891228,
+      "failed_case_count": 0
+    },
+    "preimport_v2": {
+      "recall_at_1": 0.785714,
+      "recall_at_3": 0.964286,
+      "recall_at_5": 1.0,
+      "mrr": 0.877976,
+      "ndcg_at_5": 0.909086,
+      "failed_case_count": 0
+    },
+    "postimport_v1": {
+      "recall_at_1": 0.392857,
+      "recall_at_3": 0.714286,
+      "recall_at_5": 0.821429,
+      "mrr": 0.560714,
+      "ndcg_at_5": 0.626207,
+      "citation_support": 0.821429,
+      "failed_case_count": 5
+    },
+    "postimport_v2": {
+      "recall_at_1": 0.464286,
+      "recall_at_3": 0.857143,
+      "recall_at_5": 1.0,
+      "mrr": 0.676786,
+      "ndcg_at_5": 0.758083,
+      "citation_validity": 1.0,
+      "citation_support": 1.0,
+      "required_answer_point_coverage": 1.0,
+      "failed_case_count": 0,
+      "aggregate_p50_ms": 3811.825,
+      "aggregate_p95_ms": 6224.023,
+      "frozen_early_ranking_gate_passed": false
+    },
+    "formal_document_coverage": "10/10",
+    "amphenol_category_coverage": "3/3",
+    "browser_acceptance": "passed",
+    "formal_database_writes": 0,
+    "qa_records_added": 0,
+    "provider_calls_by_task": 0,
+    "vector_runs_added": 0,
+    "ranking_code_modified": false,
+    "status": "FORMAL_IMPORT_COMMITTED_RAG_COVERAGE_PARTIAL"
+  },
+  "formal_import_r3g": {
+    "executed": true,
+    "status": "EARLY_RANKING_OPTIMIZATION_PARTIAL",
+    "final_candidate": "A1_scope_snapshot_plus_A2_precomputed_features_safe_rollback",
+    "rejected_candidate": "A7_complementary_evidence_selection",
+    "ranking_overfit_detected": true,
+    "datasets": {
+      "development_id": "task28a_r3g_dev_v1",
+      "development_case_count": 65,
+      "development_sha256": "431fac8f26a3c6933810948b6a75283aea8a2d45b8613f7ffad59ef4cf9b54fe",
+      "holdout_id": "task28a_r3g_holdout_v1",
+      "holdout_case_count": 25,
+      "holdout_sha256": "924ee29b7f109f2823230c3f43dd694a112f3818131702be9fc8922c4df5d455",
+      "holdout_run_count": 1,
+      "holdout_rerun": false,
+      "frozen_query_overlap_count": 0
+    },
+    "development_safe_candidate": {
+      "recall_at_1": 0.516667,
+      "recall_at_3": 0.716667,
+      "recall_at_5": 0.75,
+      "mrr": 0.610278,
+      "ndcg_at_5": 0.645567,
+      "failed_case_count": 15,
+      "p50_ms": 1539.271,
+      "p95_ms": 3246.765,
+      "cache_hits": 58,
+      "cache_misses": 7,
+      "max_scope_sql_per_miss": 1
+    },
+    "rejected_candidate_holdout": {
+      "recall_at_1": 0.428571,
+      "recall_at_3": 0.52381,
+      "recall_at_5": 0.52381,
+      "mrr": 0.460317,
+      "ndcg_at_5": 0.47619,
+      "failed_case_count": 11
+    },
+    "four_cell": {
+      "preimport_v1": {
+        "recall_at_1": 0.75,
+        "recall_at_3": 0.964286,
+        "recall_at_5": 1.0,
+        "mrr": 0.854167,
+        "ndcg_at_5": 0.891228,
+        "failed_case_count": 0
+      },
+      "preimport_v2": {
+        "recall_at_1": 0.785714,
+        "recall_at_3": 0.964286,
+        "recall_at_5": 1.0,
+        "mrr": 0.877976,
+        "ndcg_at_5": 0.909086,
+        "failed_case_count": 0
+      },
+      "postimport_v1": {
+        "recall_at_1": 0.392857,
+        "recall_at_3": 0.714286,
+        "recall_at_5": 0.821429,
+        "mrr": 0.560714,
+        "ndcg_at_5": 0.626207,
+        "citation_support": 0.821429,
+        "failed_case_count": 5
+      },
+      "postimport_v2": {
+        "recall_at_1": 0.464286,
+        "recall_at_3": 0.857143,
+        "recall_at_5": 1.0,
+        "mrr": 0.676786,
+        "ndcg_at_5": 0.758083,
+        "citation_validity": 1.0,
+        "citation_support": 1.0,
+        "required_answer_point_coverage": 1.0,
+        "failed_case_count": 0,
+        "aggregate_p50_ms": 2178.977,
+        "aggregate_p95_ms": 3074.891,
+        "frozen_early_ranking_gate_passed": false
+      }
+    },
+    "formal_document_coverage": "10/10",
+    "amphenol_category_coverage": "3/3",
+    "generic_alarm_scope_isolation": "passed",
+    "browser_acceptance": {
+      "status": "passed",
+      "reviewed_cases": 5,
+      "console_errors": 0,
+      "api_failures": 0
+    },
+    "formal_database_writes": 0,
+    "qa_records_added": 0,
+    "provider_calls_by_task": 0,
+    "vector_runs_added": 0,
+    "schema_or_alembic_changes": 0,
+    "production_fixture_leakage": false
+  },
+  "remaining_blockers": [
+    "The independent R3H Holdout failed Recall@3, Recall@5, citation support, scope isolation, and failed-case gates; it was consumed exactly once and was not used for further tuning.",
+    "Frozen pre-import v1/v2 no-regression and post-import v2 ranking gates failed, so the score-contract repair cannot be activated as formal Huawei RAG acceptance.",
+    "A future ranking task requires a new untouched Holdout and must not tune against frozen v1/v2, the consumed R3G Holdout, or the consumed R3H Holdout."
+  ],
+  "status": "RANKING_OVERFIT_DETECTED",
+  "test_database": {
+    "alembic_head": "20260712_0015",
+    "created": true,
+    "database": "energy_maintenance_task27a_test",
+    "database_created": true,
+    "expected_alembic_head": "20260712_0015",
+    "owner_verified": true,
+    "role": "energy_maintenance_test_user",
+    "role_created": true,
+    "status": "PASSED"
+  },
+  "verification": {
+    "alembic_heads": "20260712_0015",
+    "backend_compileall": "passed",
+    "external_provider_calls": 0,
+    "frontend_typecheck": "passed",
+    "provisioner_apply": "passed",
+    "provisioner_dry_run": "passed",
+    "targeted_pytest": "R3G 50 new tests plus 4 related cache/hydration tests passed",
+    "test_database_alembic_upgrade": "passed",
+    "task28a_r3h_targeted_pytest": "65 passed",
+    "task28a_r3h_backend_compileall": "passed",
+    "task28a_r3h_frontend_build": "passed",
+    "task28a_r3h_static_frontend_install": "passed with non-blocking conda shell warning",
+    "task28a_r3h_browser": "10/10 passed",
+    "task28a_r3h_database_writes": 0
+  },
+  "r3h": {
+    "status": "RANKING_OVERFIT_DETECTED",
+    "root_causes": [
+      "SCORE_PROVENANCE_LOSS_CONFIRMED",
+      "NON_MONOTONIC_RERANK_CONFIRMED",
+      "VARIANT_VOTE_MULTIPLICATION_NOT_CONFIRMED",
+      "REQUESTED_INFORMATION_OVERMATCH_NOT_CONFIRMED"
+    ],
+    "frozen_candidate": "B7_frozen_candidate_r4",
+    "development": {
+      "dataset_id": "task28a_r3h_score_contract_dev_v1",
+      "sha256": "76b17d676c9d68cf9edb6a1217e82187ee912125e025ca361822460075148dcc",
+      "metrics": {
+        "recall_at_1": 0.866667,
+        "recall_at_3": 0.952381,
+        "recall_at_5": 0.980952,
+        "mrr": 0.909365,
+        "ndcg_at_5": 0.927229,
+        "citation_validity": 1.0,
+        "citation_support": 0.980952,
+        "required_point_coverage": 0.985714,
+        "safety_coverage": 1.0,
+        "scope_isolation": 1.0,
+        "cross_vendor_pollution_count": 0,
+        "failed_case_count": 2,
+        "case_count": 115,
+        "positive_case_count": 105,
+        "negative_case_count": 10
+      }
+    },
+    "holdout": {
+      "dataset_id": "task28a_r3h_score_contract_holdout_v1",
+      "sha256": "5b8d2bdea0155d6f3141f99e9ce0f2182804fbc5cc131161919df4a3419a6eba",
+      "evaluation_run_count": 1,
+      "metrics": {
+        "recall_at_1": 0.8,
+        "recall_at_3": 0.84,
+        "recall_at_5": 0.88,
+        "mrr": 0.826667,
+        "ndcg_at_5": 0.839846,
+        "citation_validity": 1.0,
+        "citation_support": 0.88,
+        "required_point_coverage": 0.92,
+        "safety_coverage": 1.0,
+        "scope_isolation": 0.7,
+        "cross_vendor_pollution_count": 0,
+        "failed_case_count": 9,
+        "case_count": 60,
+        "positive_case_count": 50,
+        "negative_case_count": 10
+      },
+      "tuning_after_evaluation": false
+    },
+    "four_cell": {
+      "preimport_v1": {
+        "recall_at_1": 0.678571,
+        "recall_at_3": 0.892857,
+        "recall_at_5": 0.964286,
+        "mrr": 0.797619,
+        "ndcg_at_5": 0.839857,
+        "citation_validity": 1.0,
+        "citation_support": 0.964286,
+        "required_point_coverage": 0.964286,
+        "safety_coverage": 1.0,
+        "scope_isolation": 1.0,
+        "cross_vendor_pollution_count": 0,
+        "failed_case_count": 1,
+        "case_count": 30,
+        "positive_case_count": 28,
+        "negative_case_count": 2
+      },
+      "preimport_v2": {
+        "recall_at_1": 0.714286,
+        "recall_at_3": 0.892857,
+        "recall_at_5": 0.964286,
+        "mrr": 0.815476,
+        "ndcg_at_5": 0.853038,
+        "citation_validity": 1.0,
+        "citation_support": 0.964286,
+        "required_point_coverage": 0.964286,
+        "safety_coverage": 1.0,
+        "scope_isolation": 1.0,
+        "cross_vendor_pollution_count": 0,
+        "failed_case_count": 1,
+        "case_count": 30,
+        "positive_case_count": 28,
+        "negative_case_count": 2
+      },
+      "postimport_v1": {
+        "recall_at_1": 0.5,
+        "recall_at_3": 0.678571,
+        "recall_at_5": 0.785714,
+        "mrr": 0.596429,
+        "ndcg_at_5": 0.643217,
+        "citation_validity": 1.0,
+        "citation_support": 0.964286,
+        "required_point_coverage": 0.964286,
+        "safety_coverage": 1.0,
+        "scope_isolation": 1.0,
+        "cross_vendor_pollution_count": 0,
+        "failed_case_count": 6,
+        "case_count": 30,
+        "positive_case_count": 28,
+        "negative_case_count": 2
+      },
+      "postimport_v2": {
+        "recall_at_1": 0.571429,
+        "recall_at_3": 0.785714,
+        "recall_at_5": 0.928571,
+        "mrr": 0.68869,
+        "ndcg_at_5": 0.747884,
+        "citation_validity": 1.0,
+        "citation_support": 0.964286,
+        "required_point_coverage": 0.964286,
+        "safety_coverage": 1.0,
+        "scope_isolation": 1.0,
+        "cross_vendor_pollution_count": 0,
+        "failed_case_count": 2,
+        "case_count": 30,
+        "positive_case_count": 28,
+        "negative_case_count": 2
+      }
+    },
+    "score_provenance": {
+      "contract": "KeywordCandidateHit",
+      "repository_score_exposed": true,
+      "multi_query_score": "normalized_relevance_score",
+      "rank_only_score_is_sole_score": false,
+      "normal_path_surfaced_candidate_count": 514,
+      "normal_path_score_fallback_count": 0,
+      "normal_path_score_fallback_ratio": 0.0,
+      "score_source": "scope-local deterministic lexical relevance"
+    },
+    "fusion": {
+      "before": {
+        "raw_variant_primary_votes_per_evidence": 2.305876,
+        "original_query_contribution_ratio": 0.658166
+      },
+      "after": {
+        "primary_votes_per_evidence": 1.208986,
+        "original_query_contribution_ratio": 0.43889,
+        "selected_primary_votes": 7642,
+        "original_primary_votes": 3354,
+        "physical_channel_vote_cap": 1
+      }
+    },
+    "rerank": {
+      "before_nonmonotonic_case_count": 2,
+      "after_nonmonotonic_case_count": 0,
+      "after_nonmonotonic_cases": [],
+      "before_requested_information_overmatch_count": 0,
+      "after_requested_information_overmatch_count": 0,
+      "after_requested_information_overmatch_cases": [],
+      "guard": "direct-evidence monotonic anchor protection"
+    },
+    "formal_document_coverage": "10/10",
+    "amphenol_category_coverage": "3/3",
+    "safety_scope_regression": "11/11",
+    "browser_acceptance": {
+      "status": "passed",
+      "case_count": 10,
+      "all_requests_read_only": true,
+      "console_errors": 0,
+      "authenticated_api_4xx_5xx": 0
+    },
+    "integrity": {
+      "passed": true,
+      "formal_database_writes": 0,
+      "qa_records_added": 0,
+      "provider_calls": 0,
+      "vector_runs_added": 0,
+      "fixture_leakage_findings": 0,
+      "v1_sha256": "9d2400a26f2a50ea3894b46ee2d5e2f88392ee1a539695a9467490e6d9ff20b0",
+      "v2_sha256": "f9a000f45fd12571adebea90b52b97cf4cf5fe9dba01a8c33f80de5b2db68d68"
+    }
+  }
+}

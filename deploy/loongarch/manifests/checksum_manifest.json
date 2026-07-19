@@ -1,0 +1,8 @@
+{
+  "version": "task25g_checksum_manifest_template_v1",
+  "algorithm": "sha256",
+  "generated_artifacts": false,
+  "entries": [],
+  "instructions": "Populate on the controlled loongarch64 build host after creating the wheelhouse and staging the prebuilt frontend dist; every offline file must have a checksum before installation."
+}
+

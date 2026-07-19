@@ -155,3 +155,13 @@ The protected `/api/vector-search/status` endpoint returned `401` without authen
 ## Next Step
 
 Task 24C can perform real external API online acceptance only after explicit user approval and key rotation. Because a DashVector key appeared in prior conversation context, that key should be treated as leaked and rotated before real use.
+
+## Task 24C Follow-up
+
+Task 24C completed real-call acceptance for Cloud LLM, MIMO/Vision, and OCR API, but DashVector and Embedding remain blocked. Therefore Task 24B's DashVector hybrid RAG path is still verified through PostgreSQL metadata plus `fake_in_memory` / `deterministic_test` local acceptance only.
+
+Real DashVector online acceptance still requires fresh rotated DashVector credentials, real embedding configuration, matching dimensions, and a rerun of `check_dashvector_real_optional.py --allow-real-api`.
+
+## Task 25B Status Update
+
+The earlier blocked real-vector status is superseded for the Task 25B route: real DashScope embedding and real DashVector acceptance now pass with 1024/cosine/float and versioned physical collections. Offline fake/deterministic checks remain explicitly test-only. The new retrieval quality gate is still failed, so real connectivity success must not be confused with retrieval-quality completion.

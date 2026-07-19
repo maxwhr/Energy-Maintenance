@@ -192,7 +192,8 @@ class OCRService:
             raise OCRServiceError(f"OCR image exceeds {self.settings.OCR_MAX_IMAGE_MB}MB limit")
 
     def _resolve_file_path(self, media: UploadedMedia) -> Path:
-        path = (self._backend_root() / media.file_path).resolve()
+        stored_path = Path(media.file_path)
+        path = stored_path.resolve() if stored_path.is_absolute() else (self._backend_root() / stored_path).resolve()
         upload_dir = self._media_upload_dir()
         try:
             path.relative_to(upload_dir)

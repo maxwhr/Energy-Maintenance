@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-07-18T03:51:17.177476+00:00",
+  "status": "PASSED",
+  "database": "energy_maintenance_task27a_test",
+  "checks": {
+    "one_request_one_record": true,
+    "same_request_id_idempotent": true,
+    "concurrent_idempotent": true,
+    "preview_zero_write": true,
+    "rollback_verified": true,
+    "trace_unique": true,
+    "record_center_visible": true
+  },
+  "trace_ids": {
+    "one_request": "qa_req_c3818b9812f0b4b548d97c8238362f04",
+    "second_request": "qa_req_22bdbe6a6a819a746336829840d2451c",
+    "concurrent": "qa_req_d49e406f132599de0cfe163faaa8ab2e",
+    "preview": "qa_req_b4bf5b7bc2540a920f3b05847e988aaa",
+    "rollback": "qa_req_1db45ae4a27f0bfee3e6532928bb8d05"
+  },
+  "record_center": {
+    "list": true,
+    "detail": true,
+    "trace": true,
+    "timeline": true
+  },
+  "external_provider_calls": 0
+}

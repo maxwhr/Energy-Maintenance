@@ -103,6 +103,7 @@ def main() -> int:
     results = ocr_page.get("items") if isinstance(ocr_page, dict) else []
     ocr = next((item for item in results if str(item.get("job_id")) == str(job_id)), None)
     raw_result = (ocr or {}).get("raw_result_json") if isinstance(ocr, dict) else {}
+    recognized_text = str((ocr or {}).get("text") or "") if isinstance(ocr, dict) else ""
     persisted = bool(
         job_status == "succeeded"
         and ocr
@@ -115,7 +116,7 @@ def main() -> int:
     log_detail = api_data("ocr external log detail", status, response) if status < 400 else {}
 
     sensitive = contains_sensitive_value(job) or contains_sensitive_value(ocr or {}) or contains_sensitive_value(log_detail)
-    status_value = "passed" if persisted and not sensitive else "failed"
+    status_value = "passed" if persisted and recognized_text.strip() and not sensitive else "failed"
     result = {
         "provider": "custom_ocr_api",
         "status": status_value,
@@ -126,7 +127,7 @@ def main() -> int:
         "trace_id": trace_id,
         "ocr_result_id": ocr.get("id") if isinstance(ocr, dict) else None,
         "ocr_result_persisted": persisted,
-        "text_length": len(str(ocr.get("text") or "")) if isinstance(ocr, dict) else 0,
+        "text_length": len(recognized_text),
         "mocked": raw_result.get("mocked") if isinstance(raw_result, dict) else None,
         "logs_sanitized": not sensitive,
         "human_review_boundary": "OCR result is auxiliary evidence and requires human review before maintenance decisions.",

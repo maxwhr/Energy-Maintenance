@@ -72,6 +72,7 @@ class MediaUploadResponse(BaseModel):
     task_id: UUID | None = None
     fault_type: str | None = None
     alarm_code: str | None = None
+    deduplicated: bool = False
 
 
 class MediaContextItem(BaseModel):

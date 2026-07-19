@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0.0",
+  "case_id": "FAULT_CASE_02_GRID_VOLTAGE_OUT_OF_RANGE",
+  "title": "电网电压超限故障",
+  "image_relative_path": "报错02.jpg",
+  "image_project_path": "D:\\Work Space\\Energy-Maintenance\\knowledge_assets\\competition_corpus_v1\\raw\\报错02.jpg",
+  "image_sha256": "81866ff465368f376bbbf69759693096b37a080e320bc370585a51359f158572",
+  "manufacturer": "unknown_or_to_be_confirmed",
+  "product_family": "PV inverter",
+  "fault_type": "grid_voltage_out_of_range",
+  "ocr_expected_text": ["电网电压超限"],
+  "ocr_actual_text": null,
+  "ocr_status": "not_run",
+  "vision_actual_result": null,
+  "vision_status": "not_run",
+  "manual_visual_observation": {
+    "status": "pending_human_confirmation",
+    "visible_display_text": ["电网电压超限"],
+    "not_an_ocr_result": true
+  },
+  "user_supplied_case_note": {
+    "possible_causes": [
+      "AC cable undersized",
+      "AC cable too long",
+      "cable routing or winding",
+      "grid voltage fluctuation",
+      "grid fault"
+    ],
+    "recommended_checks": [
+      "verify cable specification and length",
+      "verify AC terminal voltage",
+      "verify grid voltage",
+      "contact utility if grid fault is confirmed"
+    ],
+    "status": "pending_expert_review",
+    "must_not_be_presented_as_vendor_official": true
+  },
+  "structured_expectation": {
+    "safety_risk": "ac_grid_measurement"
+  },
+  "required_safety_boundary": [
+    "qualified personnel use correctly rated measurement equipment",
+    "observe AC isolation and electrical safety procedures",
+    "contact the utility only after grid-side abnormality is confirmed"
+  ],
+  "human_confirmation_status": "pending",
+  "expert_review_required": true,
+  "review_status": "pending_expert_review"
+}

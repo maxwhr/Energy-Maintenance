@@ -1,0 +1,19 @@
+{
+  "version": "task25g_runtime_files_v1",
+  "release_root": "/opt/energy-maintenance/releases/<release-id>",
+  "current_symlink": "/opt/energy-maintenance/current",
+  "shared_venv": "/opt/energy-maintenance/shared/venv",
+  "environment_file": "/etc/energy-maintenance/backend.env",
+  "writable_directories": [
+    "/var/lib/energy-maintenance/uploads",
+    "/var/lib/energy-maintenance/processed-media",
+    "/var/lib/energy-maintenance/tmp",
+    "/var/log/energy-maintenance",
+    "/opt/energy-maintenance/shared"
+  ],
+  "production_requires_node": false,
+  "production_requires_npm": false,
+  "production_requires_uv": false,
+  "docker_required": false
+}
+

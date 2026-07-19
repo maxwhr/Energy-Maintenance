@@ -73,7 +73,9 @@ def create_document(db, *, title: str, review_status: str, status: str, content:
         review_status=review_status,
         status=status,
         summary=content[:180],
-        metadata_json={"marker": MARKER, "purpose": "dashvector_hybrid_rag_flow"},
+        metadata_json={"marker": MARKER, "purpose": "dashvector_hybrid_rag_flow",
+                       "normalized_language": "zh-CN", "is_default_retrieval_language": True,
+                       "is_test_fixture": True},
     )
     db.add(document)
     db.flush()
@@ -161,7 +163,7 @@ def main() -> int:
             content="归档资料：逆变器绝缘告警排查内容不应进入检索结果。",
         )
         vector_service = VectorIndexService(db)
-        for document in (approved, pending, archived):
+        for document in (approved, archived):
             vector_service.index_document(
                 document.id,
                 current_user=expert,
@@ -173,7 +175,12 @@ def main() -> int:
         db.add(archived)
         db.commit()
 
-        response = RetrievalService(db).query(
+        retrieval_service = RetrievalService(db, allow_real_api=False)
+        original_vector_threshold = retrieval_service.settings.RETRIEVAL_VECTOR_MIN_USEFUL_SCORE
+        # Deterministic fake vectors are test-only and are not calibrated on the
+        # real DashVector 0.76 threshold used by Task 25B-R1.
+        retrieval_service.settings.RETRIEVAL_VECTOR_MIN_USEFUL_SCORE = 0.0
+        response = retrieval_service.query(
             RetrievalQueryRequest(
                 query="华为 SUN2000 逆变器绝缘告警如何排查",
                 manufacturer="huawei",
@@ -188,6 +195,7 @@ def main() -> int:
             ),
             current_user=expert,
         )
+        retrieval_service.settings.RETRIEVAL_VECTOR_MIN_USEFUL_SCORE = original_vector_threshold
         assert_true(response.references, "hybrid retrieval should return approved references")
         returned_document_ids = {str(item.document_id) for item in response.retrieved_chunks}
         assert_true(str(approved.id) in returned_document_ids, "approved document must be returned")
@@ -200,7 +208,7 @@ def main() -> int:
         history_json = json.dumps(qa.related_history or [], ensure_ascii=False)
         assert_true("retrieval_mode" in history_json, "qa_records should store retrieval diagnostics")
 
-        fallback = RetrievalService(db).query(
+        fallback = RetrievalService(db, allow_real_api=False).query(
             RetrievalQueryRequest(
                 query="逆变器绝缘告警排查",
                 manufacturer="huawei",

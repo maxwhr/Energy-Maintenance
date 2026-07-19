@@ -66,6 +66,10 @@ GET  /api/agents/artifacts/{artifact_id}/conversions
 
 The void endpoint is intentionally reserved and does not delete or roll back formal business records.
 
+## Task 24C Follow-up
+
+Task 24C verified that Agent tools can consume real MIMO, OCR, and Cloud LLM provider results with `provider_mode=real`. This does not change the Task 24E conversion boundary: real provider output remains draft or auxiliary evidence until an authorized expert/admin approval and explicit conversion action occurs.
+
 ## Verification Coverage
 
 Added:
@@ -102,4 +106,3 @@ Task 24E does not:
 - remove old audit data;
 - hard-delete artifacts or uploaded media;
 - roll back formal business objects after conversion.
-

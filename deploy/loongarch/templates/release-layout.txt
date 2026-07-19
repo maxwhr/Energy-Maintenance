@@ -1,0 +1,10 @@
+/opt/energy-maintenance/
+  current -> releases/<release-id>
+  releases/
+    <release-id>/backend
+    <release-id>/frontend
+    <release-id>/deploy
+  shared/
+    venv/
+    backups/
+

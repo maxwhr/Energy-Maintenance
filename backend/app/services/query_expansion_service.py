@@ -101,6 +101,10 @@ class QueryExpansionResult:
 
 
 class QueryExpansionService:
+    BOILERPLATE = (
+        "请根据华为官方中文资料说明", "请根据官方资料说明", "请根据资料说明",
+        "请问", "华为设备出现", "时应如何排查和处理", "应如何处理",
+    )
     def expand(self, payload: RetrievalQueryRequest) -> QueryExpansionResult:
         normalized_query = self.normalize_question(payload.normalized_question)
         keywords: list[str] = [normalized_query]
@@ -130,8 +134,11 @@ class QueryExpansionService:
 
     def _extract_text_terms(self, text: str) -> list[str]:
         terms: list[str] = []
-        terms.extend(re.findall(r"[A-Za-z0-9][A-Za-z0-9_\-./]*", text))
-        chinese_blocks = re.findall(r"[\u4e00-\u9fff]{2,}", text)
+        meaningful = text
+        for phrase in self.BOILERPLATE:
+            meaningful = meaningful.replace(phrase, " ")
+        terms.extend(re.findall(r"[A-Za-z0-9][A-Za-z0-9_\-./]*", meaningful))
+        chinese_blocks = re.findall(r"[\u4e00-\u9fff]{2,}", meaningful)
         for block in chinese_blocks:
             terms.append(block)
             terms.extend(self._chinese_ngrams(block))
@@ -140,8 +147,8 @@ class QueryExpansionService:
     @staticmethod
     def _chinese_ngrams(text: str) -> list[str]:
         terms: list[str] = []
-        max_terms = 40
-        for size in (4, 3, 2):
+        max_terms = 18
+        for size in (4, 3):
             for start in range(0, max(0, len(text) - size + 1)):
                 term = text[start : start + size]
                 if term not in terms:
@@ -163,6 +170,6 @@ class QueryExpansionService:
                 continue
             seen.add(key)
             unique.append(normalized)
-            if len(unique) >= 80:
+            if len(unique) >= 32:
                 break
         return unique

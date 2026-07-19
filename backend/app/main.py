@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,9 +16,11 @@ from app.api.routes.knowledge import router as knowledge_router
 from app.api.routes.knowledge_contributions import router as knowledge_contributions_router
 from app.api.routes.knowledge_graph import router as knowledge_graph_router
 from app.api.routes.maintenance_tasks import router as maintenance_tasks_router
+from app.api.routes.maintenance_workflows import router as maintenance_workflows_router
 from app.api.routes.media import router as media_router
 from app.api.routes.model_gateway import router as model_gateway_router
 from app.api.routes.multimodal_evidence import router as multimodal_evidence_router
+from app.api.routes.multimodal_cases import router as multimodal_cases_router
 from app.api.routes.record_center import router as record_center_router
 from app.api.routes.retrieval import router as retrieval_router
 from app.api.routes.review import router as review_router
@@ -28,13 +32,25 @@ from app.core.config import get_settings
 from app.core.security_config import enforce_startup_security
 from app.core.security_middleware import InMemoryRateLimitMiddleware, RequestSizeLimitMiddleware
 from app.core.static_frontend import register_static_frontend
+from app.services.model_adapters.minimax_anthropic_adapter import MiniMaxAnthropicAdapter
 
 settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    enforce_startup_security(settings)
+    try:
+        yield
+    finally:
+        MiniMaxAnthropicAdapter.close_shared()
+
 
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="Huawei and Sungrow PV inverter maintenance knowledge retrieval and work-assistance system.",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -46,11 +62,6 @@ app.add_middleware(
 )
 app.add_middleware(InMemoryRateLimitMiddleware, settings=settings)
 app.add_middleware(RequestSizeLimitMiddleware, settings=settings)
-
-
-@app.on_event("startup")
-async def validate_startup_security() -> None:
-    enforce_startup_security(settings)
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(health_router)
@@ -65,9 +76,11 @@ api_router.include_router(knowledge_router)
 api_router.include_router(knowledge_contributions_router)
 api_router.include_router(knowledge_graph_router)
 api_router.include_router(maintenance_tasks_router)
+api_router.include_router(maintenance_workflows_router)
 api_router.include_router(media_router)
 api_router.include_router(model_gateway_router)
 api_router.include_router(multimodal_evidence_router)
+api_router.include_router(multimodal_cases_router)
 api_router.include_router(retrieval_router)
 api_router.include_router(diagnosis_router)
 api_router.include_router(sop_router)

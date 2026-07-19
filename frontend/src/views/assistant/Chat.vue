@@ -44,6 +44,7 @@
           <label class="grid gap-1 text-sm font-bold text-slate-200">
             检索模式
             <select v-model="form.retrieval_mode" class="scada-input">
+              <option value="adaptive">自适应检索</option>
               <option value="hybrid">混合检索</option>
               <option value="keyword">关键词检索</option>
               <option value="vector">向量检索</option>
@@ -203,7 +204,7 @@ const form = reactive({
   product_series: '',
   document_type: '',
   top_k: 5,
-  retrieval_mode: 'hybrid',
+  retrieval_mode: 'keyword',
   enable_kg_enhancement: true,
   use_ocr_text: false
 })
@@ -278,7 +279,7 @@ function formatScore(value?: number) {
 }
 
 function retrievalModeLabel(value?: string) {
-  return ({ keyword: '关键词', vector: '向量', hybrid: '混合' } as Record<string, string>)[value || ''] ?? value ?? '-'
+  return ({ keyword: '关键词', vector: '向量', hybrid: '混合', adaptive: '自适应' } as Record<string, string>)[value || ''] ?? value ?? '-'
 }
 
 function now() {

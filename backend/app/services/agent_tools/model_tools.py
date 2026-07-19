@@ -29,7 +29,7 @@ class ModelGatewayChatTool(BaseAgentTool):
             prompt=prompt,
             provider=requested_provider,
             task_type=payload.get("task_type") or "general",
-            allow_fallback=True,
+            allow_fallback=self._bool_value(payload.get("allow_fallback"), default=True),
             trace_source=f"agent_run:{context.run_id}",
         )
         result = ModelGatewayService(context.db).chat(request, context.current_user)
@@ -74,6 +74,20 @@ class ModelGatewayChatTool(BaseAgentTool):
             summary=f"Model gateway returned provider={output.get('provider')} trace_id={output.get('trace_id')}.",
             data=output,
         )
+
+    @staticmethod
+    def _bool_value(value: object, *, default: bool) -> bool:
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "on"}:
+                return True
+            if normalized in {"0", "false", "no", "off"}:
+                return False
+        return bool(value)
 
 
 class CorrectionSubmitterTool(BaseAgentTool):

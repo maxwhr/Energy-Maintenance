@@ -7,8 +7,11 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-ModelProvider = Literal["rule_based", "local_llama_cpp", "cloud_openai"]
-ModelTaskType = Literal["qa", "diagnosis", "sop", "summary", "correction", "general"]
+ModelProvider = Literal["rule_based", "local_llama_cpp", "cloud_openai", "minimax_anthropic"]
+ModelTaskType = Literal[
+    "qa", "diagnosis", "sop", "summary", "correction", "general",
+    "query_understanding", "evidence_rerank", "candidate_tiebreak",
+]
 
 
 class ModelMessage(BaseModel):
@@ -48,6 +51,8 @@ class ModelGatewayTestRequest(BaseModel):
 
 class ModelGatewayChatRequest(ModelGatewayTestRequest):
     trace_source: str | None = Field(default=None, max_length=128)
+    max_tokens_override: int | None = Field(default=None, ge=64, le=4096)
+    timeout_seconds_override: int | None = Field(default=None, ge=1, le=120)
 
 
 class ModelProviderStatus(BaseModel):

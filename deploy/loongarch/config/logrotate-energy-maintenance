@@ -1,0 +1,14 @@
+/var/log/energy-maintenance/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 energy-maintenance energy-maintenance
+    sharedscripts
+    postrotate
+        /bin/systemctl kill -s HUP energy-maintenance-backend.service >/dev/null 2>&1 || true
+    endscript
+}
+

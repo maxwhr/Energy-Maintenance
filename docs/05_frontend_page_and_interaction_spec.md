@@ -2247,6 +2247,19 @@ Frontend pages may display vector-index status and hybrid retrieval diagnostics,
 
 The System Status page should display sanitized security status from `/api/system/status`, including production guard, CORS policy, request-size limits, rate limit, log-dir configuration, and warning messages. It must not display secret values, Authorization tokens, database passwords, local file paths, or raw provider keys.
 
+## Task 24C Addendum: Real Provider Status UI
+
+Frontend pages that display provider capability must clearly distinguish real-call, dry-run, mock-run, fallback, blocked, and failed states. Real-run buttons are limited to admin/expert users and must not be shown to viewer accounts.
+
+The current verified provider status is:
+
+- Cloud LLM: real-call passed.
+- MIMO/Vision: real-call passed; result remains auxiliary evidence requiring human review.
+- OCR API: real-call passed; OCR result is persisted but still requires manual verification.
+- DashVector / Embedding: blocked until real vector and embedding configuration is complete.
+
+The UI may show provider codes, model names, trace ids, latency, and configured booleans, but it must not show API keys, Authorization headers, local absolute paths, or base64 image payloads.
+
 Model, vector, multimodal, and external-provider views should keep blocked / not_configured / dry-run / fake_in_memory / deterministic_test labels visible in Chinese, so users do not mistake test-mode behavior for production online capability. Viewer users must remain read-only and should not see high-risk write or approval actions.
 
 ## Task 24E Addendum: Agent Conversion History UI
@@ -2254,3 +2267,9 @@ Model, vector, multimodal, and external-provider views should keep blocked / not
 The Agent Workbench conversion panel should display conversion history from backend conversion APIs, including conversion status, `conversion_trace_id`, target id, completion/failure time, and failure reason. After a successful conversion, the same artifact and target must not show a second active conversion button.
 
 Viewer and engineer accounts remain unable to convert artifacts. Expert/admin users may convert only after the matching approval is approved.
+
+## Task 25B UI Addendum
+
+The knowledge search page shows `hybrid_rerank`, real/fake/fallback boundary, raw/normalized vector score, RRF, rerank, final score, source/page/section, and citation status. The multimodal evidence page shows descriptor-based manual/case/similar-media groups and their score breakdown. `/system/retrieval-quality` shows vector configuration, physical collection, index lifecycle and latest evaluation metrics to admin/expert users.
+
+The UI must label the capability `descriptor_based_cross_modal`, show `raw_image_embedding=false`, retain the human-review boundary, and never render secrets, Authorization, vectors, absolute paths, base64 payloads, or server stacks.

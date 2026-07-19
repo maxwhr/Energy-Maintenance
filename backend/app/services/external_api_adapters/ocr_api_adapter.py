@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 import time
 from typing import Any
 
@@ -50,7 +52,8 @@ class OcrApiAdapter(ExternalApiAdapter):
 
         started = time.perf_counter()
         try:
-            if str(self.config.get("api_profile") or "").startswith("openai"):
+            profile = str(self.config.get("api_profile") or "").strip().lower()
+            if profile.startswith("openai") or not profile or profile == "auto":
                 raw_response = self._json_request(
                     url=self._chat_completions_url(str(self.config.get("base_url") or "")),
                     payload=self._vision_ocr_payload(payload),
@@ -58,6 +61,7 @@ class OcrApiAdapter(ExternalApiAdapter):
                     timeout_seconds=int(self.config.get("timeout_seconds") or 60),
                 )
                 content = self._extract_text_content(raw_response)
+                content = content or self._extract_ocr_reasoning_text(raw_response)
                 parsed_content = self._json_or_text(content) if content else raw_response
             else:
                 raw_response = self._json_request(
@@ -66,7 +70,9 @@ class OcrApiAdapter(ExternalApiAdapter):
                     api_key=str(self.config.get("api_key") or ""),
                     timeout_seconds=int(self.config.get("timeout_seconds") or 60),
                 )
-                parsed_content = raw_response
+                content = self._extract_text_content(raw_response)
+                content = content or self._extract_ocr_reasoning_text(raw_response)
+                parsed_content = self._json_or_text(content) if content else raw_response
             parsed = self.parse_response(
                 {
                     **parsed_content,
@@ -91,6 +97,7 @@ class OcrApiAdapter(ExternalApiAdapter):
                     {
                         "adapter": "ocr_api",
                         "response_keys": sorted(raw_response.keys()),
+                        "content_length": len(content),
                         "real_external_api_used": True,
                         "normalized_result": normalized,
                     }
@@ -137,6 +144,36 @@ class OcrApiAdapter(ExternalApiAdapter):
                 for item in self._image_content(payload, custom=True)
             ],
         }
+
+    @staticmethod
+    def _extract_ocr_reasoning_text(payload: dict[str, Any]) -> str:
+        choices = payload.get("choices")
+        if not isinstance(choices, list) or not choices:
+            return ""
+        first = choices[0] if isinstance(choices[0], dict) else {}
+        message = first.get("message") if isinstance(first.get("message"), dict) else {}
+        reasoning = message.get("reasoning_content") or message.get("reasoning")
+        if not isinstance(reasoning, str) or not reasoning.strip():
+            return ""
+        candidates = [
+            item.strip()
+            for item in re.findall(r'"([^"\n]{2,80})"', reasoning)
+            if re.search(r"[A-Za-z0-9]", item)
+        ]
+        deduped = list(dict.fromkeys(candidates))
+        if not deduped:
+            return ""
+        return json.dumps(
+            {
+                "recognized_text": "\n".join(deduped[:12]),
+                "confidence": 0.55,
+                "warnings": [
+                    "Provider returned OCR evidence in reasoning_content; chain-of-thought was omitted.",
+                    "OCR output is auxiliary evidence and requires manual verification.",
+                ],
+            },
+            ensure_ascii=False,
+        )
 
     @staticmethod
     def _image_content(payload: dict[str, Any], *, custom: bool = False) -> list[dict[str, Any]]:

@@ -2665,6 +2665,18 @@ This API does not use `/api/embeddings` as the public Task 24B route and does no
 
 `GET /api/system/status` now includes a sanitized `security` object for deployment and acceptance checks. It may expose boolean/configuration-status fields such as `cors_configured`, `rate_limit_enabled`, `request_size_limit_enabled`, `secret_key_configured`, `admin_password_configured`, `dashvector_key_configured`, `embedding_key_configured`, `cloud_llm_key_configured`, `mimo_key_configured`, and `ocr_key_configured`.
 
+## Task 24C Addendum: Real External API Contract
+
+The External API Provider Gateway supports explicit real-call verification through `POST /api/external-apis/real-run` and `POST /api/external-apis/check-real`. These endpoints require `real_run=true`, return a trace id, and expose only sanitized request/response summaries.
+
+Provider states must be interpreted as:
+
+- `passed`: enabled, fully configured, real-call succeeded, result parsed, and log/business persistence verified.
+- `blocked`: disabled, incomplete configuration, missing explicit real-call approval, or provider intentionally unavailable.
+- `failed`: configured provider call failed, response parsing failed, persistence failed, sensitive data leaked, or fallback broke the main workflow.
+
+Task 24C verified Cloud LLM, MIMO/Vision, and OCR API as passed. DashVector and Embedding remain blocked. API responses must not expose API keys, Authorization headers, base64 payloads, or local absolute paths.
+
 The API contract forbids returning raw API keys, Authorization headers, tokens, passwords, local absolute paths, or base64 media payloads. External provider, model gateway, vector, OCR, MIMO, and agent log endpoints must expose only sanitized summaries and blocked/configured status.
 
 Oversized JSON requests should return HTTP 413 with the unified response shape. Rate-limited requests should return HTTP 429. These protections do not change public route paths.
@@ -2682,3 +2694,9 @@ Agent draft conversion now uses `agent_artifact_conversions` as the primary audi
 - `GET /api/agents/artifacts/{artifact_id}/conversions`
 
 Approval and conversion remain separate. Only expert/admin users may convert approved artifacts. Duplicate or concurrent conversion of the same `source_artifact_id + target_type` must not create duplicate formal business objects.
+
+## Task 25B API Addendum
+
+Added/enhanced APIs: `POST /api/vector-search/query`, document reindex, approved reindex gate, index runs, orphan lifecycle report/reconcile, retrieval evaluation cases/runs/evaluate, `POST /api/multimodal/retrieve`, and media similar/knowledge/case matches. Viewer may query/read; engineer may query/upload; expert may run single-document index and evaluation; admin alone may request full rebuild/orphan reconcile. Backend role checks are authoritative.
+
+Retrieval chunks expose keyword, raw/normalized vector, exact boosts, heading boost, RRF, rerank, final score, backend/model/fallback/filter summary. Citation diagnostics expose validity, coverage, invalid IDs, and grounded warning. No API returns Key, Authorization, raw vector, absolute file path, base64, or internal traceback.

@@ -5,16 +5,21 @@ import path from "node:path";
 
 const BASE_URL = (process.env.TASK22F_BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
 const API_BASE_URL = `${BASE_URL}/api`;
-const ADMIN_USERNAME = process.env.TASK22F_ADMIN_USERNAME || "admin";
-const ADMIN_PASSWORD = process.env.TASK22F_ADMIN_PASSWORD || "admin123456";
-const EXPERT_USERNAME = process.env.TASK22F_EXPERT_USERNAME || "expert";
-const EXPERT_PASSWORD = process.env.TASK22F_EXPERT_PASSWORD || "admin123456";
-const ENGINEER_USERNAME = process.env.TASK22F_ENGINEER_USERNAME || "engineer";
-const ENGINEER_PASSWORD = process.env.TASK22F_ENGINEER_PASSWORD || "admin123456";
-const VIEWER_USERNAME = process.env.TASK22F_VIEWER_USERNAME || "viewer";
-const VIEWER_PASSWORD = process.env.TASK22F_VIEWER_PASSWORD || "admin123456";
+const requiredEnv = (name) => {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is required; use the secure test credential loader`);
+  return value;
+};
+const ADMIN_USERNAME = requiredEnv("TASK22F_ADMIN_USERNAME");
+const ADMIN_PASSWORD = requiredEnv("TASK22F_ADMIN_PASSWORD");
+const EXPERT_USERNAME = requiredEnv("TASK22F_EXPERT_USERNAME");
+const EXPERT_PASSWORD = requiredEnv("TASK22F_EXPERT_PASSWORD");
+const ENGINEER_USERNAME = requiredEnv("TASK22F_ENGINEER_USERNAME");
+const ENGINEER_PASSWORD = requiredEnv("TASK22F_ENGINEER_PASSWORD");
+const VIEWER_USERNAME = requiredEnv("TASK22F_VIEWER_USERNAME");
+const VIEWER_PASSWORD = requiredEnv("TASK22F_VIEWER_PASSWORD");
 const CDP_PORT = Number(process.env.TASK22F_CDP_PORT || 9226);
-const RUN_ID = `Task22F_${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
+const RUN_ID = `${process.env.TASK25A_R1_DATA_PREFIX || "Task25AR1_"}${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
 const RUNTIME_DIR = path.resolve(process.cwd(), "..", ".runtime", "task22f");
 const RESULT_FILE = path.join(RUNTIME_DIR, "multimodal_frontend_browser_result.json");
 const SAMPLE_FILE = path.join(RUNTIME_DIR, `${RUN_ID}_pv_inverter_alarm.png`);
@@ -478,7 +483,7 @@ async function verifyMultimodalPageAdmin() {
   record("evidence link form", "passed", "evidence link persisted");
 
   await fillByLabel("任务描述", `${RUN_ID} 创建 dry-run Agent Run，验证 steps tool calls artifacts approvals events`);
-  await clickByText(["创建 dry-run Agent Run"], { enabledOnly: true });
+  await clickByText(["创建多模态证据智能体运行"], { enabledOnly: true });
   await waitForAnyText(["Agent", "工具调用", "Artifacts", "审批"], 25000);
   const runs = apiData(
     "list agent runs",
@@ -495,7 +500,7 @@ async function verifyViewerReadonly() {
   await cdp.navigate(`/multimodal?media_id=${encodeURIComponent(mediaId)}`);
   await waitForAnyText(["多模态证据中心", "处理任务"], 15000);
   const disabledState = await cdp.eval(domScript(`
-    const labels = ["OCR dry-run", "AI dry-run", "AI mock-run", "OCR mock-run", "创建 dry-run Agent Run", "创建链接"];
+    const labels = ["OCR dry-run", "AI dry-run", "AI mock-run", "OCR mock-run", "创建多模态证据智能体运行", "创建链接"];
     const buttons = Array.from(document.querySelectorAll("button")).filter(visible);
     const state = {};
     for (const label of labels) {
@@ -504,7 +509,7 @@ async function verifyViewerReadonly() {
     }
     return state;
   `));
-  if (!disabledState["OCR dry-run"] || !disabledState["AI dry-run"] || !disabledState["创建 dry-run Agent Run"]) {
+  if (!disabledState["OCR dry-run"] || !disabledState["AI dry-run"] || !disabledState["创建多模态证据智能体运行"]) {
     throw new Error(`viewer write controls are not disabled: ${JSON.stringify(disabledState)}`);
   }
   const noEvidenceForm = !(await textIncludes("创建链接"));
@@ -518,7 +523,7 @@ async function verifyEngineerExpertUi() {
   await cdp.navigate(`/multimodal?media_id=${encodeURIComponent(mediaId)}`);
   await waitForAnyText(["多模态证据中心", "处理任务"], 15000);
   const engineerState = await cdp.eval(domScript(`
-    const labels = ["OCR dry-run", "AI dry-run", "AI mock-run", "OCR mock-run", "创建 dry-run Agent Run"];
+    const labels = ["OCR dry-run", "AI dry-run", "AI mock-run", "OCR mock-run", "创建多模态证据智能体运行"];
     const buttons = Array.from(document.querySelectorAll("button")).filter(visible);
     const state = {};
     for (const label of labels) {
@@ -527,7 +532,7 @@ async function verifyEngineerExpertUi() {
     }
     return state;
   `));
-  if (engineerState["OCR dry-run"] || engineerState["AI dry-run"] || engineerState["创建 dry-run Agent Run"]) {
+  if (engineerState["OCR dry-run"] || engineerState["AI dry-run"] || engineerState["创建多模态证据智能体运行"]) {
     throw new Error(`engineer dry-run controls should be enabled: ${JSON.stringify(engineerState)}`);
   }
   if (!engineerState["AI mock-run"] || !engineerState["OCR mock-run"]) {
@@ -541,7 +546,7 @@ async function verifyEngineerExpertUi() {
   await cdp.navigate(`/multimodal?media_id=${encodeURIComponent(mediaId)}`);
   await waitForAnyText(["多模态证据中心", "AI 多模态分析"], 15000);
   const expertState = await cdp.eval(domScript(`
-    const labels = ["AI mock-run", "OCR mock-run", "创建 dry-run Agent Run", "确认"];
+    const labels = ["AI mock-run", "OCR mock-run", "创建多模态证据智能体运行", "确认"];
     const buttons = Array.from(document.querySelectorAll("button")).filter(visible);
     const state = {};
     for (const label of labels) {
@@ -550,7 +555,7 @@ async function verifyEngineerExpertUi() {
     }
     return state;
   `));
-  if (expertState["AI mock-run"] || expertState["OCR mock-run"] || expertState["创建 dry-run Agent Run"]) {
+  if (expertState["AI mock-run"] || expertState["OCR mock-run"] || expertState["创建多模态证据智能体运行"]) {
     throw new Error(`expert mock/run controls should be enabled: ${JSON.stringify(expertState)}`);
   }
   record("expert browser permissions", "passed", JSON.stringify(expertState));

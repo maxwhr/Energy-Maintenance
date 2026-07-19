@@ -7,11 +7,11 @@ import type {
   RecordCenterOverview
 } from '@/types'
 
-export const getRecordCenterOverviewApi = () =>
-  request.get<RecordCenterOverview>('/record-center/overview')
+export const getRecordCenterOverviewApi = (signal?: AbortSignal) =>
+  request.get<RecordCenterOverview>('/record-center/overview', { signal })
 
-export const searchRecordCenterApi = (params?: Record<string, unknown>) =>
-  request.get<PageResponse<RecordCenterItem>>('/record-center/search', { params })
+export const searchRecordCenterApi = (params?: Record<string, unknown>, signal?: AbortSignal) =>
+  request.get<PageResponse<RecordCenterItem>>('/record-center/search', { params, signal })
 
 export const getRecordDetailApi = (recordType: string, recordId: string) =>
   request.get<RecordCenterDetail>(`/record-center/records/${recordType}/${recordId}`)

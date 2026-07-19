@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 from typing import Any, Literal
 from uuid import UUID
 
@@ -17,7 +18,39 @@ RecordType = Literal[
     "knowledge_document",
     "knowledge_contribution",
     "media",
+    "knowledge_graph_node",
+    "knowledge_graph_edge",
+    "knowledge_graph_extraction_run",
 ]
+
+
+class RecordCenterRecordType(str, Enum):
+    QA = "qa"
+    DIAGNOSIS = "diagnosis"
+    TASK = "task"
+    MAINTENANCE_RECORD = "maintenance_record"
+    SOP_EXECUTION = "sop_execution"
+    KNOWLEDGE_DOCUMENT = "knowledge_document"
+    KNOWLEDGE_CONTRIBUTION = "knowledge_contribution"
+    MEDIA = "media"
+    KNOWLEDGE_GRAPH_NODE = "knowledge_graph_node"
+    KNOWLEDGE_GRAPH_EDGE = "knowledge_graph_edge"
+    KNOWLEDGE_GRAPH_EXTRACTION_RUN = "knowledge_graph_extraction_run"
+
+
+class RecordCenterItemIdentity(BaseModel):
+    record_type: RecordCenterRecordType
+    record_id: UUID
+    primary_timestamp: datetime
+    secondary_timestamp: datetime | None = None
+    device_id: UUID | None = None
+    workflow_id: str | None = None
+    actor_id: UUID | None = None
+    status: str | None = None
+    title_key: str
+    summary_key: str | None = None
+    source_table: str
+    source_priority: int
 
 
 class RecordCenterItem(BaseModel):

@@ -128,7 +128,7 @@ class LocalLlamaCppAdapter:
                 for message in adapter_request.messages
             ],
             "temperature": self.settings.LOCAL_LLM_TEMPERATURE,
-            "max_tokens": self.settings.LOCAL_LLM_MAX_TOKENS,
+            "max_tokens": adapter_request.max_tokens or self.settings.LOCAL_LLM_MAX_TOKENS,
         }
         return self._post_json(endpoint, payload, started_at, response_kind="openai")
 
@@ -141,7 +141,7 @@ class LocalLlamaCppAdapter:
         payload = {
             "prompt": adapter_request.prompt,
             "temperature": self.settings.LOCAL_LLM_TEMPERATURE,
-            "n_predict": self.settings.LOCAL_LLM_MAX_TOKENS,
+            "n_predict": adapter_request.max_tokens or self.settings.LOCAL_LLM_MAX_TOKENS,
         }
         return self._post_json(endpoint, payload, started_at, response_kind="native")
 

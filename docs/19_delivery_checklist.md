@@ -234,3 +234,104 @@ Test-NetConnection 127.0.0.1 -Port 5432
 - [x] Failed conversion is recorded as `failed` with sanitized error message.
 - [x] No delivery zip was generated for Task 24E.
 - [x] No `git add` or `git commit` was executed for Task 24E.
+
+# Task 24C Real External API Acceptance Checklist
+
+- [x] Cloud LLM real-call acceptance passed.
+- [x] MIMO/Vision real-call acceptance passed.
+- [x] OCR API real-call acceptance passed with persisted non-empty OCR text.
+- [x] DashVector real-call remains blocked until real vector configuration is complete.
+- [x] Embedding real-call remains blocked until real embedding configuration is complete.
+- [x] Agent tools read real MIMO/OCR/Cloud LLM provider results.
+- [x] Real provider logs and runtime result files are sanitized.
+- [x] Real provider outputs remain auxiliary evidence and require human review or approval/conversion where applicable.
+- [x] No migration was added for Task 24C.
+- [x] No delivery zip was generated for Task 24C.
+- [x] No `git add` or `git commit` was executed for Task 24C.
+- [ ] Rotate any previously exposed real external API keys before production use or public acceptance reruns.
+
+## Task 25B Checklist
+
+- [x] Migration `20260601_0009` applied; single head confirmed.
+- [x] Real `text-embedding-v4` 1024 single/batch acceptance passed.
+- [x] Real DashVector create/upsert/query/self-match/delete passed.
+- [x] 80 controlled + 30 domain draft cases persisted with correct review labels.
+- [x] Descriptor-based manual/case/similar-media controlled checks passed.
+- [x] Frontend build, static install and real browser checks passed.
+- [x] Task 25A-R1 key regressions and 23/23 final smoke passed.
+- [ ] Retrieval quality thresholds all passed (currently failed).
+- [ ] LoongArch + Kylin real-machine validation completed.
+- [x] No delivery zip/update, no `Compress-Archive`, no Git staging/commit/reset/clean/restore.
+
+<!-- TASK25B_R1_BEGIN -->
+## Task 25B-R1 controlled blind acceptance (2026-07-11T02:32:50.109583+00:00)
+
+- test_v1 is exposed and regression-only; test_v2 is independently frozen with SHA-256 `2cdf413a1ca58fc77ea3ca64f117f1b909c6bd2ab8ca556ca2fd2bba25bfbe5b`.
+- Corpus: 24 documents, 192 active chunks, 48 hard negatives.
+- Adaptive blind metrics: R@5=1.000000, R@10=1.000000, MRR=0.981481, nDCG@10=0.986331, warm p95=704.712 ms.
+- Reranker disabled: no measurable dev gain. Default retrieval strategy remains keyword.
+- Canary uses an isolated partition because the provider collection quota is exhausted; v1 default partitions remain intact.
+- Formal full reindex, package generation and Git commit were not executed. LoongArch real-machine testing remains outstanding.
+<!-- TASK25B_R1_END -->
+
+
+<!-- TASK25B_R2_BEGIN -->
+## Task 25B-R2 正式知识 Pilot 状态
+
+- 状态：`BLOCKED_CONFIG`；正式可用语料只有 6 份文档、11 个 active Chunk，未达到 300。
+- 独立 Pilot Collection `energy_kn_te_v4_1024_pilot1` 创建被服务商 2 个 Collection 配额阻断；未删除或复用现有 Collection。
+- 已生成 150 条 `draft` 候选；`expert_verified=0`，未冻结或运行 `official_pilot_test_v1`。
+- 默认 Collection 与 `keyword` 策略未改变；`TASK25B_ALLOW_FULL_REINDEX=false`，全量重建决策为 NO-GO。
+- 本任务未打包、未提交 Git；LoongArch/Kylin 仍未实机验收。
+<!-- TASK25B_R2_END -->
+
+## Task 25B-R2-U3 交付边界
+
+- [x] 17 个官方种子页与 30 份 HTML/support 候选留有运行证据。
+- [x] 25 份可审核文档以 pending 导入；自动批准 0。
+- [x] 审核 URL、批次顺序、RBAC 与 Benchmark 队列已验证。
+- [x] Pilot index=0，默认 Partition/媒体 Collection 未受影响。
+- [x] 未生成或更新 zip、delivery、delivery_staging；未提交 Git。
+- [ ] 人工文档审核、Benchmark 第一/第二审核、正式 Pilot 评估仍待完成。
+
+<!-- TASK25B_R3_DEV_BEGIN -->
+## Task 25B-R2-U3-R3-DEV 中文工程 Pilot 更新
+
+- 中文 Corpus Gate：`CHINESE_CORPUS_GATE_PASSED`，16 份文档、1262 个当前 Chunk。
+- 开发工程审批与真实专家审批严格分离；`expert_verified=false`。
+- 英文保留但不进入默认检索或 `pilot_r2`。
+- Pilot 索引：1262 upserted；恢复阶段未重复索引，正式全量重建未执行。
+- 质量门原 run 已完整产生 600/600 条结果；最终判定 `DEVELOPMENT_ENGINEERING_QUALITY_GATE_FAILED`。
+- 中断来自 Codex 模型容量，不是项目服务故障；恢复时未重复工程审批。
+<!-- TASK25B_R3_DEV_END -->
+
+<!-- TASK25B_R3_DEV_R1_BEGIN -->
+## Task 25B-R3-DEV-R1 检索治理更新
+
+- v1 run `f1941ec2-9878-45a1-b554-8d9f2f2ec911` 失败且保留；v2 run `3e40e25f-f1f1-4146-9e1e-629d2ce76045` 独立保存。
+- Benchmark 数据集状态：`BENCHMARK_DATASET_READY`；质量门状态：`QUALITY_GATE_FAILED`，二者不得混淆。
+- Scope：`chinese_engineering_pilot_r2`；Canary：`CANARY_PASSED`；正式 v2：`DEVELOPMENT_ENGINEERING_QUALITY_GATE_FAILED`。
+- Pilot 对账：1262/1262，re-embedded=0、re-upserted=0。
+- 工程审批不等于专家验证；正式全量重建未执行；不打包、不提交 Git。
+<!-- TASK25B_R3_DEV_R1_END -->
+
+<!-- Task25B-R3-DEV-R2 -->
+
+Task 25B-R3-DEV-R2 permits one formal v3 quality run only after Canary passes and test_v3 is frozen. Canary failure prohibits that run.
+
+<!-- TASK25B_R3_DEV_R3 -->
+## Task 25B-R3-DEV-R3 semantic recall diagnosis
+
+- R2 Canary remains `CANARY_FAILED` and its artifacts are preserved read-only.
+- Raw Chunk representation dilution was diagnosed with train/dev-only embedding pairs; DashVector filtering and mapping were not the root cause.
+- An isolated `pilot_r3_semantic` A/B partition was created with 416 source-only anchors. `pilot_r2`, the default partition, and the original 1,262 vectors were not changed.
+- The independent Canary failed: semantic Candidate Recall@50 = 0.444444, below 0.90. `test_v3_1` was not created or frozen and no formal quality run or full reindex occurred.
+- `expert_verified=false`; no package, Git commit, or LoongArch physical verification occurred.
+# Task 25B-R3-DEV-R4 boundary checklist
+
+- Preserve R2/R3 failures and reconciliation artifacts.
+- Keep `pilot_r2`, `pilot_r3_semantic`, and default partition unchanged.
+- Keep `TASK25B_ALLOW_FULL_REINDEX=false`.
+- Do not create/freeze/run formal v4 unless Grounded Canary passes.
+- Do not claim human/expert verification.
+- Do not package or commit Git as part of R4.

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from app.schemas.media import MediaContextItem
 
@@ -88,6 +88,22 @@ def _coerce_version(value: int | str | None) -> int | None:
         raise ValueError("version must be an integer-compatible value") from exc
 
 
+def normalize_sop_structured_items(value: Any, *, default_key: str) -> list[dict[str, Any]]:
+    """Keep historical string lists readable while persisting a stable object shape."""
+    if value is None:
+        return []
+    items = list(value) if isinstance(value, (list, tuple)) else [value]
+    normalized: list[dict[str, Any]] = []
+    for item in items:
+        if isinstance(item, dict):
+            normalized.append(dict(item))
+            continue
+        text = str(item).strip()
+        if text:
+            normalized.append({default_key: text})
+    return normalized
+
+
 class SOPTemplateBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     manufacturer: str | None = None
@@ -116,6 +132,12 @@ class SOPTemplateBase(BaseModel):
     def normalize_version(cls, value: int | str | None) -> int:
         normalized = _coerce_version(value)
         return 1 if normalized is None else normalized
+
+    @field_validator("safety_requirements", "tools_required", "materials_required", mode="before")
+    @classmethod
+    def normalize_structured_items(cls, value: Any, info: ValidationInfo) -> list[dict[str, Any]]:
+        default_key = "note" if info.field_name == "safety_requirements" else "name"
+        return normalize_sop_structured_items(value, default_key=default_key)
 
 
 class SOPTemplateCreate(SOPTemplateBase):

@@ -39,6 +39,8 @@ class RecordCenterService:
         *,
         record_type: str = "all",
         device_id: UUID | None = None,
+        workflow_id: str | None = None,
+        actor_id: UUID | None = None,
         keyword: str | None = None,
         trace_id: str | None = None,
         status: str | None = None,
@@ -48,14 +50,19 @@ class RecordCenterService:
         product_series: str | None = None,
         date_from: str | None = None,
         date_to: str | None = None,
+        sort_direction: str = "desc",
         page: int = 1,
         page_size: int = 20,
     ) -> dict:
         self._validate_record_type(record_type, allow_all=True)
         self._validate_page(page, page_size)
+        if sort_direction not in {"asc", "desc"}:
+            raise RecordCenterServiceError("sort_direction must be asc or desc")
         return self.repository.search(
             record_type=record_type,
             device_id=device_id,
+            workflow_id=self._clean(workflow_id),
+            actor_id=actor_id,
             keyword=self._clean(keyword),
             trace_id=self._clean(trace_id),
             status=self._clean(status),
@@ -65,6 +72,7 @@ class RecordCenterService:
             product_series=self._clean(product_series),
             date_from=self._parse_date(date_from, is_end=False),
             date_to=self._parse_date(date_to, is_end=True),
+            sort_direction=sort_direction,
             page=page,
             page_size=page_size,
         )

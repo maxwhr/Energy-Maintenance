@@ -188,9 +188,17 @@ def check_jobs(state: State) -> None:
     )
     mimo_job = api_data("create multimodal job", status, response)
     state.mimo_job_id = mimo_job["id"]
-    if mimo_job.get("status") != "blocked":
-        raise MultimodalEvidenceCheckError(f"multimodal job should be blocked, got {mimo_job.get('status')}")
-    record(state, "create multimodal blocked job", "passed", state.mimo_job_id)
+    mimo_status = mimo_job.get("status")
+    gateway_summary = (mimo_job.get("result_summary_json") or {}).get("external_api_gateway") or {}
+    if mimo_status not in {"blocked", "pending"}:
+        raise MultimodalEvidenceCheckError(f"multimodal dry-run should be blocked or pending, got {mimo_status}")
+    if mimo_status == "pending" and not (
+        gateway_summary.get("status") == "would_call"
+        and gateway_summary.get("would_call") is True
+        and gateway_summary.get("external_api_called") is False
+    ):
+        raise MultimodalEvidenceCheckError("pending multimodal dry-run did not preserve the would-call/no-external-call boundary")
+    record(state, "create multimodal dry-run boundary job", "passed", f"{state.mimo_job_id} status={mimo_status}")
 
     status, response = request_json("GET", f"/multimodal/media/{state.media_id}/jobs", token=state.viewer_token)
     jobs = api_data("list jobs", status, response)

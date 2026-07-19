@@ -9,6 +9,8 @@ export interface ApiResponse<T = unknown> {
 
 export * from './externalApi'
 export * from './multimodal'
+export * from './multimodalMaintenance'
+export * from './maintenanceWorkflow'
 
 export interface PageResponse<T> {
   items: T[]
@@ -213,6 +215,8 @@ export interface RetrievalReference {
   device_type?: string | null
   document_type?: string | null
   source?: string | null
+  source_type?: string | null
+  source_locator?: Record<string, unknown>
   score?: number
 }
 
@@ -233,7 +237,16 @@ export interface RetrievedChunk {
   created_at?: string
   keyword_score?: number | null
   vector_score?: number | null
+  vector_raw_score?: number | null
   hybrid_score?: number | null
+  exact_model_boost?: number
+  exact_fault_code_boost?: number
+  heading_boost?: number
+  rrf_score?: number
+  rerank_score?: number | null
+  final_score?: number | null
+  fallback_used?: boolean
+  filter_summary?: Record<string, unknown>
   retrieval_source?: 'keyword' | 'vector' | 'hybrid'
   vector_backend?: string | null
 }
@@ -270,6 +283,83 @@ export interface RetrievalResponse {
   embedding_provider?: string | null
   embedding_model?: string | null
   retrieval_diagnostics?: Record<string, unknown>
+  recommended_strategy?: string
+  actual_strategy?: string
+  fallback_strategy?: string
+  fallback_reason?: string | null
+  quality_gate_status?: string
+  baseline_comparison?: Record<string, unknown>
+  insufficient_evidence?: boolean
+  effective_scope?: Record<string, unknown> | null
+  actual_route?: string
+  requested_mode?: string
+  collection_name?: string | null
+  partition_name?: string | null
+  language_filter?: string | null
+  approval_filter?: string | null
+  current_version_only?: boolean
+  candidate_counts?: Record<string, number>
+  scope_filtered_count?: number
+  stage_latency?: Record<string, number | boolean>
+  external_call_counts?: Record<string, number>
+  cache_status?: Record<string, unknown>
+  scope_validation_passed?: boolean
+  raw_results?: Record<string, unknown>[]
+  surfaced_results?: Record<string, unknown>[]
+  raw_top_k?: number
+  surfaced_top_k?: number
+  cutoff_reason?: string | null
+  collapsed_groups?: number
+  section_diversity?: number
+  document_diversity?: number
+  relevance_confidence?: number
+  effective_evaluation_contract?: string | null
+  vector_representation?: string | null
+  vector_partition?: string | null
+  semantic_anchor_used?: boolean
+  anchor_types?: string[]
+  anchor_scores?: Record<string, number>
+  source_chunk_ids?: string[]
+  candidate_recall_trace?: Record<string, unknown>[]
+  semantic_query_terms?: Record<string, string[]>
+}
+
+export interface QueryAwareRetrievalRequest {
+  query: string
+  request_id?: string
+  conversation_id?: string
+  device_context?: Record<string, unknown>
+  retrieval_mode?: 'auto' | 'fast' | 'deep'
+  top_k?: number
+  enable_llm?: boolean
+  allow_real_api?: boolean
+  persist_result?: boolean
+}
+
+export interface QueryAwareRetrievalResponse extends Record<string, any> {
+  request_id: string
+  conversation_id?: string | null
+  original_query: string
+  normalized_query: string
+  canonical_question: string
+  primary_intent: string
+  answer: string
+  suggested_steps: string[]
+  safety_notes: string[]
+  confidence: number
+  references: RetrievalReference[]
+  retrieved_chunks: RetrievedChunk[]
+  trace_id?: string | null
+  query_signals: Record<string, any>
+  retrieval_diagnostics: Record<string, any>
+  abstained: boolean
+  message: string
+  provider_status: Record<string, any>
+  persistence_status: string
+  qa_record_id?: string | null
+  needs_clarification: boolean
+  clarifying_question?: string | null
+  missing_information: string[]
 }
 
 export interface VectorSearchStatus {
@@ -735,6 +825,35 @@ export interface SystemStatus {
   security?: Record<string, unknown>
 }
 
+export interface DeploymentReadiness {
+  platform: string
+  architecture: string
+  os_family: string
+  deployment_mode: string
+  docker_required: boolean
+  systemd_template_available: boolean
+  nginx_template_available: boolean
+  offline_manifest_available: boolean
+  offline_manifest_status: string
+  python_dependency_audit: {
+    status: string
+    dependencies: number
+    native_classification_coverage?: number | null
+    banned_production_dependencies?: string[]
+  }
+  native_dependency_risks: {
+    status: string
+    count: number
+    categories: Record<string, number>
+    items?: Array<{ name: string; category: string; required: boolean; action: string }>
+  }
+  real_machine_acceptance: { status: string; executed: boolean }
+  task25c_status: { regression: string; quality_gate: string }
+  r6_status: string
+  rag_performance_status: string
+  full_reindex_status: string
+}
+
 export interface SystemStatistics {
   devices?: Record<string, number>
   knowledge?: Record<string, number>
@@ -980,3 +1099,4 @@ export const priorityOptions = [
   { label: '高', value: 'high' },
   { label: '紧急', value: 'urgent' }
 ]
+export * from './multimodalMaintenance'

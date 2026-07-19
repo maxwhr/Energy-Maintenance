@@ -107,6 +107,13 @@ def validate_security_config(settings: Settings) -> SecurityValidationResult:
 
     for enabled_attr, key_attr, url_attr, model_attr, name in [
         ("DASHVECTOR_ENABLED", "DASHVECTOR_API_KEY", "DASHVECTOR_ENDPOINT", "DASHVECTOR_COLLECTION", "DashVector"),
+        (
+            "DASHSCOPE_RERANK_ENABLED",
+            "DASHSCOPE_API_KEY",
+            "DASHSCOPE_RERANK_BASE_URL",
+            "DASHSCOPE_RERANK_MODEL",
+            "DashScope Qwen3 Rerank",
+        ),
         ("EMBEDDING_ENABLED", "EMBEDDING_API_KEY", "EMBEDDING_BASE_URL", "EMBEDDING_MODEL", "Embedding"),
         ("CLOUD_LLM_ENABLED", "CLOUD_LLM_API_KEY", "CLOUD_LLM_BASE_URL", "CLOUD_LLM_MODEL", "Cloud LLM"),
         ("MIMO_ENABLED", "MIMO_API_KEY", "MIMO_BASE_URL", "MIMO_MODEL", "MIMO"),
@@ -143,6 +150,7 @@ def collect_security_status(settings: Settings) -> dict[str, Any]:
             settings.CLOUD_LLM_ENABLED and is_configured_secret(settings.CLOUD_LLM_API_KEY),
             settings.MIMO_ENABLED and is_configured_secret(settings.MIMO_API_KEY),
             settings.OCR_API_ENABLED and is_configured_secret(settings.OCR_API_KEY),
+            settings.DASHSCOPE_RERANK_ENABLED and is_configured_secret(settings.DASHSCOPE_API_KEY),
         ]
     )
     external_real_call_enabled = bool(settings.EXTERNAL_REAL_CALLS_ENABLED and external_provider_configured)
@@ -173,6 +181,8 @@ def collect_security_status(settings: Settings) -> dict[str, Any]:
         "cloud_llm_key_configured": is_configured_secret(settings.CLOUD_LLM_API_KEY),
         "mimo_key_configured": is_configured_secret(settings.MIMO_API_KEY),
         "ocr_key_configured": is_configured_secret(settings.OCR_API_KEY),
+        "dashscope_rerank_key_configured": is_configured_secret(settings.DASHSCOPE_API_KEY),
+        "dashscope_rerank_enabled": settings.DASHSCOPE_RERANK_ENABLED,
         "local_llm_enabled": settings.LOCAL_LLM_ENABLED,
         "external_provider_configured": external_provider_configured,
         "external_real_call_enabled": external_real_call_enabled,

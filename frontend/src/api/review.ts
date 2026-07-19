@@ -15,3 +15,18 @@ export const rejectKnowledgeApi = (documentId: string, review_comment?: string) 
 
 export const archiveKnowledgeApi = (documentId: string, review_comment?: string) =>
   request.post<Record<string, unknown>>(`/review/knowledge/${documentId}/archive`, { comment: review_comment })
+
+export const batchApproveVendorOfficialApi = (documentIds: string[], comment?: string) =>
+  request.post<Record<string, unknown>>('/review/knowledge/vendor-official/batch-approve-for-pilot', {
+    document_ids: documentIds,
+    comment
+  })
+
+export const flagVendorOfficialApi = (documentId: string, action: 'needs_metadata' | 'marketing_only' | 'needs_ocr', comment?: string) =>
+  request.post<Record<string, unknown>>(`/review/knowledge/${documentId}/vendor-official-flag`, { action, comment })
+
+export const withdrawVendorOfficialApprovalApi = (documentId: string, reason: string, targetStatus: 'pending_review' | 'needs_revision' = 'pending_review') =>
+  request.post<Record<string, unknown>>(`/review/knowledge/${documentId}/withdraw-approval`, {
+    target_status: targetStatus,
+    reason
+  })

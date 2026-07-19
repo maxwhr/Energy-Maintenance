@@ -21,11 +21,11 @@ from app.schemas.model_gateway import (
     ModelMessage,
     ModelProvider,
 )
-from app.services.model_adapters import CloudOpenAIAdapter, LocalLlamaCppAdapter, RuleBasedAdapter
+from app.services.model_adapters import CloudOpenAIAdapter, LocalLlamaCppAdapter, MiniMaxAnthropicAdapter, RuleBasedAdapter
 from app.services.model_adapters.base import ModelAdapter, ModelAdapterRequest, ModelAdapterResponse
 
 
-ALLOWED_PROVIDERS = {"rule_based", "local_llama_cpp", "cloud_openai"}
+ALLOWED_PROVIDERS = {"rule_based", "local_llama_cpp", "cloud_openai", "minimax_anthropic"}
 
 
 class ModelGatewayServiceError(ValueError):
@@ -41,6 +41,7 @@ class ModelGatewayService:
             "rule_based": RuleBasedAdapter(),
             "local_llama_cpp": LocalLlamaCppAdapter(self.settings),
             "cloud_openai": CloudOpenAIAdapter(self.settings),
+            "minimax_anthropic": MiniMaxAnthropicAdapter(self.settings),
         }
 
     def status(self) -> ModelGatewayStatus:
@@ -195,20 +196,29 @@ class ModelGatewayService:
     ) -> None:
         if not self.settings.MODEL_GATEWAY_ENABLE_LOGGING:
             return
+        minimax = result.provider == "minimax_anthropic"
         request_payload = {
             "requested_provider": requested_provider,
             "actual_provider": result.provider,
             "task_type": adapter_request.task_type,
             "fallback_used": fallback_used,
             "message_count": len(adapter_request.messages),
-            "messages": [
-                {"role": message.role, "content": message.content}
-                for message in adapter_request.messages
-            ],
+            "messages": (
+                [
+                    {
+                        "role": message.role,
+                        "content_length": len(message.content),
+                        "content_hash": self._hash_text(message.content),
+                    }
+                    for message in adapter_request.messages
+                ]
+                if minimax else
+                [{"role": message.role, "content": message.content} for message in adapter_request.messages]
+            ),
             "provider_config": self._safe_provider_config(result.provider),
         }
         if provider_error:
-            request_payload["provider_error"] = provider_error
+            request_payload["provider_error"] = "upstream_provider_failed" if minimax else provider_error
         response_payload: dict[str, Any] = {
             "success": result.success,
             "fallback_used": fallback_used,
@@ -221,8 +231,8 @@ class ModelGatewayService:
             provider=result.provider,
             model_name=result.model_name,
             call_type=adapter_request.task_type,
-            prompt=adapter_request.prompt,
-            response=result.content or None,
+            prompt=None if minimax else adapter_request.prompt,
+            response=None if minimax else result.content or None,
             prompt_tokens=self._safe_int((result.usage or {}).get("prompt_tokens")),
             completion_tokens=self._safe_int((result.usage or {}).get("completion_tokens")),
             total_tokens=self._safe_int((result.usage or {}).get("total_tokens")),
@@ -230,7 +240,7 @@ class ModelGatewayService:
             response_payload=response_payload,
             latency_ms=result.latency_ms,
             success=result.success,
-            error_message=result.error_message,
+            error_message=(result.error_code or result.provider_status) if minimax else result.error_message,
             created_by=current_user.id,
         )
         try:
@@ -267,6 +277,8 @@ class ModelGatewayService:
             messages=messages,
             task_type=payload.task_type,
             trace_id=trace_id,
+            max_tokens=getattr(payload, "max_tokens_override", None),
+            timeout_seconds=getattr(payload, "timeout_seconds_override", None),
         )
 
     def _to_response(
@@ -299,6 +311,17 @@ class ModelGatewayService:
         return value  # type: ignore[return-value]
 
     def _safe_provider_config(self, provider: str) -> dict[str, Any]:
+        if provider == "minimax_anthropic":
+            return {
+                "enabled": self.settings.MINIMAX_ENABLED,
+                "model": self.settings.MINIMAX_MODEL,
+                "protocol": self.settings.MINIMAX_PROTOCOL,
+                "api_key_configured": bool(self.settings.MINIMAX_API_KEY),
+                "thinking_enabled": self.settings.MINIMAX_THINKING_TYPE != "disabled",
+                "service_tier": self.settings.MINIMAX_SERVICE_TIER,
+                "tool_call_enabled": self.settings.MINIMAX_TOOL_CALL_ENABLED,
+                "forced_tool_choice": self.settings.MINIMAX_FORCE_TOOL_CHOICE,
+            }
         if provider == "cloud_openai":
             return {
                 "enabled": self.settings.CLOUD_LLM_ENABLED,
@@ -383,3 +406,9 @@ class ModelGatewayService:
         if isinstance(value, int):
             return value
         return None
+
+    @staticmethod
+    def _hash_text(value: str) -> str:
+        import hashlib
+
+        return hashlib.sha256(value.encode("utf-8")).hexdigest()

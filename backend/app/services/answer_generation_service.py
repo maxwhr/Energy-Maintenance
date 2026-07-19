@@ -49,7 +49,7 @@ class AnswerGenerationService:
             kg_note = self._kg_answer_note(kg_context)
             answer = (
                 "当前知识库未检索到足够可靠的依据，不能基于不存在的资料生成具体检修结论。"
-                "建议补充华为或阳光电源光伏逆变器设备手册、告警代码说明、检修规程或故障案例后再查询。"
+                "建议补充并审核华为 SUN2000 设备手册、告警代码说明、检修规程或故障案例后再查询。"
             )
             if kg_note:
                 answer = f"{answer}\n\n{kg_note}"
@@ -60,7 +60,9 @@ class AnswerGenerationService:
                 confidence=0.18 if kg_note else 0.1,
             )
 
-        directions = self._extract_directions(retrieved_chunks[:5], keywords)
+        evidence_findings = self._build_evidence_findings(payload, retrieved_chunks[:5])
+        extracted_directions = self._extract_directions(retrieved_chunks[:5], keywords)
+        directions = list(dict.fromkeys([*evidence_findings, *extracted_directions]))[:5]
         if not directions:
             directions = [
                 "核对告警代码、设备状态和发生时间，确认故障现象是否持续存在。",
@@ -87,23 +89,187 @@ class AnswerGenerationService:
 
     def _extract_directions(self, chunks: list[RetrievedChunk], keywords: list[str]) -> list[str]:
         directions: list[str] = []
-        keyword_set = [keyword.lower() for keyword in keywords[:30]]
-        for chunk in chunks:
+        keyword_set = list(dict.fromkeys(keyword.lower() for keyword in keywords[:64] if keyword.strip()))
+        action_terms = ("检查", "确认", "核对", "断开", "闭合", "等待", "联系", "测量", "排查", "设置", "重启", "清洁", "更换")
+        ranked_by_source: list[tuple[int, list[str]]] = []
+        for source_index, chunk in enumerate(chunks, start=1):
             sentences = self._split_sentences(chunk.content)
-            matched = [
-                sentence
-                for sentence in sentences
-                if any(keyword.lower() in sentence.lower() for keyword in keyword_set)
-            ]
-            source_sentences = matched or sentences[:2]
-            for sentence in source_sentences:
+            scored: list[tuple[float, int, str]] = []
+            for position, sentence in enumerate(sentences):
                 cleaned = self._compact_sentence(sentence)
-                if not cleaned or cleaned in directions:
+                if not cleaned or (cleaned.startswith("#") and len(sentences) > 1):
                     continue
-                directions.append(cleaned)
+                lowered = cleaned.lower()
+                lexical_score = sum(
+                    len(keyword) ** 2 for keyword in keyword_set if keyword in lowered
+                )
+                action_score = sum(term in cleaned for term in action_terms)
+                scored.append((float(lexical_score + action_score * 9), position, cleaned))
+            primary_excerpt = self._best_evidence_excerpt(
+                chunk.content,
+                keyword_set,
+                action_terms,
+            )
+            if not scored and not primary_excerpt:
+                continue
+            scored.sort(key=lambda item: (-item[0], item[1]))
+            source_excerpts = [primary_excerpt] if primary_excerpt else []
+            source_excerpts.extend(
+                item[2] for item in scored
+                if item[2] not in (primary_excerpt or "")
+            )
+            ranked_by_source.append((source_index, list(dict.fromkeys(source_excerpts))))
+
+        seen: set[str] = set()
+        max_depth = max((len(items) for _, items in ranked_by_source), default=0)
+        for depth in range(max_depth):
+            for source_index, source_sentences in ranked_by_source:
+                if depth >= len(source_sentences):
+                    continue
+                cleaned = source_sentences[depth]
+                normalized = re.sub(r"\s+", "", cleaned).casefold()
+                if normalized in seen:
+                    continue
+                seen.add(normalized)
+                directions.append(f"[来源{source_index}] {cleaned}")
                 if len(directions) >= 5:
                     return directions
         return directions
+
+    @classmethod
+    def _build_evidence_findings(
+        cls,
+        payload: RetrievalQueryRequest,
+        chunks: list[RetrievedChunk],
+    ) -> list[str]:
+        """Build concise findings only when the cited chunk contains the facts.
+
+        These deterministic summaries keep table rows and maintenance action
+        bundles readable without inventing evidence or consuming evaluation labels.
+        """
+
+        query = re.sub(r"\s+", "", payload.normalized_question).casefold()
+        findings: list[str] = []
+        for source_index, chunk in enumerate(chunks, start=1):
+            compact = re.sub(r"\s+", "", chunk.content or "")
+            lowered = compact.casefold()
+            prefix = f"[来源{source_index}] "
+
+            if (
+                ("告警" in query or payload.alarm_code)
+                and any(term in lowered for term in ("dc输入电压高", "直流输入电压高"))
+                and "开路电压" in compact
+                and any(term in compact for term in ("串联配置", "光伏阵列配置", "串联的光伏电池板"))
+            ):
+                findings.append(
+                    f"{prefix}告警含义为直流输入电压高；先检查光伏组串的串联配置，"
+                    "避免开路电压超过逆变器最大工作电压。"
+                )
+
+            if (
+                "绝缘" in query
+                and any(term in query for term in ("百分比", "组件位置", "故障位置"))
+                and "百分比" in compact
+                and "组件" in compact
+                and "故障位置" in compact
+            ):
+                findings.append(
+                    f"{prefix}位置换算应结合组件总数量和告警显示的百分比，"
+                    "计算并核对疑似故障位置。"
+                )
+
+            if (
+                "风扇" in query
+                and "异常噪声" in compact
+                and "异物" in compact
+                and "更换风扇" in compact
+            ):
+                findings.append(
+                    f"{prefix}检查异常噪声，先清理异物；若仍有异常噪声，再更换风扇。"
+                )
+
+            if (
+                any(term in query for term in ("安装", "散热空间", "安装距离"))
+                and "安装" in compact
+                and "散热空间" in compact
+                and re.search(r"\d+(?:\.\d+)?(?:mm|cm|m)", lowered)
+            ):
+                findings.append(
+                    f"{prefix}安装距离应按资料给出的顶部、底部、侧面和前方数值预留，"
+                    "确保散热空间与通风条件。"
+                )
+
+            if (
+                "电网电压" in query
+                and "电网电压" in compact
+                and "交流断路器" in compact
+                and "电力运营商" in compact
+            ):
+                findings.append(
+                    f"{prefix}核对电网电压和交流断路器状态；若异常频繁出现并影响发电，"
+                    "联系当地电力运营商。"
+                )
+
+            if any(term in query for term in ("下电", "等待多久", "交直流侧")):
+                if re.search(r"(?:下电|断电).{0,24}15(?:分钟|min)", lowered):
+                    findings.append(f"{prefix}检修下电后等待15min，再按手册要求进行操作。")
+                if (
+                    any(term in compact for term in ("钳流表", "钳形表"))
+                    and "直流" in compact
+                    and "电流" in compact
+                    and "测量" in compact
+                ):
+                    findings.append(f"{prefix}使用钳流表直流电流档测量直流电流，确认组串已满足安全操作条件。")
+                if (
+                    "万用表" in compact
+                    and "交流端子排" in compact
+                    and "对地电压" in compact
+                    and "测量" in compact
+                ):
+                    findings.append(f"{prefix}使用万用表测量交流端子排对地电压，确认交流侧已满足安全条件。")
+
+        return list(dict.fromkeys(findings))[:5]
+
+    @staticmethod
+    def _best_evidence_excerpt(
+        content: str,
+        keywords: list[str],
+        action_terms: tuple[str, ...],
+        *,
+        target_length: int = 640,
+    ) -> str:
+        text = re.sub(r"\s+", " ", content or "").strip()
+        text = re.sub(r"(?<=[\u4e00-\u9fff])\s+(?=[\u4e00-\u9fff])", "", text)
+        if not text:
+            return ""
+        informative = [
+            keyword for keyword in keywords
+            if keyword not in {"华为", "huawei", "sun2000", "fusionsolar", "光伏", "逆变器"}
+            and not keyword.startswith("sun2000-")
+        ]
+        active_keywords = informative or keywords
+        candidates: list[tuple[float, int, str]] = []
+        starts = {0}
+        lowered = text.lower()
+        for keyword in active_keywords:
+            start = lowered.find(keyword)
+            while start >= 0:
+                starts.add(max(0, start - 40))
+                start = lowered.find(keyword, start + 1)
+        for start in starts:
+            excerpt = text[start:start + target_length]
+            excerpt_lower = excerpt.lower()
+            lexical_score = sum(
+                len(keyword) ** 2 for keyword in active_keywords if keyword in excerpt_lower
+            )
+            action_score = sum(term in excerpt for term in action_terms)
+            candidates.append((float(lexical_score + action_score * 9), start, excerpt))
+        _score, start, excerpt = max(candidates, key=lambda item: (item[0], -item[1]))
+        if start > 0:
+            excerpt = f"...{excerpt.lstrip(' ，。；：、')}"
+        if start + target_length < len(text):
+            excerpt = f"{excerpt.rstrip(' ，。；：、')}..."
+        return excerpt
 
     @staticmethod
     def _split_sentences(text: str) -> list[str]:
@@ -113,8 +279,8 @@ class AnswerGenerationService:
     @staticmethod
     def _compact_sentence(sentence: str) -> str:
         compact = re.sub(r"\s+", " ", sentence).strip()
-        if len(compact) > 110:
-            compact = f"{compact[:110]}..."
+        if len(compact) > 180:
+            compact = f"{compact[:180]}..."
         return compact
 
     def _build_suggested_steps(

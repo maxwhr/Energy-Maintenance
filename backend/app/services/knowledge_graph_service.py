@@ -22,6 +22,10 @@ from app.schemas.knowledge_graph import (
 from app.services.kg_candidate_service import KGCandidatePermissionError, KGCandidateService, KGCandidateServiceError
 from app.services.kg_evidence_service import KGEvidenceService
 from app.services.kg_extraction_service import KGExtractionPermissionError, KGExtractionService, KGExtractionServiceError
+from app.services.knowledge_graph_production_scope_service import (
+    KnowledgeGraphProductionScopeService,
+    ProductionScopeEvaluation,
+)
 
 
 class KnowledgeGraphServiceError(ValueError):
@@ -125,6 +129,7 @@ class KnowledgeGraphService:
     def __init__(self, db: Session):
         self.db = db
         self.repository = KnowledgeGraphRepository(db)
+        self.production_scope = KnowledgeGraphProductionScopeService(db)
 
     def overview(self, *, current_user: User) -> dict[str, Any]:
         self._require_read(current_user)
@@ -450,6 +455,8 @@ class KnowledgeGraphService:
                 device_type="pv_inverter",
                 limit=safe_limit,
             )
+        seed_scope = self.production_scope.evaluate(node_ids=[node.id for node in seed_nodes])
+        seed_nodes = [node for node in seed_nodes if node.id in seed_scope.eligible_node_ids]
         edges: list[KGEdge] = []
         node_ids = {node.id for node in seed_nodes}
         for node in seed_nodes[: min(len(seed_nodes), 20)]:
@@ -464,16 +471,24 @@ class KnowledgeGraphService:
                 node_ids.add(edge.target_node_id)
         nodes = [self.repository.get_node(node_id) for node_id in node_ids]
         active_nodes = [node for node in nodes if node and node.status == "active"]
+        scope = self.production_scope.evaluate(
+            node_ids=[node.id for node in active_nodes],
+            edge_ids=[edge.id for edge in self._unique_edges(edges)],
+        )
+        active_nodes = [node for node in active_nodes if node.id in scope.eligible_node_ids]
         active_node_ids = {node.id for node in active_nodes}
         active_edges = [
             edge
             for edge in self._unique_edges(edges)
-            if self._active_edge(edge) and edge.source_node_id in active_node_ids and edge.target_node_id in active_node_ids
+            if self._active_edge(edge)
+            and edge.id in scope.eligible_edge_ids
+            and edge.source_node_id in active_node_ids
+            and edge.target_node_id in active_node_ids
         ][:safe_limit]
         active_nodes = active_nodes[:safe_limit]
         return {
-            "nodes": [self._graph_node_payload(node) for node in active_nodes],
-            "edges": [self._graph_edge_payload(edge) for edge in active_edges],
+            "nodes": [self._graph_node_payload(node, scope=scope) for node in active_nodes],
+            "edges": [self._graph_edge_payload(edge, scope=scope) for edge in active_edges],
             "statistics": {
                 "node_count": len(active_nodes),
                 "edge_count": len(active_edges),
@@ -515,11 +530,25 @@ class KnowledgeGraphService:
         edges = self.repository.search_active_edges(keywords=terms, relation_type=relation_type, limit=safe_limit)
         if relation_type:
             edges = [edge for edge in edges if edge.relation_type == relation_type]
-        evidence = self._collect_evidence(nodes, edges, limit=12)
+        scope = self.production_scope.evaluate(
+            node_ids=[node.id for node in nodes],
+            edge_ids=[edge.id for edge in edges],
+        )
+        nodes = [node for node in nodes if node.status == "active" and node.id in scope.eligible_node_ids]
+        node_ids = {node.id for node in nodes}
+        edges = [
+            edge
+            for edge in edges
+            if self._active_edge(edge)
+            and edge.id in scope.eligible_edge_ids
+            and edge.source_node_id in node_ids
+            and edge.target_node_id in node_ids
+        ]
+        evidence = self._collect_evidence(nodes, edges, limit=12, scope=scope)
         return {
             "keyword": keyword,
-            "nodes": [self._node_payload(node) for node in nodes if node.status == "active"],
-            "edges": [self._edge_payload(edge) for edge in edges if self._active_edge(edge)],
+            "nodes": [self._production_node_payload(node, scope) for node in nodes],
+            "edges": [self._production_edge_payload(edge, scope) for edge in edges],
             "evidence": evidence,
         }
 
@@ -561,6 +590,8 @@ class KnowledgeGraphService:
                 device_type="pv_inverter",
                 limit=safe_limit,
             )
+        matched_scope = self.production_scope.evaluate(node_ids=[node.id for node in matched_nodes])
+        matched_nodes = [node for node in matched_nodes if node.id in matched_scope.eligible_node_ids]
 
         edges: list[KGEdge] = []
         for node in matched_nodes[:20]:
@@ -572,16 +603,23 @@ class KnowledgeGraphService:
             active_node_ids.add(edge.target_node_id)
         nodes = [self.repository.get_node(node_id) for node_id in active_node_ids]
         active_nodes = [node for node in nodes if node and node.status == "active"]
+        scope = self.production_scope.evaluate(
+            node_ids=[node.id for node in active_nodes],
+            edge_ids=[edge.id for edge in edges],
+        )
+        active_nodes = [node for node in active_nodes if node.id in scope.eligible_node_ids]
         active_node_ids = {node.id for node in active_nodes}
         edges = [
             edge
             for edge in edges
-            if edge.source_node_id in active_node_ids and edge.target_node_id in active_node_ids
+            if edge.id in scope.eligible_edge_ids
+            and edge.source_node_id in active_node_ids
+            and edge.target_node_id in active_node_ids
         ]
 
-        grouped = self._group_business_nodes(matched_nodes, active_nodes, edges)
-        evidence = self._collect_evidence(active_nodes, edges, limit=20)
-        graph_paths = self._business_paths(matched_nodes, grouped, edges)
+        grouped = self._group_business_nodes(matched_nodes, active_nodes, edges, scope=scope)
+        evidence = self._collect_evidence(active_nodes, edges, limit=20, scope=scope)
+        graph_paths = self._business_paths(matched_nodes, grouped, edges, scope=scope)
         summary = {
             "enabled": True,
             "matched_node_count": len([node for node in matched_nodes if node.status == "active"]),
@@ -595,7 +633,7 @@ class KnowledgeGraphService:
             "boundary": "Only active knowledge graph nodes, active relations, and traceable evidence are used.",
         }
         return {
-            "matched_nodes": [self._node_payload(node) for node in matched_nodes if node.status == "active"],
+            "matched_nodes": [self._production_node_payload(node, scope) for node in matched_nodes if node.status == "active"],
             "related_faults": grouped["related_faults"],
             "related_alarms": grouped["related_alarms"],
             "related_causes": grouped["related_causes"],
@@ -607,8 +645,8 @@ class KnowledgeGraphService:
             "parts": grouped["parts"],
             "evidence": evidence,
             "graph_paths": graph_paths,
-            "kg_nodes": [self._node_payload(node) for node in active_nodes],
-            "kg_edges": [self._edge_payload(edge) for edge in edges],
+            "kg_nodes": [self._production_node_payload(node, scope) for node in active_nodes],
+            "kg_edges": [self._production_edge_payload(edge, scope) for edge in edges],
             "summary": summary,
         }
 
@@ -762,8 +800,13 @@ class KnowledgeGraphService:
     def _page(items: list[dict[str, Any]], total: int, page: int, page_size: int) -> dict[str, Any]:
         return {"items": items, "total": total, "page": page, "page_size": page_size}
 
-    def _graph_node_payload(self, node: KGNode) -> dict[str, Any]:
-        payload = self._node_payload(node)
+    def _graph_node_payload(
+        self,
+        node: KGNode,
+        *,
+        scope: ProductionScopeEvaluation | None = None,
+    ) -> dict[str, Any]:
+        payload = self._production_node_payload(node, scope) if scope else self._node_payload(node)
         return {
             "id": payload["id"],
             "node_type": payload["node_type"],
@@ -776,10 +819,16 @@ class KnowledgeGraphService:
             "manufacturer": payload["manufacturer"],
             "product_series": payload["product_series"],
             "device_type": payload["device_type"],
+            "evidence_ids": payload.get("evidence_ids", []),
         }
 
-    def _graph_edge_payload(self, edge: KGEdge) -> dict[str, Any]:
-        payload = self._edge_payload(edge)
+    def _graph_edge_payload(
+        self,
+        edge: KGEdge,
+        *,
+        scope: ProductionScopeEvaluation | None = None,
+    ) -> dict[str, Any]:
+        payload = self._production_edge_payload(edge, scope) if scope else self._edge_payload(edge)
         return {
             "id": payload["id"],
             "source_node_id": payload["source_node_id"],
@@ -791,6 +840,7 @@ class KnowledgeGraphService:
             "confidence": payload["confidence"],
             "evidence_count": payload["evidence_count"],
             "status": payload["status"],
+            "evidence_ids": payload.get("evidence_ids", []),
         }
 
     def _business_terms(
@@ -839,6 +889,8 @@ class KnowledgeGraphService:
         matched_nodes: list[KGNode],
         active_nodes: list[KGNode],
         edges: list[KGEdge],
+        *,
+        scope: ProductionScopeEvaluation,
     ) -> dict[str, list[dict[str, Any]]]:
         by_id = {node.id: node for node in active_nodes}
         matched_ids = {node.id for node in matched_nodes if node.status == "active"}
@@ -857,7 +909,7 @@ class KnowledgeGraphService:
         def add(group: str, node: KGNode | None, edge: KGEdge | None = None) -> None:
             if not node or node.status != "active":
                 return
-            entry = self._business_node_entry(node, edge)
+            entry = self._business_node_entry(node, edge, scope=scope)
             if not any(item["id"] == entry["id"] for item in grouped[group]):
                 grouped[group].append(entry)
 
@@ -906,7 +958,15 @@ class KnowledgeGraphService:
 
         return {key: value[:10] for key, value in grouped.items()}
 
-    def _business_node_entry(self, node: KGNode, edge: KGEdge | None = None) -> dict[str, Any]:
+    def _business_node_entry(
+        self,
+        node: KGNode,
+        edge: KGEdge | None = None,
+        *,
+        scope: ProductionScopeEvaluation,
+    ) -> dict[str, Any]:
+        node_evidence_ids = scope.evidence_ids_for_node(node.id)
+        edge_evidence_ids = scope.evidence_ids_for_edge(edge.id) if edge else []
         return {
             "id": str(node.id),
             "node_type": node.node_type,
@@ -916,12 +976,31 @@ class KnowledgeGraphService:
             "product_series": node.product_series,
             "device_type": node.device_type,
             "confidence": node.confidence,
-            "evidence_count": len(getattr(node, "evidence_links", []) or []),
+            "evidence_count": len(node_evidence_ids),
+            "evidence_ids": node_evidence_ids,
+            "via_edge_id": str(edge.id) if edge else None,
+            "via_evidence_ids": edge_evidence_ids,
             "via_relation": edge.relation_type if edge else None,
             "via_relation_label": RELATION_LEGEND.get(edge.relation_type, edge.relation_type) if edge else None,
         }
 
-    def _collect_evidence(self, nodes: list[KGNode], edges: list[KGEdge], *, limit: int = 20) -> list[dict[str, Any]]:
+    def _collect_evidence(
+        self,
+        nodes: list[KGNode],
+        edges: list[KGEdge],
+        *,
+        limit: int = 20,
+        scope: ProductionScopeEvaluation | None = None,
+    ) -> list[dict[str, Any]]:
+        if scope is None:
+            scope = self.production_scope.evaluate(
+                node_ids=[node.id for node in nodes],
+                edge_ids=[edge.id for edge in edges],
+            )
+        return scope.all_evidence(limit=limit)
+
+    def _collect_all_evidence_for_audit(self, nodes: list[KGNode], edges: list[KGEdge], *, limit: int = 20) -> list[dict[str, Any]]:
+        """Legacy unscoped expansion retained only for explicit administrative audits."""
         evidence_items: list[dict[str, Any]] = []
         seen: set[str] = set()
         for node in nodes[:20]:
@@ -958,6 +1037,8 @@ class KnowledgeGraphService:
         matched_nodes: list[KGNode],
         grouped: dict[str, list[dict[str, Any]]],
         edges: list[KGEdge],
+        *,
+        scope: ProductionScopeEvaluation,
     ) -> list[dict[str, Any]]:
         matched_ids = {node.id for node in matched_nodes if node.status == "active"}
         target_ids = {
@@ -977,8 +1058,11 @@ class KnowledgeGraphService:
                     continue
                 paths.append(
                     {
-                        "nodes": [self._node_payload(source), self._node_payload(target)],
-                        "edges": [self._edge_payload(edge)],
+                        "nodes": [
+                            self._production_node_payload(source, scope),
+                            self._production_node_payload(target, scope),
+                        ],
+                        "edges": [self._production_edge_payload(edge, scope)],
                         "summary": (
                             f"{source.display_name or source.canonical_name} "
                             f"{RELATION_LEGEND.get(edge.relation_type, edge.relation_type)} "
@@ -1037,6 +1121,32 @@ class KnowledgeGraphService:
             "run": self._run_payload(result["run"]),
             "candidates": [self._candidate_payload(candidate) for candidate in result["candidates"]],
         }
+
+    def _production_node_payload(
+        self,
+        node: KGNode,
+        scope: ProductionScopeEvaluation,
+    ) -> dict[str, Any]:
+        payload = self._node_payload(node)
+        evidence_ids = scope.evidence_ids_for_node(node.id)
+        payload["evidence_count"] = len(evidence_ids)
+        payload["evidence_ids"] = evidence_ids
+        payload["grounding_status"] = "GROUNDED_CURRENT" if evidence_ids else "UNSUPPORTED_CURRENT_SOURCE"
+        payload["production_grounding_status"] = "CURRENT_VALID" if evidence_ids else "UNSUPPORTED_CURRENT_SOURCE"
+        return payload
+
+    def _production_edge_payload(
+        self,
+        edge: KGEdge,
+        scope: ProductionScopeEvaluation,
+    ) -> dict[str, Any]:
+        payload = self._edge_payload(edge)
+        evidence_ids = scope.evidence_ids_for_edge(edge.id)
+        payload["evidence_count"] = len(evidence_ids)
+        payload["evidence_ids"] = evidence_ids
+        payload["grounding_status"] = "GROUNDED_CURRENT" if evidence_ids else "UNSUPPORTED_CURRENT_SOURCE"
+        payload["production_grounding_status"] = "CURRENT_VALID" if evidence_ids else "UNSUPPORTED_CURRENT_SOURCE"
+        return payload
 
     def _node_payload(self, node: KGNode | None) -> dict[str, Any]:
         if node is None:

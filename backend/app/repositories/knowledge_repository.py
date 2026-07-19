@@ -37,6 +37,15 @@ class KnowledgeRepository:
         )
         return self.db.scalar(statement)
 
+    def get_document_by_source_sha256(self, source_sha256: str) -> KnowledgeDocument | None:
+        statement = select(KnowledgeDocument).where(
+            or_(
+                KnowledgeDocument.metadata_json["task28a_source_sha256"].as_string() == source_sha256,
+                KnowledgeDocument.source == f"task28a_sha256:{source_sha256}",
+            )
+        )
+        return self.db.scalar(statement)
+
     def list_documents(
         self,
         *,

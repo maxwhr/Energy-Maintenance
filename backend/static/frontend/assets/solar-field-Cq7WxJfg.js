@@ -1,0 +1,1 @@
+var e=`/assets/solar-field-CGgQTDkn.png`;export{e as t};

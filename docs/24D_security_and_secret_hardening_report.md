@@ -112,3 +112,9 @@ Task 24D 禁止打包。本任务未执行 `Compress-Archive`，未生成新的 
 ## Task 24E Follow-up
 
 Task 24E keeps the Task 24D security boundary: conversion logs and history expose trace ids, status, target ids, sanitized errors, and metadata summaries only. They must not expose API keys, Authorization headers, raw tokens, base64 media, or local absolute paths. The conversion void endpoint remains reserved and does not delete formal data.
+
+## Task 24C Follow-up
+
+After Task 24D, Task 24C executed controlled real-call acceptance for configured providers. Cloud LLM, MIMO/Vision, and OCR API passed; DashVector and Embedding remained blocked. Task 24C preserved the Task 24D security boundary: no API key, Authorization header, raw token, local absolute path, or base64 image payload should appear in responses, logs, reports, or frontend displays.
+
+The user must rotate any previously exposed real keys before production use or future public acceptance reruns.

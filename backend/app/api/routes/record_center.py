@@ -27,6 +27,8 @@ def get_record_center_overview(
 def search_records(
     record_type: str = Query(default="all"),
     device_id: UUID | None = Query(default=None),
+    workflow_id: str | None = Query(default=None),
+    actor_id: UUID | None = Query(default=None),
     keyword: str | None = Query(default=None),
     trace_id: str | None = Query(default=None),
     status: str | None = Query(default=None),
@@ -36,6 +38,7 @@ def search_records(
     product_series: str | None = Query(default=None),
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
+    sort_direction: str = Query(default="desc"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -45,6 +48,8 @@ def search_records(
         data = RecordCenterService(db).search(
             record_type=record_type,
             device_id=device_id,
+            workflow_id=workflow_id,
+            actor_id=actor_id,
             keyword=keyword,
             trace_id=trace_id,
             status=status,
@@ -54,6 +59,7 @@ def search_records(
             product_series=product_series,
             date_from=date_from,
             date_to=date_to,
+            sort_direction=sort_direction,
             page=page,
             page_size=page_size,
         )

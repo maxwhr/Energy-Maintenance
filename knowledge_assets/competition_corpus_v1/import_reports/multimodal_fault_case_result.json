@@ -1,0 +1,726 @@
+{
+  "generated_at": "2026-07-18T03:54:24.083722+00:00",
+  "status": "PASSED",
+  "database": "energy_maintenance_task27a_test",
+  "provider_opt_in": false,
+  "external_provider_calls": 0,
+  "cases": [
+    {
+      "annotation_case_id": "FAULT_CASE_01_PV_ISOLATION_LOW",
+      "multimodal_case_id": "mmc_36ce54e0ced242819742039f9a3c9938",
+      "media_id": "3b5e1ddd-8986-4bf3-9184-4155431454b5",
+      "media_uploaded": true,
+      "media_deduplicated": true,
+      "ocr_status": "disabled",
+      "ocr_actual_text": "",
+      "vision_status": "BLOCKED_NOT_CALLED",
+      "manual_confirmation": true,
+      "confirmed_text": "Error: 225 / PV IsolationLow / PV 绝缘阻抗低",
+      "retrieval_query": [
+        "逆变器故障 PV 绝缘阻抗低。每逢早上自动开机，直接报 PV 绝缘阻抗过低，需要手动重启才能正常运作。以前阳光不足时设备会不断重启，直到阳光充足后运行；现在会直接报故障。；线路和 MC4 接头未发现破皮、进水或明显损坏。台风时一块组件损坏，移除后故障仍存在。；两组组串任意单组开启时早晨自检通常可启动；两组同时开启时早晨通常不能启动。；约 6:00 尝试启动时报故障；关闭并等待到约 6:15 光照较强后，两组并网送电可通过自检。；pending_expert_review。请在当前 Huawei SUN2000 官方知识范围内检索可参考的排查方向；现场设备厂家和型号仍待人员确认。",
+        "SUN2000 225 morning startup single string succeeds, dual strings often fail panel damaged during typhoon high_voltage_dc",
+        "SUN2000 225 告警原因 处理建议",
+        "SUN2000 组串 morning startup single string succeeds, dual strings often fail panel damaged during typhoon high_voltage_dc possible_causes inspection_steps safety_notes 排查 安全要求"
+      ],
+      "answer": "当前知识库未检索到足够可靠的依据，不能基于不存在的资料生成具体检修结论。建议补充并审核华为 SUN2000 设备手册、告警代码说明、检修规程或故障案例后再查询。",
+      "references": [],
+      "citations": [
+        {
+          "citation_id": "citation:db8f195e-1d45-4d10-b3a9-e3a24417a901",
+          "chunk_id": "db8f195e-1d45-4d10-b3a9-e3a24417a901",
+          "document_id": "637ad760-d80d-4b8b-abe6-50e162a5a034",
+          "document_title": "华为逆变器SUN2000-196KTL-H0++用户手册(1)",
+          "section_title": "8 系统维护",
+          "page_number": 91,
+          "source_locator": {
+            "page_number": 91,
+            "section_path": [
+              "8 系统维护"
+            ]
+          },
+          "quote": "告警ID 告警名称 告警级别 故障原因 处理建议 2051 残余电流异 常 重要 原因ID=1 逆变器运行过程中，输入侧对 保护地的绝缘阻抗变低。 1. 如果偶然出现，可能是外部线 路偶然异常导致，故障清除后 会恢复正常工作，不需要人工 干预。 2. 如果频繁出现或长时间无法恢 复，请检查光伏组串对地阻抗 是否过低。 2062 绝缘阻抗低 重要 原因ID=1 1. 光伏组串对保护地短路。 2. 光伏组串安装的环境长期 较为潮湿并且线路对地绝 缘不良。 1. 检查光伏组串对保护地的阻 抗，如果出现短路，请整改短 路点。 2. 检查逆变器的保护地线是否正 确连接。 3. 如果确认在阴雨天环境下该阻 抗确实低于设定保护点，请对 “绝缘阻抗保护点”重新进行 设置。 2063 温度过高 次要 原因ID=1 1. 逆变器安",
+          "source_type": "OFFICIAL_KNOWLEDGE"
+        },
+        {
+          "citation_id": "citation:b4f045b9-e0ac-4207-91f8-8c6d8a2b36c6",
+          "chunk_id": "b4f045b9-e0ac-4207-91f8-8c6d8a2b36c6",
+          "document_id": "dc3dc153-8184-47d6-874b-97b80aff97d1",
+          "document_title": "逆变器 告警参考",
+          "section_title": "10 2009 组串对地短路",
+          "page_number": 21,
+          "source_locator": {
+            "page_number": 21,
+            "section_path": [
+              "10 2009 组串对地短路"
+            ]
+          },
+          "quote": "修复建议 原因ID 修复建议 1 1. 针对具备直流自动分断开关的逆变器，请先检查DC开关状态，如果 DC开关指向“TRIP”，请直接联系经销商/客户服务中心，然后请进 行下一步排查。 2. 拆下逆变器侧每串PV正负端子，用摇表依次测量每串PV线缆对地阻 抗，如果出现短路或绝缘阻抗低的情况，请排查故障路PV线缆是否 存在破损，并整改故障点。 3. 若摇表未定位到哪条PV线缆存在故障，请依次巡查每条PV线缆是否 存在破损，并整改故障点。 4. 排查并整改故障点后，手动清除告警，若设备仍然存在故障，请联 系经销商/客户服务中心。 2 1. 检查MPPT1的PV负对保护地阻抗，如果出现短路或绝缘不足请整改 故障点。 2. 如果“组串对地短路保护自动恢复”设置为“禁能”，请检查并修 复上述问题后，手动清除告警。 3. ",
+          "source_type": "OFFICIAL_KNOWLEDGE"
+        },
+        {
+          "citation_id": "citation:550d5f91-bf33-44b0-8285-1042748f004f",
+          "chunk_id": "550d5f91-bf33-44b0-8285-1042748f004f",
+          "document_id": "dc3dc153-8184-47d6-874b-97b80aff97d1",
+          "document_title": "逆变器 告警参考",
+          "section_title": "32 2062 绝缘阻抗低",
+          "page_number": 46,
+          "source_locator": {
+            "page_number": 46,
+            "section_path": [
+              "32 2062 绝缘阻抗低"
+            ]
+          },
+          "quote": "32 2062 绝缘阻抗低 告警属性 告警ID 告警名称 告警级别 2062 绝缘阻抗低 重要 对系统的影响 设备无法启动。 告警原因 原因ID 告警原因 1 1. 光伏阵列对地短路。 2. 光伏阵列所处环境空气潮湿且线路对地绝缘不良。 2 1. 电池簇对地短路。 2. 电池簇所处环境空气潮湿且同时线路对地绝缘不良。 修复建议 原因ID 修复建议 1 1. 将“绝缘阻抗保护点”设置为最小值并重启逆变器。 2. 确认设备的保护地线正确连接。 3. 检查光伏阵列输出对保护地阻抗，如果出现短路或绝缘不足请整改 故障点。 逆变器 告警参考 32 2062 绝缘阻抗低 文档版本 13 (2025-12-30) 版权所有 © 华为技术有限公司 38 原因ID 修复建议 2 请先对同一直流母线设备下发关机指令。按照储能电池簇",
+          "source_type": "OFFICIAL_KNOWLEDGE"
+        },
+        {
+          "citation_id": "citation:91a73df6-2ac5-47a9-bd35-acfb0116cbbf",
+          "chunk_id": "91a73df6-2ac5-47a9-bd35-acfb0116cbbf",
+          "document_id": "637ad760-d80d-4b8b-abe6-50e162a5a034",
+          "document_title": "华为逆变器SUN2000-196KTL-H0++用户手册(1)",
+          "section_title": "8 系统维护",
+          "page_number": 81,
+          "source_locator": {
+            "page_number": 81,
+            "section_path": [
+              "8 系统维护"
+            ]
+          },
+          "quote": "注 意 ● 当逆变器故障时，请尽量避免站立于逆变器的正前方。 ● 如果逆变器LED1指示灯不亮，直流开关在“OFF”位置，不允许直接操作逆变器的 直流开关，参见步骤4。 ● 在完成步骤3~步骤5之前，不允许操作逆变器的直流开关。 ● 当逆变器检测出故障时，会触发直流开关自动分断保护，在故障排除前，请勿将直 流开关闭合。 ● 如果逆变器与电网之间的交流开关已经自动分断，在故障排除前，请勿将其闭合。 ● 在执行完检修下电操作前，请避免触碰逆变器可能带电的部件，否则可能导致电击 或拉弧起火危险。 操作步骤 步骤1 佩戴个人防护用品。 步骤2 如果逆变器未故障关机，在SUN2000 APP或数据采集器或管理系统侧下发关机指令。 如果逆变器已故障关机，请执行下一步操作。 步骤3 断开逆变器和电网之间的交流开关。 步骤4 ",
+          "source_type": "OFFICIAL_KNOWLEDGE"
+        },
+        {
+          "citation_id": "citation:6b7f9c28-8241-49fd-992d-9df17da28a0d",
+          "chunk_id": "6b7f9c28-8241-49fd-992d-9df17da28a0d",
+          "document_id": "ce6330b1-b708-4b33-86ef-8602bfc936da",
+          "document_title": "SUN2000-(5KTL-12KTL)-M1 用户手册",
+          "section_title": "6.2 系统上电",
+          "page_number": 80,
+          "source_locator": {
+            "page_number": 80,
+            "section_path": [
+              "6 系统调试",
+              "6.2 系统上电"
+            ]
+          },
+          "quote": "6.2 系统上电 注意事项 须 知 设备首次上电运行前，需由专业人员正确设置参数。错误的设置可能导致设备与所在 国家/地区的并网要求不符，影响设备的正常工作。 须 知 将逆变器与电网之间的交流开关闭合之前，需用万用表交流电压档测量交流电压是否 在允许范围内。 操作步骤 步骤1 如果连接储能设备，请闭合储能开关。 步骤2 将逆变器与电网之间的交流开关闭合。 须 知 如果直流上电且交流未上电，则逆变器会报“电网掉电”故障，待故障自动恢复后， 逆变器才能正常启动。 步骤3 （可选）拆下“DC SWITCH”旁的直流开关锁定螺钉。 图 6-1 拆下直流开关锁定螺钉 步骤4 如果光伏组串与逆变器之间有直流开关，闭合直流开关。 步骤5 将逆变器机箱底部的“DC SWITCH”置于“ON”的位置。 步骤6 等待约1分钟，观察",
+          "source_type": "OFFICIAL_KNOWLEDGE"
+        }
+      ],
+      "trace_id": "qa_req_d2fe2705263de832317b6ebe268d33b4",
+      "qa_record_id": "96f582c8-0331-43c6-a1be-2c03a75fc382",
+      "qa_persistence_status": "persisted",
+      "diagnosis_created": true,
+      "diagnosis": {
+        "observed_facts": [
+          {
+            "evidence_id": "mme_808797f749fc4b2b899cc78fb5bf2637",
+            "level": "CONFIRMED",
+            "evidence_type": "DEVICE_MODEL",
+            "value": "逆变器故障 PV 绝缘阻抗低。每逢早上自动开机，直接报 PV 绝缘阻抗过低，需要手动重启才能正常运作。以前阳光不足时设备会不断重启，直到阳光充足后运行；现在会直接报故障。；线路和 MC4 接头未发现破皮、进水或明显损坏。台风时一块组件损坏，移除后故障仍存在。；两组组串任意单组开启时早晨自检通常可启动；两组同时开启时早晨通常不能启动。；约 6:00 尝试启动时报故障；关闭并等待到约 6:15 光照较强后，两组并网送电可通过自检。；pending_expert_review。请在当前 Huawei SUN2000 官方知识范围内检索可参考的排查方向；现场设备厂家和型号仍待人员确认。"
+          },
+          {
+            "evidence_id": "mme_0f5f85b8d1ca459f8db276fc56a8e952",
+            "level": "CONFIRMED",
+            "evidence_type": "ALARM_CODE",
+            "value": "Error: 225 / PV IsolationLow / PV 绝缘阻抗低"
+          },
+          {
+            "evidence_id": "mme_2a3cbb6fc5764b91a29dd119b08c63f0",
+            "level": "OBSERVED",
+            "evidence_type": "GENERAL_OBSERVATION",
+            "value": "dark"
+          }
+        ],
+        "possible_faults": [
+          {
+            "hypothesis_id": "mmhyp_bfac90e6002f3e9b9370c748",
+            "fault_category": "alarm_code_query",
+            "fault_name": "告警 225 对应的手册故障场景（待确认）",
+            "applicable_device": "SUN2000",
+            "required_conditions": [
+              "morning startup",
+              "single string succeeds, dual strings often fail",
+              "panel damaged during typhoon",
+              "high_voltage_dc"
+            ],
+            "supporting_evidence_ids": [
+              "mme_808797f749fc4b2b899cc78fb5bf2637",
+              "mme_0f5f85b8d1ca459f8db276fc56a8e952",
+              "mme_2a3cbb6fc5764b91a29dd119b08c63f0"
+            ],
+            "contradicting_evidence_ids": [],
+            "knowledge_citation_ids": [
+              "citation:db8f195e-1d45-4d10-b3a9-e3a24417a901"
+            ],
+            "confidence": 0.8,
+            "confidence_level": "MEDIUM",
+            "status": "NEEDS_CLARIFICATION",
+            "recommended_checks": [
+              "按引用章节核对：华为逆变器SUN2000-196KTL-H0++用户手册(1) / 8 系统维护"
+            ],
+            "safety_warnings": [
+              "停止操作，隔离现场，并由具备资质的专业人员按官方安全要求处理。"
+            ],
+            "missing_information": [
+              "conflict_resolution"
+            ]
+          }
+        ],
+        "recommended_checks": [
+          "按引用章节核对：华为逆变器SUN2000-196KTL-H0++用户手册(1) / 8 系统维护"
+        ],
+        "recommended_actions": [],
+        "safety_warnings": [
+          "停止操作，隔离现场，并由具备资质的专业人员按官方安全要求处理。"
+        ],
+        "missing_information": [
+          "conflict_resolution"
+        ],
+        "citations": [
+          {
+            "quote": "告警ID 告警名称 告警级别 故障原因 处理建议 2051 残余电流异 常 重要 原因ID=1 逆变器运行过程中，输入侧对 保护地的绝缘阻抗变低。 1. 如果偶然出现，可能是外部线 路偶然异常导致，故障清除后 会恢复正常工作，不需要人工 干预。 2. 如果频繁出现或长时间无法恢 复，请检查光伏组串对地阻抗 是否过低。 2062 绝缘阻抗低 重要 原因ID=1 1. 光伏组串对保护地短路。 2. 光伏组串安装的环境长期 较为潮湿并且线路对地绝 缘不良。 1. 检查光伏组串对保护地的阻 抗，如果出现短路，请整改短 路点。 2. 检查逆变器的保护地线是否正 确连接。 3. 如果确认在阴雨天环境下该阻 抗确实低于设定保护点，请对 “绝缘阻抗保护点”重新进行 设置。 2063 温度过高 次要 原因ID=1 1. 逆变器安",
+            "chunk_id": "db8f195e-1d45-4d10-b3a9-e3a24417a901",
+            "citation_id": "citation:db8f195e-1d45-4d10-b3a9-e3a24417a901",
+            "document_id": "637ad760-d80d-4b8b-abe6-50e162a5a034",
+            "page_number": 91,
+            "source_type": "OFFICIAL_KNOWLEDGE",
+            "section_title": "8 系统维护",
+            "document_title": "华为逆变器SUN2000-196KTL-H0++用户手册(1)",
+            "source_locator": {
+              "page_number": 91,
+              "section_path": [
+                "8 系统维护"
+              ]
+            }
+          },
+          {
+            "quote": "修复建议 原因ID 修复建议 1 1. 针对具备直流自动分断开关的逆变器，请先检查DC开关状态，如果 DC开关指向“TRIP”，请直接联系经销商/客户服务中心，然后请进 行下一步排查。 2. 拆下逆变器侧每串PV正负端子，用摇表依次测量每串PV线缆对地阻 抗，如果出现短路或绝缘阻抗低的情况，请排查故障路PV线缆是否 存在破损，并整改故障点。 3. 若摇表未定位到哪条PV线缆存在故障，请依次巡查每条PV线缆是否 存在破损，并整改故障点。 4. 排查并整改故障点后，手动清除告警，若设备仍然存在故障，请联 系经销商/客户服务中心。 2 1. 检查MPPT1的PV负对保护地阻抗，如果出现短路或绝缘不足请整改 故障点。 2. 如果“组串对地短路保护自动恢复”设置为“禁能”，请检查并修 复上述问题后，手动清除告警。 3. ",
+            "chunk_id": "b4f045b9-e0ac-4207-91f8-8c6d8a2b36c6",
+            "citation_id": "citation:b4f045b9-e0ac-4207-91f8-8c6d8a2b36c6",
+            "document_id": "dc3dc153-8184-47d6-874b-97b80aff97d1",
+            "page_number": 21,
+            "source_type": "OFFICIAL_KNOWLEDGE",
+            "section_title": "10 2009 组串对地短路",
+            "document_title": "逆变器 告警参考",
+            "source_locator": {
+              "page_number": 21,
+              "section_path": [
+                "10 2009 组串对地短路"
+              ]
+            }
+          },
+          {
+            "quote": "32 2062 绝缘阻抗低 告警属性 告警ID 告警名称 告警级别 2062 绝缘阻抗低 重要 对系统的影响 设备无法启动。 告警原因 原因ID 告警原因 1 1. 光伏阵列对地短路。 2. 光伏阵列所处环境空气潮湿且线路对地绝缘不良。 2 1. 电池簇对地短路。 2. 电池簇所处环境空气潮湿且同时线路对地绝缘不良。 修复建议 原因ID 修复建议 1 1. 将“绝缘阻抗保护点”设置为最小值并重启逆变器。 2. 确认设备的保护地线正确连接。 3. 检查光伏阵列输出对保护地阻抗，如果出现短路或绝缘不足请整改 故障点。 逆变器 告警参考 32 2062 绝缘阻抗低 文档版本 13 (2025-12-30) 版权所有 © 华为技术有限公司 38 原因ID 修复建议 2 请先对同一直流母线设备下发关机指令。按照储能电池簇",
+            "chunk_id": "550d5f91-bf33-44b0-8285-1042748f004f",
+            "citation_id": "citation:550d5f91-bf33-44b0-8285-1042748f004f",
+            "document_id": "dc3dc153-8184-47d6-874b-97b80aff97d1",
+            "page_number": 46,
+            "source_type": "OFFICIAL_KNOWLEDGE",
+            "section_title": "32 2062 绝缘阻抗低",
+            "document_title": "逆变器 告警参考",
+            "source_locator": {
+              "page_number": 46,
+              "section_path": [
+                "32 2062 绝缘阻抗低"
+              ]
+            }
+          },
+          {
+            "quote": "注 意 ● 当逆变器故障时，请尽量避免站立于逆变器的正前方。 ● 如果逆变器LED1指示灯不亮，直流开关在“OFF”位置，不允许直接操作逆变器的 直流开关，参见步骤4。 ● 在完成步骤3~步骤5之前，不允许操作逆变器的直流开关。 ● 当逆变器检测出故障时，会触发直流开关自动分断保护，在故障排除前，请勿将直 流开关闭合。 ● 如果逆变器与电网之间的交流开关已经自动分断，在故障排除前，请勿将其闭合。 ● 在执行完检修下电操作前，请避免触碰逆变器可能带电的部件，否则可能导致电击 或拉弧起火危险。 操作步骤 步骤1 佩戴个人防护用品。 步骤2 如果逆变器未故障关机，在SUN2000 APP或数据采集器或管理系统侧下发关机指令。 如果逆变器已故障关机，请执行下一步操作。 步骤3 断开逆变器和电网之间的交流开关。 步骤4 ",
+            "chunk_id": "91a73df6-2ac5-47a9-bd35-acfb0116cbbf",
+            "citation_id": "citation:91a73df6-2ac5-47a9-bd35-acfb0116cbbf",
+            "document_id": "637ad760-d80d-4b8b-abe6-50e162a5a034",
+            "page_number": 81,
+            "source_type": "OFFICIAL_KNOWLEDGE",
+            "section_title": "8 系统维护",
+            "document_title": "华为逆变器SUN2000-196KTL-H0++用户手册(1)",
+            "source_locator": {
+              "page_number": 81,
+              "section_path": [
+                "8 系统维护"
+              ]
+            }
+          },
+          {
+            "quote": "6.2 系统上电 注意事项 须 知 设备首次上电运行前，需由专业人员正确设置参数。错误的设置可能导致设备与所在 国家/地区的并网要求不符，影响设备的正常工作。 须 知 将逆变器与电网之间的交流开关闭合之前，需用万用表交流电压档测量交流电压是否 在允许范围内。 操作步骤 步骤1 如果连接储能设备，请闭合储能开关。 步骤2 将逆变器与电网之间的交流开关闭合。 须 知 如果直流上电且交流未上电，则逆变器会报“电网掉电”故障，待故障自动恢复后， 逆变器才能正常启动。 步骤3 （可选）拆下“DC SWITCH”旁的直流开关锁定螺钉。 图 6-1 拆下直流开关锁定螺钉 步骤4 如果光伏组串与逆变器之间有直流开关，闭合直流开关。 步骤5 将逆变器机箱底部的“DC SWITCH”置于“ON”的位置。 步骤6 等待约1分钟，观察",
+            "chunk_id": "6b7f9c28-8241-49fd-992d-9df17da28a0d",
+            "citation_id": "citation:6b7f9c28-8241-49fd-992d-9df17da28a0d",
+            "document_id": "ce6330b1-b708-4b33-86ef-8602bfc936da",
+            "page_number": 80,
+            "source_type": "OFFICIAL_KNOWLEDGE",
+            "section_title": "6.2 系统上电",
+            "document_title": "SUN2000-(5KTL-12KTL)-M1 用户手册",
+            "source_locator": {
+              "page_number": 80,
+              "section_path": [
+                "6 系统调试",
+                "6.2 系统上电"
+              ]
+            }
+          }
+        ],
+        "confidence_status": "PARTIAL",
+        "unsupported_diagnosis_count": 0,
+        "safety": {
+          "safety_level": "CRITICAL",
+          "stop_required": true,
+          "professional_required": true,
+          "allowed_actions": [],
+          "blocked_actions": [],
+          "safety_warnings": [
+            "停止操作，隔离现场，并由具备资质的专业人员按官方安全要求处理。"
+          ],
+          "matched_risks": [
+            "带电",
+            "电池",
+            "短路",
+            "起火"
+          ],
+          "audit_required": true
+        },
+        "confidence": {
+          "score": 0.58,
+          "status": "INSUFFICIENT_EVIDENCE",
+          "rationale": [
+            "confirmed_evidence_present",
+            "observed_evidence_present",
+            "official_citation_present",
+            "required_information_missing"
+          ]
+        },
+        "case_status": "DIAGNOSIS_READY"
+      },
+      "sop_boundary": {
+        "allowed": true,
+        "artifact_type": "sop_draft",
+        "blocked_reasons": [],
+        "requires_human_approval": true,
+        "formal_record_created": false
+      },
+      "record_center_visible": true,
+      "record_center_detail_visible": true,
+      "audit_events": 17,
+      "unsafe_claims": [],
+      "external_provider_called": false,
+      "passed": true
+    },
+    {
+      "annotation_case_id": "FAULT_CASE_02_GRID_VOLTAGE_OUT_OF_RANGE",
+      "multimodal_case_id": "mmc_33fea028bca44b22b5f3cec2cd6d9c49",
+      "media_id": "90dac7be-ee0a-4efd-b75c-b9bdd1380140",
+      "media_uploaded": true,
+      "media_deduplicated": false,
+      "ocr_status": "disabled",
+      "ocr_actual_text": "",
+      "vision_status": "BLOCKED_NOT_CALLED",
+      "manual_confirmation": true,
+      "confirmed_text": "电网电压超限",
+      "retrieval_query": [
+        "电网电压超限故障。pending_expert_review；True。请在当前 Huawei SUN2000 官方知识范围内检索可参考的排查方向；现场设备厂家和型号仍待人员确认。",
+        "SUN2000 ac_grid_measurement",
+        "SUN2000 电网 ac_grid_measurement possible_causes inspection_steps safety_notes 排查 安全要求"
+      ],
+      "answer": "根据当前知识库检索结果，建议按以下方向排查：\n1. [来源1] ...时，按照百分比形式进行无功功率调度。 - 21 “夜间无功自启动” 逆变器在夜间电网恢复供电后自动重建无功输出的功能，通过持续提供动态无功支撑来维持电网稳定运行，提升系统调节能力。 “夜间无功”设置为使能时，关联呈现。 22 “过频降额” 设置为使能，当电网频率超过过频降额触发的频率时，逆变器按照一定的梯度进行有功功率降额。 - 23 “过频降额触发频率”（Hz） 某些国家/地区的标准要求，电网频率超过某一设定值时，逆变器输出的有功功率要进行降额。 ● “过频降额”设置为使能时关联呈现。 ● 设置需满足“过频降额退出频率” ≤ “过频降额触发频率”＜ “过频降额截止频率”。 24 “过频降额退出频率”（Hz） 设置过频降额的退出频率。 25 “过频降额截止频率”（Hz） 设置过频降额的截止频率点。 26 “过频降额截止功率”（%） 设置过频降额的截止功率点。 27 “频率检测滤波时间”（ms） 设置频率检测滤波时间。 28 “过频降额功率下降梯度”（%/s） 设置过频降额功率下降的速度。 29 “过频降额功率恢复梯度”（%/ min） 设置过频降额功率恢复的速度。 30 “电压降额” 设置为使能，当电网电压超过电压降额起始点时，逆变器按照一定的梯度进行有功功率降额。 - 华为智能光伏 App, SUN2000 App 设备调测指南 6 商用逆变器文档版本 06 (2026-04-09) 版权所有 © 华为数字能源技术有限公司 113\n2. [来源2] ...5.5.2.1 配置优化器场景前提条件用万用表直流档测量光伏组串正、负极之间的电压。若电压为负值，则正负极端子接错，需修正极性。 操作步骤步骤1 将光伏组串的输出正、输出负连接至分支线缆，用绝缘阻抗测试仪检测光伏组串线缆对地绝缘阻抗：在线缆与地之间最高加1500V直流电压，查看绝缘阻抗值。 SUN2000-(20KTL-M3, 33KTL-NH, 40KTL-NH) 用户手册 5 电气连接文档版本 18 (2026-04-20) 版权所有 © 华为技术有限公司 44 图 5-12 检测每路组串的绝缘阻抗 （1）分支线缆如果... 则... 绝缘阻抗值≥1MΩ 组串正常。 绝缘阻抗值＜1MΩ 需排查线缆/组串的绝缘问题，进入步骤 2。 步骤2 断开延长线和优化器的连接，将延长线连接至分支线缆，用绝缘阻抗测试仪检测延长线对地绝缘阻抗：在线缆与地之间最高加1500V直流电压，查看绝缘阻抗值。 图 5-13 检测延长线绝缘阻抗 （1）延长线如果... 则... 绝缘阻抗值≥1MΩ 延长线正常，进入步骤 3。 绝缘阻抗值＜1MΩ 延长线异常，需人工排查延长线。排查完成后，进入步骤 1，排查组串是否异常，若异常，进入步骤 3。 步骤3 将疑似故障的光伏组件和配对的优化器从光伏组串中断开，优化器与光伏组件应保持连接，并检测其对地绝缘阻抗。 SUN2000-(20KTL-M3, 33KTL-NH, 40KTL-NH) 用户手册 5 电气连接文档版本 18 (2026-04-...\n3. [来源3] 41 2072 瞬时交流过压告警属性告警ID 告警名称告警级别 2072 瞬时交流过压重要告警原因原因ID 告警原因 1 设备检测到相电压超过瞬时交流过压保护值。 修复建议 1. 检查并网点电压是否过高，如果是，请联系当地电力运营商。 2. 如果确认并网点电压高于允许范围，请在征得当地电力运营商同意后，修改过压保护点。 3. 请检查电网电压峰值是否过高。 逆变器告警参考 41 2072 瞬时交流过压文档版本 13 (2025-12-30) 版权所有 © 华为技术有限公司 51\n4. [来源4] ...伤害或短路故障。 须知 ● 将逆变器与电网之间的交流开关闭合之前，需用万用表交流电压档测量交流电压是否在允许范围内。 ● 如果直流上电且交流未上电，则逆变器会报“电网掉电”告警，待电网恢复后，逆变器才能正常启动。 操作步骤步骤1 闭合逆变器与电网之间的交流开关。 步骤2 将逆变器机箱底部的“DC SWITCH”置于“ON”的位置。 步骤3 观察LED指示灯，查看逆变器运行状态。 表 6-2 LED 指示灯描述分类状态指示定义运行指示 LED1 LED2 – 绿色常亮绿色常亮逆变器处于并网运行状态。 绿色慢闪（1s亮， 1s灭） 灭直流上电且交流未上电。 绿色慢闪（1s亮， 1s灭） 绿色慢闪（1s亮， 1s灭） 直流上电且交流上电，逆变器未并网。 灭绿色慢闪直流未上电且交流上电。 灭灭直流未上电且交流未上电。 红色快闪（0.2s 亮，0.2s灭） – 直流侧环境告警。 SUN2000-(20KTL-M3, 33KTL-NH, 40KTL-NH) 用户手册 6 系统调测文档版本 18 (2026-04-20) 版权所有 © 华为技术有限公司 60 分类状态指示定义 – 红色快闪（0.2s 亮，0.2s灭） 交流侧环境告警。 红色常亮红色常亮故障。 通信指示 LED3 – 绿色快闪（0.2s亮，0.2s灭） 通信中。 绿色慢闪（1s亮，1s灭） 手机接入。 灭无通信。 注：若LED1、LED2和LED3均为红色常亮，表示设备故障，需要更换逆变器。 ----结束 S...\n5. [来源5] 22 2035 电网电压不平衡告警属性告警ID 告警名称告警级别 2035 电网电压不平衡重要对系统的影响设备关机。 告警原因原因ID 告警原因 1 电网相电压差异过大。 修复建议 1. 如果偶然出现，可能是电网短时间异常，设备在检测到电网正常后会恢复正常工作，不需要人工干预。 2. 如果频繁出现，请确定电网电压是否在正常范围内，如果否，请联系当地电力运营商处理。 3. 如果长时间无法恢复，请检查交流侧线缆是否连接正常。 4. 如果交流接线正常，并且该告警频繁出现，影响到电站正常运行，请联系当地电力运营商处理。 逆变器告警参考 22 2035 电网电压不平衡文档版本 13 (2025-12-30) 版权所有 © 华为技术有限公司 28\n以上结论来源于知识库片段，现场作业仍需遵守设备厂家手册和电站安全规范。",
+      "references": [
+        {
+          "chunk_id": "f7963611-ac10-4204-bdb1-50198dc724c4",
+          "document_id": "5c8874dd-8c58-455a-afdd-bc4f81bdd380",
+          "document_title": "华为智能光伏App，SUN2000 App 设备调测指南",
+          "chunk_index": 178,
+          "manufacturer": "huawei",
+          "product_series": "SUN2000",
+          "device_type": "pv_inverter",
+          "document_type": "sop",
+          "section_title": "6.2.5.3 特性参数",
+          "page_number": 127,
+          "source": "task28a_sha256:72dbdffa350923fef1195a4739c1019ac1ff226aef206f2c10aafe59acadd91c",
+          "score": 0.807507,
+          "source_locator": {
+            "page_number": 127,
+            "section_path": [
+              "6 商用逆变器",
+              "6.2.4.5 开机与关机",
+              "6.2.4.14 设备升级",
+              "6.2.5.3 特性参数"
+            ]
+          },
+          "quote": "序号 参数名称 参数说明 备注 15 “夜间无功功率固 定值” 在进行夜间无功功率补偿时，按照固定值 形式进行无功功率调度。 “夜间无功”和“夜间无功 参数生效”设置为使能时关 联呈现。 16 “无功功率调整时 间”（s） 无功功率调节中，无功功率到达目标值的 调整时间。 - 18 “功率因数” 设置逆变器的功率因数。 “远程功率调度”设置为使 能时关联呈现。 19 “无功功率补偿 （Q/S）” 设置逆变器输出的无功功率。 - 20 “夜间无功功率补 偿(Q/S)” 在进行夜",
+          "source_type": "PDF"
+        },
+        {
+          "chunk_id": "af3aa491-97ae-4923-9982-ee2b1f859978",
+          "document_id": "0d43c1f1-19da-4833-924a-cbccd6e14954",
+          "document_title": "SUN2000-(20KTL-M3, 33KTL-NH, 40KTL-NH) 用户手册",
+          "chunk_index": 45,
+          "manufacturer": "huawei",
+          "product_series": "SUN2000",
+          "device_type": "pv_inverter",
+          "document_type": "alarm_code",
+          "section_title": "5.5.2 检测光伏组串对地绝缘阻抗",
+          "page_number": 53,
+          "source": "task28a_sha256:65516280d5c1012b52a74f9b9a4ece2528587ccf5f0c86097000fa302bdabe3c",
+          "score": 0.693635,
+          "source_locator": {
+            "page_number": 53,
+            "section_path": [
+              "5 电气连接",
+              "5.3 连接保护地线",
+              "5.5.2 检测光伏组串对地绝缘阻抗"
+            ]
+          },
+          "quote": "5.5.2 检测光伏组串对地绝缘阻抗 须 知 在光伏系统中，组串绝缘阻抗的数值反映了组串与地之间的绝缘状态：低绝缘阻抗值 表明绝缘性能差，可能引发人员安全和逆变器性能问题。因此，在将光伏组串接入逆 变器之前，应检测光伏组串对地的绝缘阻抗，确保每路组串对地绝缘阻抗正常，以保 障逆变器的正常运行。 5.5.2.1 配置优化器场景 前提条件 用万用表直流档测量光伏组串正、负极之间的电压。若电压为负值，则正负极端子接 错，需修正极性。 操作步骤 步骤1 将光伏组串的输出正、输出负连接",
+          "source_type": "PDF"
+        },
+        {
+          "chunk_id": "d34b897e-67f7-45be-97cd-dfd0e5aa6b4e",
+          "document_id": "dc3dc153-8184-47d6-874b-97b80aff97d1",
+          "document_title": "逆变器 告警参考",
+          "chunk_index": 60,
+          "manufacturer": "huawei",
+          "product_series": "SUN2000",
+          "device_type": "pv_inverter",
+          "document_type": "alarm_code",
+          "section_title": "41 2072 瞬时交流过压",
+          "page_number": 59,
+          "source": "task28a_sha256:c12f37ea55444b145d8c329530d4e00cd702f7cf3deef75f954dd6f1feae7013",
+          "score": 0.737915,
+          "source_locator": {
+            "page_number": 59,
+            "section_path": [
+              "41 2072 瞬时交流过压"
+            ]
+          },
+          "quote": "41 2072 瞬时交流过压 告警属性 告警ID 告警名称 告警级别 2072 瞬时交流过压 重要 告警原因 原因ID 告警原因 1 设备检测到相电压超过瞬时交流过压保护值。 修复建议 1. 检查并网点电压是否过高，如果是，请联系当地电力运营商。 2. 如果确认并网点电压高于允许范围，请在征得当地电力运营商同意后，修改过压 保护点。 3. 请检查电网电压峰值是否过高。 逆变器 告警参考 41 2072 瞬时交流过压 文档版本 13 (2025-12-30) 版权所有 © 华为",
+          "source_type": "PDF"
+        },
+        {
+          "chunk_id": "004ccef9-09c3-46c6-94f7-a99518ef4068",
+          "document_id": "0d43c1f1-19da-4833-924a-cbccd6e14954",
+          "document_title": "SUN2000-(20KTL-M3, 33KTL-NH, 40KTL-NH) 用户手册",
+          "chunk_index": 54,
+          "manufacturer": "huawei",
+          "product_series": "SUN2000",
+          "device_type": "pv_inverter",
+          "document_type": "alarm_code",
+          "section_title": "6.2 系统上电",
+          "page_number": 69,
+          "source": "task28a_sha256:65516280d5c1012b52a74f9b9a4ece2528587ccf5f0c86097000fa302bdabe3c",
+          "score": 0.648866,
+          "source_locator": {
+            "page_number": 69,
+            "section_path": [
+              "6 系统调测",
+              "6.2 系统上电"
+            ]
+          },
+          "quote": "6.2 系统上电 前提条件 危 险 ● 请使用专用防护用具和专用绝缘工具，避免发生电击伤害或短路故障。 须 知 ● 将逆变器与电网之间的交流开关闭合之前，需用万用表交流电压档测量交流电压是 否在允许范围内。 ● 如果直流上电且交流未上电，则逆变器会报“电网掉电”告警，待电网恢复后，逆 变器才能正常启动。 操作步骤 步骤1 闭合逆变器与电网之间的交流开关。 步骤2 将逆变器机箱底部的“DC SWITCH”置于“ON”的位置。 步骤3 观察LED指示灯，查看逆变器运行状态。 表 ",
+          "source_type": "PDF"
+        },
+        {
+          "chunk_id": "1149316f-b86b-4f08-ae16-948d2aa03a21",
+          "document_id": "dc3dc153-8184-47d6-874b-97b80aff97d1",
+          "document_title": "逆变器 告警参考",
+          "chunk_index": 41,
+          "manufacturer": "huawei",
+          "product_series": "SUN2000",
+          "device_type": "pv_inverter",
+          "document_type": "alarm_code",
+          "section_title": "22 2035 电网电压不平衡",
+          "page_number": 36,
+          "source": "task28a_sha256:c12f37ea55444b145d8c329530d4e00cd702f7cf3deef75f954dd6f1feae7013",
+          "score": 0.702933,
+          "source_locator": {
+            "page_number": 36,
+            "section_path": [
+              "22 2035 电网电压不平衡"
+            ]
+          },
+          "quote": "22 2035 电网电压不平衡 告警属性 告警ID 告警名称 告警级别 2035 电网电压不平衡 重要 对系统的影响 设备关机。 告警原因 原因ID 告警原因 1 电网相电压差异过大。 修复建议 1. 如果偶然出现，可能是电网短时间异常，设备在检测到电网正常后会恢复正常工 作，不需要人工干预。 2. 如果频繁出现，请确定电网电压是否在正常范围内，如果否，请联系当地电力运 营商处理。 3. 如果长时间无法恢复，请检查交流侧线缆是否连接正常。 4. 如果交流接线正常，并且该告警频",
+          "source_type": "PDF"
+        }
+      ],
+      "citations": [
+        {
+          "citation_id": "citation:f7963611-ac10-4204-bdb1-50198dc724c4",
+          "chunk_id": "f7963611-ac10-4204-bdb1-50198dc724c4",
+          "document_id": "5c8874dd-8c58-455a-afdd-bc4f81bdd380",
+          "document_title": "华为智能光伏App，SUN2000 App 设备调测指南",
+          "section_title": "6.2.5.3 特性参数",
+          "page_number": 127,
+          "source_locator": {
+            "page_number": 127,
+            "section_path": [
+              "6 商用逆变器",
+              "6.2.4.5 开机与关机",
+              "6.2.4.14 设备升级",
+              "6.2.5.3 特性参数"
+            ]
+          },
+          "quote": "序号 参数名称 参数说明 备注 15 “夜间无功功率固 定值” 在进行夜间无功功率补偿时，按照固定值 形式进行无功功率调度。 “夜间无功”和“夜间无功 参数生效”设置为使能时关 联呈现。 16 “无功功率调整时 间”（s） 无功功率调节中，无功功率到达目标值的 调整时间。 - 18 “功率因数” 设置逆变器的功率因数。 “远程功率调度”设置为使 能时关联呈现。 19 “无功功率补偿 （Q/S）” 设置逆变器输出的无功功率。 - 20 “夜间无功功率补 偿(Q/S)” 在进行夜间无功功率补偿时，按照百分比 形式进行无功功率调度。 - 21 “夜间无功自启 动” 逆变器在夜间电网恢复供电后自动重建无 功输出的功能，通过持续提供动态无功支 撑来维持电网稳定运行，提升系统调节能 力。 “夜间无功”设置为使能 时，关联呈",
+          "source_type": "OFFICIAL_KNOWLEDGE"
+        },
+        {
+          "citation_id": "citation:75eda75b-1bdb-418e-9136-f29d593602a1",
+          "chunk_id": "75eda75b-1bdb-418e-9136-f29d593602a1",
+          "document_id": "51b64bc9-9625-4caa-b80b-42a7dd7b952d",
+          "document_title": "SUN2000-(8KTL-20KTL)-M2 用户手册",
+          "section_title": "1.1 人身安全",
+          "page_number": 12,
+          "source_locator": {
+            "page_number": 12,
+            "section_path": [
+              "1 安全注意事项",
+              "1.1 人身安全"
+            ]
+          },
+          "quote": "危 险 作业过程中，须防止异物进入设备内部，否则可能导致设备短路故障或损坏、负载供 电降额或掉电，以及人身伤害。 警 告 需接地的设备，安装时，必须首先安装保护地线；拆除设备时，必须最后拆除保护地 线。 警 告 在安装光伏组串和逆变器的过程中，如果因为配电线缆安装或走线不符合要求导致光 伏组串正极或负极对地短路，在逆变器工作过程中可能会引起交直流短路，导致设备 损坏。由此引起的设备损坏不在设备质保范围内。 注 意 设备进、出风口不允许有线缆经过。 注 意 电气连接使用的部件（如配电盒、空开、线缆等）应满足耐火阻燃标准（例如IEC 60670-1），确保材料与结构符合防火安全要求。 常规要求 ● 安装、操作和维护必须按照手册的步骤顺序来进行，请勿擅自改造、加装和变更 设备，请勿擅自更改安装顺序等。 ● 需获得所在",
+          "source_type": "OFFICIAL_KNOWLEDGE"
+        },
+        {
+          "citation_id": "citation:881a2308-e9b3-4be2-a91b-dabb9c1f5775",
+          "chunk_id": "881a2308-e9b3-4be2-a91b-dabb9c1f5775",
+          "document_id": "ce6330b1-b708-4b33-86ef-8602bfc936da",
+          "document_title": "SUN2000-(5KTL-12KTL)-M1 用户手册",
+          "section_title": "1.1 人身安全",
+          "page_number": 13,
+          "source_locator": {
+            "page_number": 13,
+            "section_path": [
+              "1 安全注意事项",
+              "1.1 人身安全"
+            ]
+          },
+          "quote": "危 险 作业过程中，须防止异物进入设备内部，否则可能导致设备短路故障或损坏、负载供 电降额或掉电，以及人身伤害。 警 告 需接地的设备，安装时，必须首先安装保护地线；拆除设备时，必须最后拆除保护地 线。 警 告 在安装光伏组串和逆变器的过程中，如果因为配电线缆安装或走线不符合要求导致光 伏组串正极或负极对地短路，在逆变器工作过程中可能会引起交直流短路，导致设备 损坏。由此引起的设备损坏不在设备质保范围内。 注 意 设备进、出风口不允许有线缆经过。 注 意 电气连接使用的部件（如配电盒、空开、线缆等）应满足耐火阻燃标准（例如IEC 60670-1），确保材料与结构符合防火安全要求。 常规要求 ● 安装、操作和维护必须按照手册的步骤顺序来进行，请勿擅自改造、加装和变更 设备，请勿擅自更改安装顺序等。 ● 需获得所在",
+          "source_type": "OFFICIAL_KNOWLEDGE"
+        },
+        {
+          "citation_id": "citation:ea5c63ab-d843-4ba5-b888-660009083b47",
+          "chunk_id": "ea5c63ab-d843-4ba5-b888-660009083b47",
+          "document_id": "3355d042-8c8a-48e8-8a44-b7c1007bbcea",
+          "document_title": "SUN2000-(5KTL-12KTL)-M0 用户手册（中国版）",
+          "section_title": "1.1 人身安全",
+          "page_number": 11,
+          "source_locator": {
+            "page_number": 11,
+            "section_path": [
+              "1 安全注意事项",
+              "1.1 人身安全"
+            ]
+          },
+          "quote": "危 险 作业过程中，须防止异物进入设备内部，否则可能导致设备短路故障或损坏、负载供 电降额或掉电，以及人身伤害。 警 告 需接地的设备，安装时，必须首先安装保护地线；拆除设备时，必须最后拆除保护地 线。 警 告 在安装光伏组串和逆变器的过程中，如果因为配电线缆安装或走线不符合要求导致光 伏组串正极或负极对地短路，在逆变器工作过程中可能会引起交直流短路，导致设备 损坏。由此引起的设备损坏不在设备质保范围内。 注 意 设备进、出风口不允许有线缆经过。 注 意 电气连接使用的部件（如配电盒、空开、线缆等）应满足耐火阻燃标准（例如IEC 60670-1），确保材料与结构符合防火安全要求。 常规要求 ● 安装、操作和维护必须按照手册的步骤顺序来进行，请勿擅自改造、加装和变更 设备，请勿擅自更改安装顺序等。 ● 需获得所在",
+          "source_type": "OFFICIAL_KNOWLEDGE"
+        },
+        {
+          "citation_id": "citation:832a02fb-8751-4b0a-aee1-96c8a48fa3a1",
+          "chunk_id": "832a02fb-8751-4b0a-aee1-96c8a48fa3a1",
+          "document_id": "0d43c1f1-19da-4833-924a-cbccd6e14954",
+          "document_title": "SUN2000-(20KTL-M3, 33KTL-NH, 40KTL-NH) 用户手册",
+          "section_title": "1.1 人身安全",
+          "page_number": 13,
+          "source_locator": {
+            "page_number": 13,
+            "section_path": [
+              "1 安全注意事项",
+              "1.1 人身安全"
+            ]
+          },
+          "quote": "危 险 作业过程中，须防止异物进入设备内部，否则可能导致设备短路故障或损坏、负载供 电降额或掉电，以及人身伤害。 警 告 需接地的设备，安装时，必须首先安装保护地线；拆除设备时，必须最后拆除保护地 线。 警 告 在安装光伏组串和逆变器的过程中，如果因为配电线缆安装或走线不符合要求导致光 伏组串正极或负极对地短路，在逆变器工作过程中可能会引起交直流短路，导致设备 损坏。由此引起的设备损坏不在设备质保范围内。 注 意 设备进、出风口不允许有线缆经过。 注 意 电气连接使用的部件（如配电盒、空开、线缆等）应满足耐火阻燃标准（例如IEC 60670-1），确保材料与结构符合防火安全要求。 常规要求 ● 安装、操作和维护必须按照手册的步骤顺序来进行，请勿擅自改造、加装和变更 设备，请勿擅自更改安装顺序等。 ● 需获得所在",
+          "source_type": "OFFICIAL_KNOWLEDGE"
+        }
+      ],
+      "trace_id": "qa_req_28b02ce6e39617a65384577a3ebe3d36",
+      "qa_record_id": "9c1280e5-59f1-43fc-b04d-6456b8800a26",
+      "qa_persistence_status": "persisted",
+      "diagnosis_created": true,
+      "diagnosis": {
+        "observed_facts": [
+          {
+            "evidence_id": "mme_01d266310eac44ef8e9494199486e398",
+            "level": "CONFIRMED",
+            "evidence_type": "DEVICE_MODEL",
+            "value": "电网电压超限故障。pending_expert_review；True。请在当前 Huawei SUN2000 官方知识范围内检索可参考的排查方向；现场设备厂家和型号仍待人员确认。"
+          },
+          {
+            "evidence_id": "mme_8a7c8af222534351ac8ac769d1c9b76a",
+            "level": "CONFIRMED",
+            "evidence_type": "ALARM_NAME",
+            "value": "电网电压超限"
+          },
+          {
+            "evidence_id": "mme_225e02d3434e40cd87a1573e71f7a34a",
+            "level": "OBSERVED",
+            "evidence_type": "GENERAL_OBSERVATION",
+            "value": "image_quality_acceptable"
+          }
+        ],
+        "possible_faults": [
+          {
+            "hypothesis_id": "mmhyp_1baa9af45760e79745ce6bc0",
+            "fault_category": "maintenance_knowledge_query",
+            "fault_name": "6.2.5.3 特性参数（待确认）",
+            "applicable_device": "SUN2000",
+            "required_conditions": [
+              "ac_grid_measurement"
+            ],
+            "supporting_evidence_ids": [
+              "mme_01d266310eac44ef8e9494199486e398",
+              "mme_8a7c8af222534351ac8ac769d1c9b76a",
+              "mme_225e02d3434e40cd87a1573e71f7a34a"
+            ],
+            "contradicting_evidence_ids": [],
+            "knowledge_citation_ids": [
+              "citation:f7963611-ac10-4204-bdb1-50198dc724c4"
+            ],
+            "confidence": 0.8,
+            "confidence_level": "MEDIUM",
+            "status": "SUPPORTED",
+            "recommended_checks": [
+              "按引用章节核对：华为智能光伏App，SUN2000 App 设备调测指南 / 6.2.5.3 特性参数"
+            ],
+            "safety_warnings": [
+              "在确认设备已安全隔离、断电并完成残余电压检查前，不得开展拆卸或接触操作。"
+            ],
+            "missing_information": []
+          }
+        ],
+        "recommended_checks": [
+          "按引用章节核对：华为智能光伏App，SUN2000 App 设备调测指南 / 6.2.5.3 特性参数"
+        ],
+        "recommended_actions": [],
+        "safety_warnings": [
+          "在确认设备已安全隔离、断电并完成残余电压检查前，不得开展拆卸或接触操作。"
+        ],
+        "missing_information": [],
+        "citations": [
+          {
+            "quote": "序号 参数名称 参数说明 备注 15 “夜间无功功率固 定值” 在进行夜间无功功率补偿时，按照固定值 形式进行无功功率调度。 “夜间无功”和“夜间无功 参数生效”设置为使能时关 联呈现。 16 “无功功率调整时 间”（s） 无功功率调节中，无功功率到达目标值的 调整时间。 - 18 “功率因数” 设置逆变器的功率因数。 “远程功率调度”设置为使 能时关联呈现。 19 “无功功率补偿 （Q/S）” 设置逆变器输出的无功功率。 - 20 “夜间无功功率补 偿(Q/S)” 在进行夜间无功功率补偿时，按照百分比 形式进行无功功率调度。 - 21 “夜间无功自启 动” 逆变器在夜间电网恢复供电后自动重建无 功输出的功能，通过持续提供动态无功支 撑来维持电网稳定运行，提升系统调节能 力。 “夜间无功”设置为使能 时，关联呈",
+            "chunk_id": "f7963611-ac10-4204-bdb1-50198dc724c4",
+            "citation_id": "citation:f7963611-ac10-4204-bdb1-50198dc724c4",
+            "document_id": "5c8874dd-8c58-455a-afdd-bc4f81bdd380",
+            "page_number": 127,
+            "source_type": "OFFICIAL_KNOWLEDGE",
+            "section_title": "6.2.5.3 特性参数",
+            "document_title": "华为智能光伏App，SUN2000 App 设备调测指南",
+            "source_locator": {
+              "page_number": 127,
+              "section_path": [
+                "6 商用逆变器",
+                "6.2.4.5 开机与关机",
+                "6.2.4.14 设备升级",
+                "6.2.5.3 特性参数"
+              ]
+            }
+          },
+          {
+            "quote": "危 险 作业过程中，须防止异物进入设备内部，否则可能导致设备短路故障或损坏、负载供 电降额或掉电，以及人身伤害。 警 告 需接地的设备，安装时，必须首先安装保护地线；拆除设备时，必须最后拆除保护地 线。 警 告 在安装光伏组串和逆变器的过程中，如果因为配电线缆安装或走线不符合要求导致光 伏组串正极或负极对地短路，在逆变器工作过程中可能会引起交直流短路，导致设备 损坏。由此引起的设备损坏不在设备质保范围内。 注 意 设备进、出风口不允许有线缆经过。 注 意 电气连接使用的部件（如配电盒、空开、线缆等）应满足耐火阻燃标准（例如IEC 60670-1），确保材料与结构符合防火安全要求。 常规要求 ● 安装、操作和维护必须按照手册的步骤顺序来进行，请勿擅自改造、加装和变更 设备，请勿擅自更改安装顺序等。 ● 需获得所在",
+            "chunk_id": "75eda75b-1bdb-418e-9136-f29d593602a1",
+            "citation_id": "citation:75eda75b-1bdb-418e-9136-f29d593602a1",
+            "document_id": "51b64bc9-9625-4caa-b80b-42a7dd7b952d",
+            "page_number": 12,
+            "source_type": "OFFICIAL_KNOWLEDGE",
+            "section_title": "1.1 人身安全",
+            "document_title": "SUN2000-(8KTL-20KTL)-M2 用户手册",
+            "source_locator": {
+              "page_number": 12,
+              "section_path": [
+                "1 安全注意事项",
+                "1.1 人身安全"
+              ]
+            }
+          },
+          {
+            "quote": "危 险 作业过程中，须防止异物进入设备内部，否则可能导致设备短路故障或损坏、负载供 电降额或掉电，以及人身伤害。 警 告 需接地的设备，安装时，必须首先安装保护地线；拆除设备时，必须最后拆除保护地 线。 警 告 在安装光伏组串和逆变器的过程中，如果因为配电线缆安装或走线不符合要求导致光 伏组串正极或负极对地短路，在逆变器工作过程中可能会引起交直流短路，导致设备 损坏。由此引起的设备损坏不在设备质保范围内。 注 意 设备进、出风口不允许有线缆经过。 注 意 电气连接使用的部件（如配电盒、空开、线缆等）应满足耐火阻燃标准（例如IEC 60670-1），确保材料与结构符合防火安全要求。 常规要求 ● 安装、操作和维护必须按照手册的步骤顺序来进行，请勿擅自改造、加装和变更 设备，请勿擅自更改安装顺序等。 ● 需获得所在",
+            "chunk_id": "881a2308-e9b3-4be2-a91b-dabb9c1f5775",
+            "citation_id": "citation:881a2308-e9b3-4be2-a91b-dabb9c1f5775",
+            "document_id": "ce6330b1-b708-4b33-86ef-8602bfc936da",
+            "page_number": 13,
+            "source_type": "OFFICIAL_KNOWLEDGE",
+            "section_title": "1.1 人身安全",
+            "document_title": "SUN2000-(5KTL-12KTL)-M1 用户手册",
+            "source_locator": {
+              "page_number": 13,
+              "section_path": [
+                "1 安全注意事项",
+                "1.1 人身安全"
+              ]
+            }
+          },
+          {
+            "quote": "危 险 作业过程中，须防止异物进入设备内部，否则可能导致设备短路故障或损坏、负载供 电降额或掉电，以及人身伤害。 警 告 需接地的设备，安装时，必须首先安装保护地线；拆除设备时，必须最后拆除保护地 线。 警 告 在安装光伏组串和逆变器的过程中，如果因为配电线缆安装或走线不符合要求导致光 伏组串正极或负极对地短路，在逆变器工作过程中可能会引起交直流短路，导致设备 损坏。由此引起的设备损坏不在设备质保范围内。 注 意 设备进、出风口不允许有线缆经过。 注 意 电气连接使用的部件（如配电盒、空开、线缆等）应满足耐火阻燃标准（例如IEC 60670-1），确保材料与结构符合防火安全要求。 常规要求 ● 安装、操作和维护必须按照手册的步骤顺序来进行，请勿擅自改造、加装和变更 设备，请勿擅自更改安装顺序等。 ● 需获得所在",
+            "chunk_id": "ea5c63ab-d843-4ba5-b888-660009083b47",
+            "citation_id": "citation:ea5c63ab-d843-4ba5-b888-660009083b47",
+            "document_id": "3355d042-8c8a-48e8-8a44-b7c1007bbcea",
+            "page_number": 11,
+            "source_type": "OFFICIAL_KNOWLEDGE",
+            "section_title": "1.1 人身安全",
+            "document_title": "SUN2000-(5KTL-12KTL)-M0 用户手册（中国版）",
+            "source_locator": {
+              "page_number": 11,
+              "section_path": [
+                "1 安全注意事项",
+                "1.1 人身安全"
+              ]
+            }
+          },
+          {
+            "quote": "危 险 作业过程中，须防止异物进入设备内部，否则可能导致设备短路故障或损坏、负载供 电降额或掉电，以及人身伤害。 警 告 需接地的设备，安装时，必须首先安装保护地线；拆除设备时，必须最后拆除保护地 线。 警 告 在安装光伏组串和逆变器的过程中，如果因为配电线缆安装或走线不符合要求导致光 伏组串正极或负极对地短路，在逆变器工作过程中可能会引起交直流短路，导致设备 损坏。由此引起的设备损坏不在设备质保范围内。 注 意 设备进、出风口不允许有线缆经过。 注 意 电气连接使用的部件（如配电盒、空开、线缆等）应满足耐火阻燃标准（例如IEC 60670-1），确保材料与结构符合防火安全要求。 常规要求 ● 安装、操作和维护必须按照手册的步骤顺序来进行，请勿擅自改造、加装和变更 设备，请勿擅自更改安装顺序等。 ● 需获得所在",
+            "chunk_id": "832a02fb-8751-4b0a-aee1-96c8a48fa3a1",
+            "citation_id": "citation:832a02fb-8751-4b0a-aee1-96c8a48fa3a1",
+            "document_id": "0d43c1f1-19da-4833-924a-cbccd6e14954",
+            "page_number": 13,
+            "source_type": "OFFICIAL_KNOWLEDGE",
+            "section_title": "1.1 人身安全",
+            "document_title": "SUN2000-(20KTL-M3, 33KTL-NH, 40KTL-NH) 用户手册",
+            "source_locator": {
+              "page_number": 13,
+              "section_path": [
+                "1 安全注意事项",
+                "1.1 人身安全"
+              ]
+            }
+          }
+        ],
+        "confidence_status": "SUPPORTED",
+        "unsupported_diagnosis_count": 0,
+        "safety": {
+          "safety_level": "HIGH",
+          "stop_required": false,
+          "professional_required": true,
+          "allowed_actions": [],
+          "blocked_actions": [],
+          "safety_warnings": [
+            "在确认设备已安全隔离、断电并完成残余电压检查前，不得开展拆卸或接触操作。"
+          ],
+          "matched_risks": [
+            "短路"
+          ],
+          "audit_required": true
+        },
+        "confidence": {
+          "score": 0.7,
+          "status": "MEDIUM",
+          "rationale": [
+            "confirmed_evidence_present",
+            "observed_evidence_present",
+            "official_citation_present"
+          ]
+        },
+        "case_status": "DIAGNOSIS_READY"
+      },
+      "sop_boundary": {
+        "allowed": true,
+        "artifact_type": "sop_draft",
+        "blocked_reasons": [],
+        "requires_human_approval": true,
+        "formal_record_created": false
+      },
+      "record_center_visible": true,
+      "record_center_detail_visible": true,
+      "audit_events": 16,
+      "unsafe_claims": [],
+      "external_provider_called": false,
+      "passed": true
+    }
+  ]
+}

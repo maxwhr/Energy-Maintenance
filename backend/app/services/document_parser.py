@@ -55,7 +55,7 @@ class DocumentParser:
             text=text,
             pages=[ParsedPage(page_number=None, text=text)],
             page_count=None,
-            metadata={"parser": "plain_text", "extension": extension},
+            metadata={"parser": "plain_text", "extension": extension, "parser_version": "structured_parser_v1"},
             warnings=warnings,
         )
 
@@ -88,7 +88,7 @@ class DocumentParser:
             text=text,
             pages=pages,
             page_count=len(reader.pages),
-            metadata={"parser": "pypdf", "extension": "pdf"},
+            metadata={"parser": "pypdf", "extension": "pdf", "parser_version": "structured_parser_v1"},
             warnings=warnings,
         )
 
@@ -107,7 +107,15 @@ class DocumentParser:
         for paragraph in document.paragraphs:
             text = paragraph.text.strip()
             if text:
-                parts.append(text)
+                style = (paragraph.style.name or "").lower() if paragraph.style else ""
+                if style.startswith("heading"):
+                    try:
+                        level = min(6, max(1, int(style.split()[-1])))
+                    except (TypeError, ValueError):
+                        level = 1
+                    parts.append(f"{'#' * level} {text}")
+                else:
+                    parts.append(text)
 
         for table in document.tables:
             for row in table.rows:
@@ -115,6 +123,9 @@ class DocumentParser:
                 if values:
                     parts.append(" | ".join(values))
 
+        image_count = len(document.inline_shapes)
+        if image_count:
+            parts.extend(f"[Image placeholder {index}]" for index in range(1, image_count + 1))
         text = "\n\n".join(parts)
         if not text.strip():
             raise DocumentParserError("Parsed DOCX text is empty")
@@ -122,6 +133,6 @@ class DocumentParser:
             text=text,
             pages=[ParsedPage(page_number=None, text=text)],
             page_count=None,
-            metadata={"parser": "python-docx", "extension": "docx"},
+            metadata={"parser": "python-docx", "extension": "docx", "parser_version": "structured_parser_v1", "image_count": image_count},
             warnings=[],
         )

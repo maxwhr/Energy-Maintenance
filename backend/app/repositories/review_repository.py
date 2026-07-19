@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import KnowledgeChunk, KnowledgeDocument, KnowledgeReviewRecord, User
+from app.models import KnowledgeChunk, KnowledgeChunkVectorIndex, KnowledgeDocument, KnowledgeReviewRecord, User
 
 
 class ReviewRepository:
@@ -19,18 +19,33 @@ class ReviewRepository:
         review_status: str | None = None,
         manufacturer: str | None = None,
         product_series: str | None = None,
+        equipment_category: str | None = None,
+        quality_status: str | None = None,
         document_type: str | None = None,
         keyword: str | None = None,
+        normalized_language: str | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[KnowledgeDocument], int]:
-        filters = []
+        filters = [or_(
+            KnowledgeDocument.metadata_json["superseded"].as_string().is_(None),
+            KnowledgeDocument.metadata_json["superseded"].as_string() != "true",
+        )]
+        if normalized_language:
+            filters.append(KnowledgeDocument.metadata_json["normalized_language"].as_string() == normalized_language)
         if review_status:
             filters.append(KnowledgeDocument.review_status == review_status)
         if manufacturer:
             filters.append(KnowledgeDocument.manufacturer == manufacturer)
         if product_series:
-            filters.append(KnowledgeDocument.product_series == product_series)
+            filters.append(or_(
+                KnowledgeDocument.product_series == product_series,
+                KnowledgeDocument.metadata_json["product_family"].as_string() == product_series,
+            ))
+        if equipment_category:
+            filters.append(KnowledgeDocument.metadata_json["equipment_categories"].contains([equipment_category]))
+        if quality_status:
+            filters.append(KnowledgeDocument.metadata_json["quality_status"].as_string() == quality_status)
         if document_type:
             filters.append(KnowledgeDocument.document_type == document_type)
         if keyword:
@@ -73,6 +88,15 @@ class ReviewRepository:
         )
         return list(self.db.scalars(statement))
 
+    def count_vector_indexes(self, document_id: UUID, *, namespace: str | None = None) -> int:
+        statement = select(func.count()).select_from(KnowledgeChunkVectorIndex).where(
+            KnowledgeChunkVectorIndex.document_id == document_id,
+            KnowledgeChunkVectorIndex.index_status == "active",
+        )
+        if namespace is not None:
+            statement = statement.where(KnowledgeChunkVectorIndex.namespace == namespace)
+        return self.db.scalar(statement) or 0
+
     def update_document_review(
         self,
         *,
@@ -82,6 +106,7 @@ class ReviewRepository:
         reviewer: User,
         comment: str | None,
         archive_status: bool = False,
+        audit_metadata: dict | None = None,
     ) -> tuple[KnowledgeDocument, KnowledgeReviewRecord]:
         before_status = document.review_status
         document.review_status = after_status
@@ -99,7 +124,7 @@ class ReviewRepository:
             before_status=before_status,
             after_status=after_status,
             reviewed_at=datetime.now(timezone.utc),
-            metadata_json={"document_title": document.title},
+            metadata_json={"document_title": document.title, **(audit_metadata or {})},
         )
         self.db.add(review_record)
         self.db.flush()

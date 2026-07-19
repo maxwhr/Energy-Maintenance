@@ -47,3 +47,6 @@ export const createEvidenceLink = (data: MediaEvidenceLinkPayload) =>
 
 export const getMediaMultimodalSummary = (mediaId: string) =>
   request.get<MediaMultimodalSummary>(`/multimodal/media/${mediaId}/summary`)
+
+export const retrieveMultimodalMatches = (mediaId: string, topK = 5) =>
+  request.post<Record<string, any>>('/multimodal/retrieve', { media_id: mediaId, top_k: topK })

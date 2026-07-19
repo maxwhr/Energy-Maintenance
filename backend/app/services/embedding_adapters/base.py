@@ -24,3 +24,8 @@ class EmbeddingAdapter:
 
     def embed_texts(self, texts: list[str]) -> EmbeddingResult:
         raise NotImplementedError
+
+    async def aembed_texts(self, texts: list[str]) -> EmbeddingResult:
+        import asyncio
+
+        return await asyncio.to_thread(self.embed_texts, texts)

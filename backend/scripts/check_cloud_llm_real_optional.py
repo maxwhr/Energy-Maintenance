@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -68,21 +69,33 @@ def main() -> int:
         f"{MARKER}: Provide a concise safety-aware maintenance note for a Huawei SUN2000 PV inverter alarm. "
         "Mention that field engineer confirmation is required."
     )
-    status, response = request_json(
-        "POST",
-        "/model-gateway/chat",
-        base_url=args.base_url,
-        token=token,
-        payload={
-            "provider": "cloud_openai",
-            "task_type": "qa",
-            "allow_fallback": False,
-            "prompt": prompt,
-        },
-        timeout=90,
-    )
-    chat = api_data("cloud model gateway chat", status, response)
-    chat_success = bool(isinstance(chat, dict) and chat.get("success") and chat.get("content") and chat.get("provider") == "cloud_openai")
+    chat = {}
+    chat_success = False
+    for attempt in range(1, 4):
+        status, response = request_json(
+            "POST",
+            "/model-gateway/chat",
+            base_url=args.base_url,
+            token=token,
+            payload={
+                "provider": "cloud_openai",
+                "task_type": "qa",
+                "allow_fallback": False,
+                "prompt": prompt,
+            },
+            timeout=90,
+        )
+        chat = api_data("cloud model gateway chat", status, response)
+        chat_success = bool(
+            isinstance(chat, dict)
+            and chat.get("success")
+            and chat.get("content")
+            and chat.get("provider") == "cloud_openai"
+        )
+        if chat_success:
+            break
+        if attempt < 3:
+            time.sleep(2)
     trace_id = chat.get("trace_id") if isinstance(chat, dict) else None
 
     status, response = request_json(
@@ -119,6 +132,7 @@ def main() -> int:
         "real_external_api_used": bool(chat_success or external_success),
         "model_gateway": {
             "success": chat_success,
+            "attempts": attempt,
             "trace_id": trace_id,
             "provider": chat.get("provider") if isinstance(chat, dict) else None,
             "requested_provider": chat.get("requested_provider") if isinstance(chat, dict) else None,

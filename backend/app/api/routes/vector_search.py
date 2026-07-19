@@ -9,11 +9,72 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
 from app.schemas.common import error_response, success_response
-from app.schemas.vector_index import IndexRequest, ReindexStaleRequest, VectorIndexRunRead, VectorTestQueryRequest
+from app.schemas.vector_index import (
+    IndexRequest, OrphanReconcileRequest, ReindexApprovedRequest, ReindexStaleRequest,
+    VectorIndexRunRead, VectorTestQueryRequest,
+)
 from app.services.vector_index_service import VectorIndexService, VectorIndexServiceError
 
 
 router = APIRouter(prefix="/vector-search", tags=["vector-search"])
+
+
+@router.post("/query")
+def query_vectors(
+    payload: VectorTestQueryRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> dict:
+    result = VectorIndexService(db).test_query(
+        payload.text, provider=payload.provider, vector_backend=payload.vector_backend,
+        top_k=payload.top_k,
+        filters={"manufacturer": payload.manufacturer, "product_series": payload.product_series,
+                 "device_type": payload.device_type, "document_type": payload.document_type},
+    )
+    return success_response(result.model_dump(mode="json"))
+
+
+@router.get("/index-runs")
+def list_index_runs_alias(
+    page: int = Query(default=1, ge=1), page_size: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db), _: User = Depends(get_current_user),
+) -> dict:
+    return success_response(VectorIndexService(db).list_runs(page=page, page_size=page_size))
+
+
+@router.get("/orphans")
+def get_vector_orphans(
+    db: Session = Depends(get_db), _: User = Depends(require_roles("admin")),
+) -> dict:
+    return success_response(VectorIndexService(db).lifecycle_report())
+
+
+@router.post("/orphans/reconcile")
+def reconcile_vector_orphans(
+    payload: OrphanReconcileRequest,
+    db: Session = Depends(get_db), current_user: User = Depends(require_roles("admin")),
+) -> dict:
+    if payload.dry_run:
+        return success_response({**VectorIndexService(db).lifecycle_report(), "dry_run": True, "external_api_called": False})
+    try:
+        result = VectorIndexService(db).reindex_stale(current_user=current_user, limit=payload.limit)
+    except VectorIndexServiceError as exc:
+        return error_response(str(exc), 40084)
+    return success_response(result.model_dump(mode="json"))
+
+
+@router.post("/reindex-approved")
+def reindex_approved(
+    payload: ReindexApprovedRequest,
+    db: Session = Depends(get_db), current_user: User = Depends(require_roles("admin")),
+) -> dict:
+    try:
+        result = VectorIndexService(db).reindex_approved(
+            current_user=current_user, dry_run=payload.dry_run, test_only=payload.test_only, limit=payload.limit,
+        )
+    except VectorIndexServiceError as exc:
+        return error_response(str(exc), 40085)
+    return success_response(result)
 
 
 @router.get("/status")
@@ -82,6 +143,24 @@ def index_document(
         )
     except VectorIndexServiceError as exc:
         return error_response(str(exc), 40080)
+    return success_response(result.model_dump(mode="json"))
+
+
+@router.post("/documents/{document_id}/reindex")
+def reindex_document(
+    document_id: UUID,
+    payload: IndexRequest | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("admin", "expert")),
+) -> dict:
+    payload = payload or IndexRequest(force=True)
+    try:
+        result = VectorIndexService(db).index_document(
+            document_id, current_user=current_user, provider=payload.provider,
+            vector_backend=payload.vector_backend, force=True,
+        )
+    except VectorIndexServiceError as exc:
+        return error_response(str(exc), 40086)
     return success_response(result.model_dump(mode="json"))
 
 

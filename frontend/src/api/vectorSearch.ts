@@ -34,3 +34,9 @@ export const reindexStaleVectorApi = (data?: Record<string, unknown>) =>
 
 export const testVectorQueryApi = (data: Record<string, unknown>) =>
   request.post<VectorTestQueryResult>('/vector-search/test-query', data)
+
+export const getVectorLifecycleApi = () =>
+  request.get<Record<string, unknown>>('/vector-search/orphans')
+
+export const queryVectorApi = (data: Record<string, unknown>) =>
+  request.post<VectorTestQueryResult>('/vector-search/query', data)

@@ -40,14 +40,15 @@ class RetrievalQueryRequest(BaseModel):
     enable_model_enhancement: bool = False
     model_provider: str = "rule_based"
     allow_model_fallback: bool = True
-    retrieval_mode: Literal["keyword", "vector", "hybrid"] = "hybrid"
+    retrieval_mode: Literal["keyword", "vector", "hybrid", "hybrid_rerank", "adaptive"] = "keyword"
     enable_vector: bool = True
     vector_top_k: int = 8
     hybrid_keyword_weight: float = 0.35
     hybrid_vector_weight: float = 0.65
     min_score: float = 0.20
+    scope_id: str | None = Field(default=None, max_length=128)
 
-    @field_validator("query", "question", "manufacturer", "product_series", "device_type", "document_type", "fault_type", "alarm_code", "model_provider")
+    @field_validator("query", "question", "manufacturer", "product_series", "device_type", "document_type", "fault_type", "alarm_code", "model_provider", "scope_id")
     @classmethod
     def strip_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -100,7 +101,16 @@ class RetrievedChunk(BaseModel):
     created_at: datetime
     keyword_score: float | None = None
     vector_score: float | None = None
+    vector_raw_score: float | None = None
     hybrid_score: float | None = None
+    exact_model_boost: float = 0.0
+    exact_fault_code_boost: float = 0.0
+    heading_boost: float = 0.0
+    rrf_score: float = 0.0
+    rerank_score: float | None = None
+    final_score: float | None = None
+    fallback_used: bool = False
+    filter_summary: dict[str, Any] = Field(default_factory=dict)
     retrieval_source: Literal["keyword", "vector", "hybrid"] = "keyword"
     vector_backend: str | None = None
 
@@ -122,6 +132,19 @@ class RetrievalQueryAnalysis(BaseModel):
     normalized_query: str
     keywords: list[str] = Field(default_factory=list)
     filters: dict[str, Any] = Field(default_factory=dict)
+    query_intent: str = "maintenance_knowledge_query"
+    device_models: list[str] = Field(default_factory=list)
+    fault_codes: list[str] = Field(default_factory=list)
+    fault_names: list[str] = Field(default_factory=list)
+    component_terms: list[str] = Field(default_factory=list)
+    symptom_terms: list[str] = Field(default_factory=list)
+    safety_terms: list[str] = Field(default_factory=list)
+    time_terms: list[str] = Field(default_factory=list)
+    document_type_filters: list[str] = Field(default_factory=list)
+    expanded_terms: list[str] = Field(default_factory=list)
+    kg_alias_terms: list[str] = Field(default_factory=list)
+    negative_terms: list[str] = Field(default_factory=list)
+    confidence: float = 0.0
 
 
 class RetrievalQueryResponse(BaseModel):
@@ -158,6 +181,44 @@ class RetrievalQueryResponse(BaseModel):
     embedding_model: str | None = None
     retrieval_diagnostics: dict[str, Any] = Field(default_factory=dict)
     query_analysis: RetrievalQueryAnalysis | None = None
+    recommended_strategy: str = "keyword"
+    actual_strategy: str = "keyword"
+    fallback_strategy: str = "keyword"
+    quality_gate_status: str = "QUALITY_GATE_PENDING"
+    baseline_comparison: dict[str, Any] = Field(default_factory=dict)
+    insufficient_evidence: bool = False
+    effective_scope: dict[str, Any] | None = None
+    actual_route: str = "keyword"
+    requested_mode: str = "keyword"
+    collection_name: str | None = None
+    partition_name: str | None = None
+    language_filter: str | None = None
+    approval_filter: str | None = None
+    current_version_only: bool = False
+    candidate_counts: dict[str, int] = Field(default_factory=dict)
+    scope_filtered_count: int = 0
+    stage_latency: dict[str, Any] = Field(default_factory=dict)
+    external_call_counts: dict[str, int] = Field(default_factory=dict)
+    cache_status: dict[str, Any] = Field(default_factory=dict)
+    scope_validation_passed: bool = False
+    raw_results: list[dict[str, Any]] = Field(default_factory=list)
+    surfaced_results: list[dict[str, Any]] = Field(default_factory=list)
+    raw_top_k: int = 0
+    surfaced_top_k: int = 0
+    cutoff_reason: str | None = None
+    collapsed_groups: int = 0
+    section_diversity: int = 0
+    document_diversity: int = 0
+    relevance_confidence: float = 0.0
+    effective_evaluation_contract: str | None = None
+    vector_representation: str | None = None
+    vector_partition: str | None = None
+    semantic_anchor_used: bool = False
+    anchor_types: list[str] = Field(default_factory=list)
+    anchor_scores: dict[str, float] = Field(default_factory=dict)
+    source_chunk_ids: list[str] = Field(default_factory=list)
+    candidate_recall_trace: list[dict[str, Any]] = Field(default_factory=list)
+    semantic_query_terms: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class RetrievalRecordListResponse(BaseModel):

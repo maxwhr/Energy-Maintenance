@@ -687,3 +687,91 @@ Security scripts:
 - `uv run python scripts/check_rbac_security_matrix.py`
 
 The scripts write sanitized results under `.runtime/security/`. They must not print API keys, Authorization headers, tokens, passwords, local paths, or full secret values. The local `.env` may contain configured secrets for development, but those values must be rotated if ever exposed and must not be committed.
+
+## Task 24C Real External API Acceptance
+
+Controlled real-call acceptance is available through explicit scripts and API flags only:
+
+- `uv run python scripts/check_real_external_api_acceptance.py` checks configuration without real calls.
+- `uv run python scripts/check_real_external_api_acceptance.py --allow-real-api --base-url http://127.0.0.1:8010/api` calls only enabled and fully configured providers.
+- `uv run python scripts/check_real_agent_provider_integration.py --allow-real-api --base-url http://127.0.0.1:8010/api` verifies Agent tools can consume real provider results.
+
+Current local acceptance status: Cloud LLM, MIMO/Vision, and OCR API passed real-call verification. DashVector and Embedding remain blocked until their real provider settings are enabled and complete. All logs and runtime results must remain sanitized; do not commit local `.env` or `.runtime` outputs.
+
+## Task 25B Commands
+
+```powershell
+uv run python scripts/check_task25b_embedding_real.py --allow-real-api
+uv run python scripts/check_task25b_dashvector_real.py --allow-real-api
+uv run python scripts/check_task25b_index_lifecycle.py --allow-real-api --execute-test-only
+uv run python scripts/check_task25b_retrieval_evaluation.py --execute
+uv run python scripts/check_task25b_multimodal_retrieval.py --allow-real-api
+uv run python scripts/check_task25b_quality_gate.py
+```
+
+The real provider path requires both environment gates and explicit CLI flags. `deterministic_test` and `fake_in_memory` remain offline regression modes only. Task 25B currently has real provider acceptance but an overall failed retrieval-quality gate; do not mark it fully complete. Full approved-document rebuild remains blocked while `TASK25B_ALLOW_FULL_REINDEX=false`.
+
+<!-- TASK25B_R1_BEGIN -->
+## Task 25B-R1 controlled blind acceptance (2026-07-11T02:32:50.109583+00:00)
+
+- test_v1 is exposed and regression-only; test_v2 is independently frozen with SHA-256 `2cdf413a1ca58fc77ea3ca64f117f1b909c6bd2ab8ca556ca2fd2bba25bfbe5b`.
+- Corpus: 24 documents, 192 active chunks, 48 hard negatives.
+- Adaptive blind metrics: R@5=1.000000, R@10=1.000000, MRR=0.981481, nDCG@10=0.986331, warm p95=704.712 ms.
+- Reranker disabled: no measurable dev gain. Default retrieval strategy remains keyword.
+- Canary uses an isolated partition because the provider collection quota is exhausted; v1 default partitions remain intact.
+- Formal full reindex, package generation and Git commit were not executed. LoongArch real-machine testing remains outstanding.
+<!-- TASK25B_R1_END -->
+
+
+<!-- TASK25B_R2_BEGIN -->
+## Task 25B-R2 正式知识 Pilot 状态
+
+- 状态：`BLOCKED_CONFIG`；正式可用语料只有 6 份文档、11 个 active Chunk，未达到 300。
+- 独立 Pilot Collection `energy_kn_te_v4_1024_pilot1` 创建被服务商 2 个 Collection 配额阻断；未删除或复用现有 Collection。
+- 已生成 150 条 `draft` 候选；`expert_verified=0`，未冻结或运行 `official_pilot_test_v1`。
+- 默认 Collection 与 `keyword` 策略未改变；`TASK25B_ALLOW_FULL_REINDEX=false`，全量重建决策为 NO-GO。
+- 本任务未打包、未提交 Git；LoongArch/Kylin 仍未实机验收。
+<!-- TASK25B_R2_END -->
+
+## Task 25B-R2-U3 resume commands
+
+The current automated stage is `AWAITING_HUMAN_DOCUMENT_APPROVAL`. Review 34 pending official documents at `http://127.0.0.1:8012/review`; no script may approve them automatically. After real approval, run `check_task25b_r2_u3_corpus_gate.py --resume-after-document-approval`. Pilot indexing remains restricted to the existing `energy_kn_te_v4_1024_v1/pilot_r2` and requires all corpus and benchmark gates; full reindex remains disabled.
+
+<!-- TASK25B_R3_DEV_BEGIN -->
+## Task 25B-R2-U3-R3-DEV 中文工程 Pilot 更新
+
+- 中文 Corpus Gate：`CHINESE_CORPUS_GATE_PASSED`，16 份文档、1262 个当前 Chunk。
+- 开发工程审批与真实专家审批严格分离；`expert_verified=false`。
+- 英文保留但不进入默认检索或 `pilot_r2`。
+- Pilot 索引：1262 upserted；恢复阶段未重复索引，正式全量重建未执行。
+- 质量门原 run 已完整产生 600/600 条结果；最终判定 `DEVELOPMENT_ENGINEERING_QUALITY_GATE_FAILED`。
+- 中断来自 Codex 模型容量，不是项目服务故障；恢复时未重复工程审批。
+<!-- TASK25B_R3_DEV_END -->
+
+<!-- TASK25B_R3_DEV_R1_BEGIN -->
+## Task 25B-R3-DEV-R1 检索治理更新
+
+- v1 run `f1941ec2-9878-45a1-b554-8d9f2f2ec911` 失败且保留；v2 run `3e40e25f-f1f1-4146-9e1e-629d2ce76045` 独立保存。
+- Benchmark 数据集状态：`BENCHMARK_DATASET_READY`；质量门状态：`QUALITY_GATE_FAILED`，二者不得混淆。
+- Scope：`chinese_engineering_pilot_r2`；Canary：`CANARY_PASSED`；正式 v2：`DEVELOPMENT_ENGINEERING_QUALITY_GATE_FAILED`。
+- Pilot 对账：1262/1262，re-embedded=0、re-upserted=0。
+- 工程审批不等于专家验证；正式全量重建未执行；不打包、不提交 Git。
+<!-- TASK25B_R3_DEV_R1_END -->
+
+<!-- Task25B-R3-DEV-R2 -->
+
+Task 25B-R3-DEV-R2 separates raw ranking from surfaced results. test_v3 can be frozen and formally evaluated only after Canary passes.
+
+<!-- TASK25B_R3_DEV_R3 -->
+## Task 25B-R3-DEV-R3 semantic recall diagnosis
+
+- R2 Canary remains `CANARY_FAILED` and its artifacts are preserved read-only.
+- Raw Chunk representation dilution was diagnosed with train/dev-only embedding pairs; DashVector filtering and mapping were not the root cause.
+- An isolated `pilot_r3_semantic` A/B partition was created with 416 source-only anchors. `pilot_r2`, the default partition, and the original 1,262 vectors were not changed.
+- The independent Canary failed: semantic Candidate Recall@50 = 0.444444, below 0.90. `test_v3_1` was not created or frozen and no formal quality run or full reindex occurred.
+- `expert_verified=false`; no package, Git commit, or LoongArch physical verification occurred.
+# Task 25B-R3-DEV-R4 guarded workflow
+
+R4 uses `MaintenanceSemanticUnitService` and `SemanticUnitRetrievalService` with the existing `maintenance_semantic_anchors` JSONB mapping. The isolated vector partition is `pilot_r4_grounded`; `TASK25B_ALLOW_FULL_REINDEX` must remain `false`.
+
+The ordered scripts are `freeze_task25b_r3_dev_r4_snapshot.py`, `build_task25b_r3_dev_r4_semantic_units.py`, `check_task25b_r3_dev_r4_semantic_unit_quality.py`, `create_task25b_r3_dev_r4_grounded_train_dev.py`, `check_task25b_r3_dev_r4_grounding.py`, `index_task25b_r3_dev_r4_semantic_units.py`, `check_task25b_r3_dev_r4_reconciliation.py`, `check_task25b_r3_dev_r4_embedding_margin.py`, and at most two invocations of `check_task25b_r3_dev_r4_canary.py`. The v4 create/freeze/quality-gate scripts abort unless Canary has passed. None of these scripts writes `expert_verified=true`.

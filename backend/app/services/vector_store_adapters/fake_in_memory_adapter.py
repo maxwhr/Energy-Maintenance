@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from app.services.vector_store_adapters.base import VectorRecord, VectorSearchHit, VectorStoreAdapter
 
@@ -26,10 +26,16 @@ class FakeInMemoryVectorAdapter(VectorStoreAdapter):
             "record_count": len(self._collections[self.scope]),
         }
 
-    def ensure_collection(self, *, dimension: int) -> None:
+    def ensure_collection(self, *, dimension: int) -> str:
         self.dimension = dimension
         self.scope = f"{self.collection_name}:{self.namespace}:{self.dimension}"
         self._collections.setdefault(self.scope, {})
+        return self.collection_name
+
+    def delete_vectors(self, vector_ids: list[str]) -> None:
+        collection = self._collections[self.scope]
+        for vector_id in vector_ids:
+            collection.pop(vector_id, None)
 
     def upsert_vectors(self, records: list[VectorRecord]) -> None:
         collection = self._collections[self.scope]
@@ -42,6 +48,7 @@ class FakeInMemoryVectorAdapter(VectorStoreAdapter):
         vector: list[float],
         top_k: int,
         filters: dict | None = None,
+        request_context: dict[str, Any] | None = None,
     ) -> list[VectorSearchHit]:
         filters = {key: value for key, value in (filters or {}).items() if value not in (None, "", "other")}
         hits: list[VectorSearchHit] = []

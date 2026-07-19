@@ -4,6 +4,7 @@ import argparse
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -171,42 +172,67 @@ def main() -> int:
     if not missing_config("cloud_llm"):
         child_results["cloud_llm"] = _run_child("check_cloud_llm_real_optional.py", base_url=args.base_url)
         if child_results["cloud_llm"].get("status") == "passed":
-            detail = _create_agent_run(
-                token=token,
-                base_url=args.base_url,
-                agent_code="retrieval_qa_agent",
-                tools=["model_gateway_chat"],
-                tool_inputs={
-                    "model_gateway_chat": {
-                        "provider": "cloud_openai",
-                        "real_run": True,
-                        "task_type": "general",
-                        "prompt": f"{MARKER} agent tool cloud LLM integration check for PV inverter maintenance.",
-                    }
-                },
-            )
-            call = _tool_call(detail, "model_gateway_chat") or {}
-            data = ((call.get("output_json") or {}).get("data") or {})
+            detail: dict[str, Any] = {}
+            call: dict[str, Any] = {}
+            data: dict[str, Any] = {}
+            for attempt in range(1, 4):
+                detail = _create_agent_run(
+                    token=token,
+                    base_url=args.base_url,
+                    agent_code="retrieval_qa_agent",
+                    tools=["model_gateway_chat"],
+                    tool_inputs={
+                        "model_gateway_chat": {
+                            "provider": "cloud_openai",
+                            "real_run": True,
+                            "allow_fallback": False,
+                            "task_type": "general",
+                            "prompt": (
+                                f"{MARKER}: 请给出一段简短的华为 SUN2000 光伏逆变器告警排查建议，"
+                                "必须包含安全隔离、告警码核对、现场工程师复核，并说明该内容仅用于 Agent real provider integration 验收。"
+                            ),
+                        }
+                    },
+                )
+                call = _tool_call(detail, "model_gateway_chat") or {}
+                data = ((call.get("output_json") or {}).get("data") or {})
+                if data.get("provider_mode") == "real" and data.get("external_api_called") is True:
+                    break
+                if attempt < 3:
+                    time.sleep(2)
             agent_results["model_gateway_chat"] = {
                 "run_id": (detail.get("run") or {}).get("run_id"),
                 "tool_status": call.get("status"),
                 "provider_mode": data.get("provider_mode"),
                 "provider": data.get("provider"),
                 "external_api_called": data.get("external_api_called"),
+                "attempts": attempt,
             }
     else:
         child_results["cloud_llm"] = {"status": "blocked", "missing_or_invalid": missing_config("cloud_llm")}
 
+    failed_agent_checks: list[str] = []
+    for provider_name, tool_name in {
+        "mimo": "media_mimo_analysis",
+        "ocr": "media_ocr",
+        "cloud_llm": "model_gateway_chat",
+    }.items():
+        if child_results.get(provider_name, {}).get("status") != "passed":
+            continue
+        tool_result = agent_results.get(tool_name) or {}
+        if tool_result.get("provider_mode") != "real" or tool_result.get("external_api_called") is not True:
+            failed_agent_checks.append(tool_name)
     real_agent_checks = [
         item for item in agent_results.values() if item.get("provider_mode") == "real" and item.get("external_api_called") is True
     ]
     failed_children = [name for name, item in child_results.items() if item.get("status") == "failed"]
-    status_value = "failed" if failed_children else "passed" if real_agent_checks else "blocked"
+    status_value = "failed" if failed_children or failed_agent_checks else "passed" if real_agent_checks else "blocked"
     result = {
         "status": status_value,
         "real_external_api_used": bool(real_agent_checks),
         "child_provider_results": child_results,
         "agent_results": agent_results,
+        "failed_agent_checks": failed_agent_checks,
         "provider_mode_fields": bool(agent_results),
         "formal_business_objects_created": False,
         "current_user": {"username": user.get("username"), "role": user.get("role")},

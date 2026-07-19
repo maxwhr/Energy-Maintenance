@@ -262,3 +262,78 @@ The current vector RAG enhancement route is DashVector metadata + hybrid retriev
 Task 24D adds production security checks, CORS configuration from settings, JSON/upload request size limits, lightweight in-memory rate limiting, secret-leak scanning, log sanitization, upload/path traversal checks, and an RBAC matrix script.
 
 The backend exposes only sanitized security status through `/api/system/status`; API keys, Authorization headers, tokens, passwords, local paths, and base64 payloads must not appear in responses or logs. Real DashVector, MIMO, OCR, Cloud LLM, and embedding calls remain opt-in and blocked unless explicitly configured and re-tested. Any previously exposed real keys must be rotated before production use.
+
+## Task 24C Real External API Acceptance Note
+
+Task 24C completed controlled real-call acceptance for the configured Cloud LLM, MIMO/Vision, and OCR API providers. The unified acceptance result was `passed=3`, `blocked=2`, `failed=0`: Cloud LLM, MIMO/Vision, and OCR API passed; DashVector and Embedding remained blocked because the real vector and embedding configuration was incomplete.
+
+Real-call execution is explicit only. Dry-run/mock-run results must not be presented as real provider success, and blocked providers must not be documented as passed. Real provider outputs are stored as sanitized logs or auxiliary media evidence and still require human review before maintenance decisions.
+
+## Task 25B High-Precision Multimodal RAG
+
+Task 25B adds real DashScope `text-embedding-v4` (1024 dimensions), real DashVector versioned indexes, semantic document chunks, query understanding, RRF/feature-fusion reranking, citation validation, retrieval evaluation, and descriptor-based cross-modal retrieval.
+
+Current result is `PARTIAL / QUALITY_GATE_FAILED`: real Embedding, real DashVector, controlled test-only indexing, and multimodal manual/case/similar-media checks passed, but hybrid_rerank Recall@10, MRR, nDCG@10, and p95 did not meet the required thresholds. PostgreSQL remains the source of truth; full reindex is disabled; no raw image embedding is used. See `docs/25B_high_precision_multimodal_rag_report.md`.
+
+<!-- TASK25B_R1_BEGIN -->
+## Task 25B-R1 controlled blind acceptance (2026-07-11T02:32:50.109583+00:00)
+
+- test_v1 is exposed and regression-only; test_v2 is independently frozen with SHA-256 `2cdf413a1ca58fc77ea3ca64f117f1b909c6bd2ab8ca556ca2fd2bba25bfbe5b`.
+- Corpus: 24 documents, 192 active chunks, 48 hard negatives.
+- Adaptive blind metrics: R@5=1.000000, R@10=1.000000, MRR=0.981481, nDCG@10=0.986331, warm p95=704.712 ms.
+- Reranker disabled: no measurable dev gain. Default retrieval strategy remains keyword.
+- Canary uses an isolated partition because the provider collection quota is exhausted; v1 default partitions remain intact.
+- Formal full reindex, package generation and Git commit were not executed. LoongArch real-machine testing remains outstanding.
+<!-- TASK25B_R1_END -->
+
+
+<!-- TASK25B_R2_BEGIN -->
+## Task 25B-R2 正式知识 Pilot 状态
+
+- 状态：`BLOCKED_CONFIG`；正式可用语料只有 6 份文档、11 个 active Chunk，未达到 300。
+- 独立 Pilot Collection `energy_kn_te_v4_1024_pilot1` 创建被服务商 2 个 Collection 配额阻断；未删除或复用现有 Collection。
+- 已生成 150 条 `draft` 候选；`expert_verified=0`，未冻结或运行 `official_pilot_test_v1`。
+- 默认 Collection 与 `keyword` 策略未改变；`TASK25B_ALLOW_FULL_REINDEX=false`，全量重建决策为 NO-GO。
+- 本任务未打包、未提交 Git；LoongArch/Kylin 仍未实机验收。
+<!-- TASK25B_R2_END -->
+
+## Task 25B-R2-U3 当前状态
+
+官方检修候选已扩充到 34 份 pending 文档、1,161 个预计 Chunk，审核入口为 `http://127.0.0.1:8012/review`。状态为 `AWAITING_HUMAN_DOCUMENT_APPROVAL`：尚无 approved/active formal Chunk，尚未执行 Pilot 索引或正式全量重建。详见 `docs/25B_R2_U3_official_corpus_expansion_report.md` 与 `docs/25B_R2_U3_pilot_resume_report.md`。
+
+<!-- TASK25B_R3_DEV_BEGIN -->
+## Task 25B-R2-U3-R3-DEV 中文工程 Pilot 更新
+
+- 中文 Corpus Gate：`CHINESE_CORPUS_GATE_PASSED`，16 份文档、1262 个当前 Chunk。
+- 开发工程审批与真实专家审批严格分离；`expert_verified=false`。
+- 英文保留但不进入默认检索或 `pilot_r2`。
+- Pilot 索引：1262 upserted；恢复阶段未重复索引，正式全量重建未执行。
+- 质量门原 run 已完整产生 600/600 条结果；最终判定 `DEVELOPMENT_ENGINEERING_QUALITY_GATE_FAILED`。
+- 中断来自 Codex 模型容量，不是项目服务故障；恢复时未重复工程审批。
+<!-- TASK25B_R3_DEV_END -->
+
+<!-- TASK25B_R3_DEV_R1_BEGIN -->
+## Task 25B-R3-DEV-R1 检索治理更新
+
+- v1 run `f1941ec2-9878-45a1-b554-8d9f2f2ec911` 失败且保留；v2 run `3e40e25f-f1f1-4146-9e1e-629d2ce76045` 独立保存。
+- Benchmark 数据集状态：`BENCHMARK_DATASET_READY`；质量门状态：`QUALITY_GATE_FAILED`，二者不得混淆。
+- Scope：`chinese_engineering_pilot_r2`；Canary：`CANARY_PASSED`；正式 v2：`DEVELOPMENT_ENGINEERING_QUALITY_GATE_FAILED`。
+- Pilot 对账：1262/1262，re-embedded=0、re-upserted=0。
+- 工程审批不等于专家验证；正式全量重建未执行；不打包、不提交 Git。
+<!-- TASK25B_R3_DEV_R1_END -->
+
+<!-- Task25B-R3-DEV-R2 -->
+
+Task 25B-R3-DEV-R2 adds result-set refinement and a metric contract for Chinese Pilot retrieval. The current v3 Canary failed, so vector semantic superiority is not claimed.
+
+<!-- TASK25B_R3_DEV_R3 -->
+## Task 25B-R3-DEV-R3 semantic recall diagnosis
+
+- R2 Canary remains `CANARY_FAILED` and its artifacts are preserved read-only.
+- Raw Chunk representation dilution was diagnosed with train/dev-only embedding pairs; DashVector filtering and mapping were not the root cause.
+- An isolated `pilot_r3_semantic` A/B partition was created with 416 source-only anchors. `pilot_r2`, the default partition, and the original 1,262 vectors were not changed.
+- The independent Canary failed: semantic Candidate Recall@50 = 0.444444, below 0.90. `test_v3_1` was not created or frozen and no formal quality run or full reindex occurred.
+- `expert_verified=false`; no package, Git commit, or LoongArch physical verification occurred.
+# Task 25B-R3-DEV-R4 engineering status
+
+The isolated R4 experiment builds source-grounded maintenance semantic units and typed anchors in `pilot_r4_grounded`. It does not replace the default retrieval route, rewrite `pilot_r2`/`pilot_r3_semantic`, re-embed the original 1,262 chunk vectors, approve documents, or authorize a full reindex. Current aggregate evidence is available to authenticated users at `GET /api/retrieval/scope/r4-status` and in the read-only retrieval quality panel. Formal v4 creation and execution are guarded by the Grounded Canary result.

@@ -1,0 +1,12 @@
+{
+  "version": "task25g_offline_requirements_v1",
+  "generated_wheelhouse_in_task25g": false,
+  "wheelhouse_build_platform": "real loongarch64 Kylin controlled build host",
+  "allowed_wheel_tags": ["py3-none-any", "loongarch64"],
+  "rejected_wheel_tags": ["win_amd64", "manylinux_x86_64", "aarch64", "macosx"],
+  "required_groups": ["production Python wheels", "system RPMs", "prebuilt frontend dist", "SHA-256 checksums"],
+  "excluded_groups": ["pytest", "playwright", "frontend toolchain", "psycopg-binary", "uvloop", "httptools", "watchfiles"],
+  "network_install_allowed": false,
+  "private_index_credentials_allowed": false
+}
+

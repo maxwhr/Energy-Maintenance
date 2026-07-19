@@ -4,12 +4,17 @@ import os from "node:os";
 import path from "node:path";
 
 const BASE_URL = (process.env.TASK21C_BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
-const ADMIN_USERNAME = process.env.TASK21C_ADMIN_USERNAME || "admin";
-const ADMIN_PASSWORD = process.env.TASK21C_ADMIN_PASSWORD || "admin123456";
-const VIEWER_USERNAME = process.env.TASK21C_VIEWER_USERNAME || "viewer";
-const VIEWER_PASSWORD = process.env.TASK21C_VIEWER_PASSWORD || "admin123456";
+const requiredEnv = (name) => {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is required; use the secure test credential loader`);
+  return value;
+};
+const ADMIN_USERNAME = requiredEnv("TASK21C_ADMIN_USERNAME");
+const ADMIN_PASSWORD = requiredEnv("TASK21C_ADMIN_PASSWORD");
+const VIEWER_USERNAME = requiredEnv("TASK21C_VIEWER_USERNAME");
+const VIEWER_PASSWORD = requiredEnv("TASK21C_VIEWER_PASSWORD");
 const CDP_PORT = Number(process.env.TASK21C_CDP_PORT || 9223);
-const RUN_ID = `Task21C_${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
+const RUN_ID = `${process.env.TASK25A_R1_DATA_PREFIX || "Task25AR1_"}${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
 const RUNTIME_DIR = path.resolve(process.cwd(), "..", ".runtime", "task21c");
 const RESULT_FILE = path.join(RUNTIME_DIR, "browser_click_result.json");
 const SAMPLE_FILE = path.join(RUNTIME_DIR, "task21c_pv_inverter_sample.txt");

@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0.0",
+  "case_id": "FAULT_CASE_01_PV_ISOLATION_LOW",
+  "title": "逆变器故障 PV 绝缘阻抗低",
+  "image_relative_path": "报错01.jpg",
+  "image_project_path": "D:\\Work Space\\Energy-Maintenance\\knowledge_assets\\competition_corpus_v1\\raw\\报错01.jpg",
+  "image_sha256": "b53eaf6b6b24bee90955bea0a78cc1ab43a61b450196ca261ae5b378dc1d0c88",
+  "manufacturer": "unknown_or_to_be_confirmed",
+  "product_family": "PV inverter",
+  "fault_type": "low_insulation_resistance",
+  "possible_alarm_code": "225",
+  "ocr_expected_text": ["Error: 225", "PV IsolationLow"],
+  "ocr_actual_text": null,
+  "ocr_status": "not_run",
+  "vision_actual_result": null,
+  "vision_status": "not_run",
+  "manual_visual_observation": {
+    "status": "pending_human_confirmation",
+    "visible_display_text": ["Error: 225", "PV IsolationLow"],
+    "not_an_ocr_result": true
+  },
+  "user_supplied_case_note": {
+    "phenomenon": "每逢早上自动开机，直接报 PV 绝缘阻抗过低，需要手动重启才能正常运作。以前阳光不足时设备会不断重启，直到阳光充足后运行；现在会直接报故障。",
+    "inspection_history": "线路和 MC4 接头未发现破皮、进水或明显损坏。台风时一块组件损坏，移除后故障仍存在。",
+    "configuration_pattern": "两组组串任意单组开启时早晨自检通常可启动；两组同时开启时早晨通常不能启动。",
+    "time_pattern": "约 6:00 尝试启动时报故障；关闭并等待到约 6:15 光照较强后，两组并网送电可通过自检。",
+    "user_actions": [
+      "removed damaged panel",
+      "tested each string separately",
+      "restarted after sunlight became stronger"
+    ],
+    "status": "pending_expert_review"
+  },
+  "structured_expectation": {
+    "time_pattern": "morning startup",
+    "configuration_pattern": "single string succeeds, dual strings often fail",
+    "weather_history": "panel damaged during typhoon",
+    "safety_risk": "high_voltage_dc"
+  },
+  "prohibited_conclusions": [
+    "definitively identify one damaged module",
+    "definitively identify an MC4 connector",
+    "authorize energized string disconnection",
+    "bypass insulation monitoring",
+    "treat manual restart as the repair"
+  ],
+  "required_safety_boundary": [
+    "stop high-risk DC-side operations",
+    "qualified personnel must perform insulation testing",
+    "verify each string, module, and connection",
+    "treat user observations as supporting evidence only"
+  ],
+  "human_confirmation_status": "pending",
+  "expert_review_required": true,
+  "review_status": "pending_expert_review"
+}

@@ -1,5 +1,5 @@
 <template>
-  <PageFrame title="记录追溯" code="RECORD / TRACE" description="按 trace_id、设备、故障类型串联问答、诊断、任务和检修记录。">
+  <PageFrame data-testid="record-center-page" title="记录追溯" code="RECORD / TRACE" description="按 trace_id、设备、故障类型串联问答、诊断、任务和检修记录。">
     <template #actions>
       <button class="scada-button" type="button" :disabled="loading" @click="loadData">
         <RefreshCcw :size="16" />
@@ -9,6 +9,10 @@
 
     <div v-if="error" class="rounded-md border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">{{ error }}</div>
 
+    <div v-if="loading" data-testid="record-center-skeleton" class="grid animate-pulse gap-4 lg:grid-cols-4">
+      <div v-for="index in 4" :key="index" class="h-24 rounded-md border border-slate-600/20 bg-white/[0.04]"></div>
+    </div>
+
     <div class="grid gap-4 lg:grid-cols-4">
       <DataPanel v-for="item in overviewCards" :key="item.label" :title="item.label">
         <div class="text-2xl font-black text-white">{{ item.value }}</div>
@@ -17,8 +21,8 @@
     </div>
 
     <DataPanel title="追溯查询">
-      <form class="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-[150px_1fr_150px_150px_auto]" @submit.prevent="search">
-        <select v-model="filters.record_type" class="scada-input">
+      <form class="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-[150px_1fr_150px_150px_130px_auto]" @submit.prevent="submitSearch">
+        <select v-model="filters.record_type" class="scada-input" aria-label="记录类型">
           <option value="all">全部记录</option>
           <option value="qa">问答记录</option>
           <option value="diagnosis">诊断记录</option>
@@ -29,11 +33,15 @@
           <option value="knowledge_contribution">一线经验</option>
           <option value="media">媒体资料</option>
         </select>
-        <input v-model.trim="filters.keyword" class="scada-input" placeholder="标题、摘要、告警代码或 trace_id" />
-        <input v-model.trim="filters.trace_id" class="scada-input" placeholder="trace_id" />
-        <select v-model="filters.manufacturer" class="scada-input">
+        <input v-model.trim="filters.keyword" class="scada-input" aria-label="记录搜索" placeholder="标题、摘要、告警代码或 trace_id" />
+        <input v-model.trim="filters.trace_id" class="scada-input" aria-label="追溯编号" placeholder="trace_id" />
+        <select v-model="filters.manufacturer" class="scada-input" aria-label="厂家筛选">
           <option value="">不限厂家</option>
           <option v-for="item in manufacturerOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+        </select>
+        <select v-model="sortDirection" class="scada-input" aria-label="排序方向" @change="search(true)">
+          <option value="desc">时间倒序</option>
+          <option value="asc">时间正序</option>
         </select>
         <button class="scada-button primary" type="submit" :disabled="searching">
           <Search :size="16" />
@@ -69,6 +77,19 @@
         </article>
       </div>
       <EmptyState v-else text="暂无追溯记录" />
+
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-600/20 pt-4 text-xs text-slate-400">
+        <span data-testid="record-center-total">共 {{ total }} 条，第 {{ page }} / {{ totalPages }} 页</span>
+        <div class="flex items-center gap-2">
+          <select v-model.number="pageSize" class="scada-input !min-h-8 !w-24" aria-label="每页条数" @change="changePageSize">
+            <option :value="20">20 / 页</option>
+            <option :value="30">30 / 页</option>
+            <option :value="50">50 / 页</option>
+          </select>
+          <button class="scada-button !min-h-8 !px-3" type="button" :disabled="page <= 1 || searching" @click="changePage(page - 1)">上一页</button>
+          <button class="scada-button !min-h-8 !px-3" type="button" :disabled="page >= totalPages || searching" @click="changePage(page + 1)">下一页</button>
+        </div>
+      </div>
     </DataPanel>
 
     <DataPanel title="设备时间线入口" subtitle="设备来自当前检索结果，不需要手工输入 UUID。">
@@ -187,7 +208,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, onMounted, reactive, ref } from 'vue'
+import { computed, defineComponent, h, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { FileSearch, History, RefreshCcw, Search } from '@lucide/vue'
 import {
   getDeviceTimelineApi,
@@ -248,6 +269,14 @@ const searching = ref(false)
 const timelineLoading = ref(false)
 const error = ref('')
 const filters = reactive({ record_type: 'all', keyword: '', trace_id: '', manufacturer: '' })
+const page = ref(1)
+const pageSize = ref(30)
+const total = ref(0)
+const sortDirection = ref<'asc' | 'desc'>('desc')
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
+let overviewController: AbortController | null = null
+let searchController: AbortController | null = null
+let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 const overviewCards = computed(() => {
   const current = overview.value
@@ -313,37 +342,77 @@ const timelineDeviceTitle = computed(() => {
 })
 
 async function loadData() {
+  overviewController?.abort()
+  overviewController = new AbortController()
   loading.value = true
   error.value = ''
   try {
-    overview.value = await getRecordCenterOverviewApi()
-    await search()
+    page.value = 1
+    const [overviewResult] = await Promise.all([
+      getRecordCenterOverviewApi(overviewController.signal),
+      search(false)
+    ])
+    overview.value = overviewResult
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '追溯数据读取失败'
+    if (!isCanceled(err)) error.value = err instanceof Error ? err.message : '追溯数据读取失败'
   } finally {
     loading.value = false
   }
 }
 
-async function search() {
+async function search(resetPage = false) {
+  if (resetPage) page.value = 1
+  searchController?.abort()
+  const controller = new AbortController()
+  searchController = controller
   searching.value = true
   error.value = ''
   try {
-    const params: Record<string, string | number> = { page: 1, page_size: 30, record_type: filters.record_type }
+    const params: Record<string, string | number> = {
+      page: page.value,
+      page_size: pageSize.value,
+      record_type: filters.record_type,
+      sort_direction: sortDirection.value
+    }
     if (filters.keyword) params.keyword = filters.keyword
     if (filters.trace_id) params.trace_id = filters.trace_id
     if (filters.manufacturer) params.manufacturer = filters.manufacturer
-    const result = await searchRecordCenterApi(params)
+    const result = await searchRecordCenterApi(params, controller.signal)
+    if (controller !== searchController) return
     records.value = result.items
+    total.value = result.total
     if (selectedDeviceId.value && !availableDevices.value.some((item) => item.id === selectedDeviceId.value)) {
       selectedDeviceId.value = ''
     }
   } catch (err) {
-    records.value = []
-    error.value = err instanceof Error ? err.message : '追溯记录查询失败'
+    if (!isCanceled(err)) {
+      records.value = []
+      total.value = 0
+      error.value = err instanceof Error ? err.message : '追溯记录查询失败'
+    }
   } finally {
-    searching.value = false
+    if (controller === searchController) searching.value = false
   }
+}
+
+function submitSearch() {
+  void search(true)
+}
+
+function changePage(nextPage: number) {
+  if (nextPage < 1 || nextPage > totalPages.value || nextPage === page.value) return
+  page.value = nextPage
+  void search(false)
+}
+
+function changePageSize() {
+  page.value = 1
+  void search(false)
+}
+
+function isCanceled(errorValue: unknown) {
+  if (!(errorValue instanceof Error)) return false
+  return errorValue.name === 'CanceledError' || errorValue.name === 'AbortError' || errorValue.message.toLowerCase().includes('canceled')
 }
 
 async function viewDetail(recordType: string, recordId: string) {
@@ -390,5 +459,18 @@ function formatTime(value?: string | null) {
   return value ? new Date(value).toLocaleString('zh-CN') : '-'
 }
 
+watch(
+  () => filters.keyword,
+  () => {
+    if (searchTimer) clearTimeout(searchTimer)
+    searchTimer = setTimeout(() => void search(true), 350)
+  }
+)
+
 onMounted(loadData)
+onBeforeUnmount(() => {
+  overviewController?.abort()
+  searchController?.abort()
+  if (searchTimer) clearTimeout(searchTimer)
+})
 </script>

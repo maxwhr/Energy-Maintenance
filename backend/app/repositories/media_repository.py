@@ -21,6 +21,19 @@ class MediaRepository:
     def get_by_id(self, media_id: UUID) -> UploadedMedia | None:
         return self.db.get(UploadedMedia, media_id)
 
+    def get_by_source_hash(self, source_sha256: str, uploaded_by: UUID) -> UploadedMedia | None:
+        statement = (
+            select(UploadedMedia)
+            .where(
+                UploadedMedia.uploaded_by == uploaded_by,
+                UploadedMedia.status != "archived",
+                UploadedMedia.metadata_json["source_sha256"].astext == source_sha256,
+            )
+            .order_by(UploadedMedia.created_at.asc())
+            .limit(1)
+        )
+        return self.db.scalar(statement)
+
     def get_by_ids(self, media_ids: list[UUID]) -> list[UploadedMedia]:
         if not media_ids:
             return []

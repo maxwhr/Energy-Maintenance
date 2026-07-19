@@ -1,0 +1,242 @@
+{
+  "audit_date": "2026-07-16",
+  "audit_mode": "read_only",
+  "evidence_priority": [
+    "current_runtime_and_database",
+    "current_code_and_configuration",
+    "current_safe_tests",
+    "stored_historical_results",
+    "documentation_claims"
+  ],
+  "features": [
+    {
+      "name": "text_rag",
+      "status": "PARTIAL",
+      "maturity": "L3",
+      "delivery_ready": false,
+      "verified_paths": [
+        "txt_md_pdf_docx_upload_parse_chunk_persistence",
+        "document_review_and_status_filtering",
+        "legacy_keyword_qa_real_citations_and_qa_record",
+        "chunk_integrity_current_database"
+      ],
+      "blocked_paths": [
+        "current_online_embedding_dashvector_acceptance",
+        "current_dedicated_reranker_acceptance"
+      ],
+      "broken_paths": [
+        "sungrow_default_retrieval_eligibility",
+        "sungrow_query_aware_pilot_scope"
+      ],
+      "must_fix": [
+        "dual_vendor_production_scope_and_sungrow_metadata",
+        "sg_model_numeric_alarm_manufacturer_and_typo_signals",
+        "query_aware_answer_and_qa_record_persistence",
+        "expert_reviewed_dual_vendor_frozen_benchmark",
+        "specific_sungrow_evidence_gaps"
+      ],
+      "should_optimize": [
+        "incremental_vector_lifecycle_reconciliation",
+        "table_aware_chunking_for_alarm_references"
+      ],
+      "defer": [
+        "dedicated_llm_reranker",
+        "embedding_model_replacement",
+        "full_vector_rebuild"
+      ],
+      "evidence": {
+        "qa_records": 2597,
+        "huawei_default_eligible_documents": 63,
+        "huawei_default_eligible_chunks": 1393,
+        "sungrow_approved_active_documents": 15,
+        "sungrow_approved_active_chunks": 102,
+        "sungrow_default_eligible_documents": 0,
+        "sungrow_query_aware_scope_documents": 0,
+        "parsed_zero_chunk_documents": 0,
+        "chunk_count_mismatches": 0
+      }
+    },
+    {
+      "name": "multimodal_fault_image_retrieval",
+      "status": "PARTIAL",
+      "maturity": "L3",
+      "delivery_ready": false,
+      "verified_paths": [
+        "media_validation_and_persistence",
+        "structured_evidence_and_conflict_persistence",
+        "user_confirmation_rejection_and_correction",
+        "cross_modal_orchestration_code_path"
+      ],
+      "blocked_paths": [
+        "current_live_ocr_provider",
+        "current_live_vision_provider",
+        "four_image_class_current_acceptance"
+      ],
+      "must_fix": [
+        "bounded_current_provider_acceptance_or_explicit_demo_downgrade",
+        "dual_vendor_cross_modal_retrieval_scope"
+      ],
+      "should_optimize": [
+        "resolve_or_explain_open_high_evidence_conflicts"
+      ],
+      "defer": [
+        "raw_image_embedding",
+        "image_to_image_vector_search"
+      ],
+      "evidence": {
+        "uploaded_media": 414,
+        "ocr_results": 88,
+        "ai_analyses": 133,
+        "multimodal_cases": 27,
+        "evidence_items": 156,
+        "open_conflicts": 14,
+        "persisted_real_external_mimo_markers": 13,
+        "persisted_real_custom_ocr_markers": 18
+      }
+    },
+    {
+      "name": "standardized_sop_and_maintenance_work",
+      "status": "VERIFIED",
+      "maturity": "L4",
+      "delivery_ready": true,
+      "verified_paths": [
+        "manufacturer_model_fault_and_level_aware_sop",
+        "non_skippable_safety_steps",
+        "execution_evidence_and_measurements",
+        "expert_completion_review",
+        "formal_task_record_and_trace"
+      ],
+      "blocked_paths": [],
+      "must_fix": [],
+      "should_optimize": [
+        "repeatable_huawei_and_sungrow_demo_regression"
+      ],
+      "defer": [
+        "workflow_architecture_refactor"
+      ],
+      "evidence": {
+        "active_sop_templates": 8,
+        "completed_sop_executions": 11,
+        "completed_maintenance_tasks": 8,
+        "fully_closed_workflows": 1,
+        "closed_workflow_execution_records": 7
+      }
+    },
+    {
+      "name": "knowledge_contribution_review_and_graph",
+      "status": "PARTIAL",
+      "maturity": "L3",
+      "delivery_ready": false,
+      "verified_paths": [
+        "contribution_submit_review_reject_resubmit_archive",
+        "approved_contribution_to_document_and_chunks",
+        "postgresql_graph_crud_and_frontend_display"
+      ],
+      "blocked_paths": [],
+      "broken_paths": [
+        "production_grounded_graph_scope"
+      ],
+      "must_fix": [],
+      "should_optimize": [
+        "repair_small_reviewed_dual_vendor_graph_evidence_set"
+      ],
+      "defer": [
+        "automatic_graph_acceptance",
+        "neo4j",
+        "large_scale_graph_expansion"
+      ],
+      "evidence": {
+        "contributions": 126,
+        "review_records": 174,
+        "converted_contributions": 8,
+        "active_graph_nodes": 34,
+        "active_graph_edges": 34,
+        "production_eligible_graph_nodes": 0,
+        "production_eligible_graph_edges": 0,
+        "production_grounded_evidence": 0
+      }
+    },
+    {
+      "name": "model_answer_annotation_and_manual_correction",
+      "status": "PARTIAL",
+      "maturity": "L2",
+      "delivery_ready": false,
+      "verified_paths": [
+        "source_linked_original_and_corrected_payload",
+        "submitter_reviewer_and_review_history",
+        "expert_accept_reject"
+      ],
+      "blocked_paths": [],
+      "not_found_paths": [
+        "accepted_correction_to_contribution_document_chunk_and_later_retrieval",
+        "quick_helpful_unhelpful_feedback_taxonomy"
+      ],
+      "must_fix": [
+        "accepted_correction_to_reviewed_knowledge_conversion"
+      ],
+      "should_optimize": [
+        "typed_feedback_categories_and_quick_feedback_entry"
+      ],
+      "defer": [
+        "automatic_model_fine_tuning_from_corrections"
+      ],
+      "evidence": {
+        "corrections": 15,
+        "accepted_corrections": 8,
+        "pending_corrections": 1,
+        "converted_corrections": 0
+      }
+    }
+  ],
+  "rag_metrics": {
+    "recall_at_1": null,
+    "recall_at_3": null,
+    "recall_at_5": null,
+    "mrr": null,
+    "ndcg_at_5": null,
+    "citation_accuracy": null,
+    "citation_support_rate": null,
+    "abstention_accuracy": null,
+    "manufacturer_filter_accuracy": null,
+    "model_filter_accuracy": null,
+    "fault_code_top1_accuracy": null,
+    "irrelevant_result_rate": null,
+    "duplicate_result_rate": null,
+    "p50_latency_ms": null,
+    "p95_latency_ms": null,
+    "provider_failure_rate": null,
+    "fallback_success_rate": null
+  },
+  "stored_metric_evidence": [
+    {
+      "description": "latest controlled 30-case stored run",
+      "recall_at_5": 0.966667,
+      "mrr": 0.95,
+      "ndcg_at_5": 0.954364,
+      "citation_validity": 1.0,
+      "hybrid_p95_latency_ms": 1309.551,
+      "overall_gate_passed": false,
+      "failure_note": "exact_model_accuracy was zero"
+    },
+    {
+      "description": "broad 150-case stored run",
+      "recall_at_5": 0.266667,
+      "mrr": 0.189849,
+      "ndcg_at_5": 0.227692,
+      "citation_validity": 0.833333,
+      "p95_latency_ms": 8372.81,
+      "overall_gate_passed": false
+    }
+  ],
+  "delivery_decision": "NOT_READY",
+  "delivery_ready_features": [
+    "standardized_sop_and_maintenance_work"
+  ],
+  "first_recommended_task": "T26B-RAG-SCOPE: repair the dual-vendor production retrieval scope and Sungrow eligibility metadata",
+  "prohibited_optimization_before_baseline": [
+    "replace_multiple_models_at_once",
+    "full_vector_rebuild",
+    "bypass_human_review",
+    "broad_architecture_refactor"
+  ]
+}

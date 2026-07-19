@@ -97,6 +97,17 @@ class ReindexStaleRequest(BaseModel):
     limit: int = Field(default=200, ge=1, le=1000)
 
 
+class ReindexApprovedRequest(BaseModel):
+    dry_run: bool = True
+    test_only: bool = True
+    limit: int = Field(default=200, ge=1, le=5000)
+
+
+class OrphanReconcileRequest(BaseModel):
+    dry_run: bool = True
+    limit: int = Field(default=200, ge=1, le=1000)
+
+
 class VectorIndexJobResponse(BaseModel):
     run: VectorIndexRunRead
     processed: int
@@ -128,6 +139,7 @@ class VectorTestQueryHit(BaseModel):
     chunk_index: int
     section_title: str | None = None
     vector_score: float
+    vector_raw_score: float | None = None
     vector_backend: str
     vector_id: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)

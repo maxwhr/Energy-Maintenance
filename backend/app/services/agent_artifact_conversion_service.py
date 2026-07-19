@@ -28,6 +28,7 @@ from app.schemas.agent import (
     AgentArtifactConversionResult,
     AgentArtifactConversionStatus,
 )
+from app.schemas.sop import normalize_sop_structured_items
 
 
 class AgentArtifactConversionServiceError(ValueError):
@@ -87,7 +88,14 @@ class AgentArtifactConversionService:
                 if conversion.conversion_status == "succeeded":
                     converted_targets[target_type] = result
 
-        can_convert = current_user.role in {"admin", "expert"} and bool(allowed)
+        can_convert = (
+            current_user.role in {"admin", "expert"}
+            or self._workflow_engineer_conversion_allowed(
+                artifact,
+                next(iter(allowed), None),
+                current_user,
+            )
+        ) and bool(allowed)
         if approval and approval.status != "approved":
             can_convert = False
         message = None
@@ -131,11 +139,15 @@ class AgentArtifactConversionService:
         payload: AgentArtifactConversionRequest,
         *,
         current_user: User,
+        commit: bool = True,
     ) -> AgentArtifactConversionResult:
-        if current_user.role not in {"admin", "expert"}:
-            raise AgentArtifactConversionPermissionError("Only expert or admin can convert approved agent artifacts")
-
         artifact, run = self._load_artifact_and_run(artifact_id)
+        if current_user.role not in {"admin", "expert"} and not self._workflow_engineer_conversion_allowed(
+            artifact,
+            payload.target_type,
+            current_user,
+        ):
+            raise AgentArtifactConversionPermissionError("Only expert or admin can convert approved agent artifacts")
         artifact = self.agent_repository.lock_artifact_for_conversion(artifact.id) or artifact
         self._validate_target(artifact, payload.target_type)
         approval = self._resolve_approval(artifact, payload.approval_id)
@@ -261,7 +273,10 @@ class AgentArtifactConversionService:
                     created_by=current_user.id,
                 )
             )
-            self.db.commit()
+            if commit:
+                self.db.commit()
+            else:
+                self.db.flush()
         except Exception as exc:
             safe_error = self._safe_error(exc)
             try:
@@ -270,7 +285,10 @@ class AgentArtifactConversionService:
                     error_message=safe_error,
                     failed_at=datetime.now(timezone.utc),
                 )
-                self.db.commit()
+                if commit:
+                    self.db.commit()
+                else:
+                    self.db.flush()
             except SQLAlchemyError:
                 self.db.rollback()
             if isinstance(exc, AgentArtifactConversionServiceError):
@@ -278,6 +296,31 @@ class AgentArtifactConversionService:
             raise AgentArtifactConversionServiceError(f"Artifact conversion failed: {safe_error}") from exc
 
         return self._result_from_conversion(conversion, artifact=artifact)
+
+    @staticmethod
+    def _workflow_engineer_conversion_allowed(
+        artifact: AgentArtifact,
+        target_type: str | None,
+        current_user: User,
+    ) -> bool:
+        if current_user.role != "engineer" or artifact.source_type != "maintenance_workflow":
+            return False
+        content = artifact.content_json or {}
+        if not content.get("workflow_id"):
+            return False
+        if target_type == "sop_template":
+            return (
+                artifact.artifact_type == "sop_draft"
+                and bool(content.get("requires_human_approval"))
+                and str(content.get("safety_level") or "UNKNOWN") not in {"HIGH", "CRITICAL", "STOP_WORK"}
+            )
+        if target_type == "maintenance_task":
+            return (
+                artifact.artifact_type == "task_draft"
+                and bool(content.get("requires_human_creation"))
+                and bool(content.get("approved_sop_id"))
+            )
+        return False
 
     def list_conversions(
         self,
@@ -420,11 +463,18 @@ class AgentArtifactConversionService:
             fault_type=self._text(content, "fault_type", default=context.get("fault_type") or "unknown"),
             maintenance_level=self._text(content, "maintenance_level", default="level_2"),
             steps=self._list(content.get("steps")),
-            safety_requirements=self._list(
-                content.get("safety_requirements") or content.get("safety_notes") or content.get("safety_precautions")
+            safety_requirements=normalize_sop_structured_items(
+                content.get("safety_requirements") or content.get("safety_notes") or content.get("safety_precautions"),
+                default_key="note",
             ),
-            tools_required=self._list(content.get("tools_required") or content.get("tools")),
-            materials_required=self._list(content.get("materials_required") or content.get("materials")),
+            tools_required=normalize_sop_structured_items(
+                content.get("tools_required") or content.get("tools"),
+                default_key="name",
+            ),
+            materials_required=normalize_sop_structured_items(
+                content.get("materials_required") or content.get("materials"),
+                default_key="name",
+            ),
             compliance_notes=self._text(content, "compliance_notes", default="Converted from approved agent SOP draft."),
             status="draft",
             version=1,

@@ -49,6 +49,9 @@ service.interceptors.response.use(
     return Promise.reject(new Error(message))
   },
   (err) => {
+    if (axios.isCancel(err)) {
+      return Promise.reject(err)
+    }
     const status = err.response?.status
     const data = err.response?.data as Partial<ApiResponse> | undefined
     if (status === 401) {

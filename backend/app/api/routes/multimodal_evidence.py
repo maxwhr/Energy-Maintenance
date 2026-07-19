@@ -18,9 +18,31 @@ from app.services.multimodal_evidence_service import (
     MultimodalEvidenceService,
     MultimodalEvidenceServiceError,
 )
+from app.schemas.high_precision_retrieval import MultimodalRetrieveRequest
+from app.services.multimodal_retrieval_service import MultimodalRetrievalService, MultimodalRetrievalServiceError
 
 
 router = APIRouter(prefix="/multimodal", tags=["multimodal-evidence"])
+
+
+@router.post("/retrieve")
+def retrieve_multimodal_matches(
+    payload: MultimodalRetrieveRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> dict:
+    try:
+        result = MultimodalRetrievalService(db).retrieve(payload.media_id, top_k=payload.top_k)
+    except MultimodalRetrievalServiceError as exc:
+        return error_response(str(exc), 400120)
+    data = result.model_dump(mode="json")
+    if not payload.include_manuals:
+        data["manual_matches"] = []
+    if not payload.include_cases:
+        data["case_matches"] = []
+    if not payload.include_similar_media:
+        data["similar_media"] = []
+    return success_response(data)
 
 
 @router.get("/media/{media_id}/jobs")

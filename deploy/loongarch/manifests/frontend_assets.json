@@ -1,0 +1,11 @@
+{
+  "version": "task25g_frontend_assets_v1",
+  "input": "frontend/dist",
+  "required_entrypoint": "index.html",
+  "build_location": "trusted development or CI build host",
+  "target": "/opt/energy-maintenance/releases/<release-id>/frontend",
+  "relative_api_prefix": "/api",
+  "production_build_tools": [],
+  "checksum_required": true
+}
+

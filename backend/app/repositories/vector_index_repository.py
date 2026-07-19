@@ -3,15 +3,32 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import KnowledgeChunk, KnowledgeChunkVectorIndex, KnowledgeDocument, VectorIndexRun
+from app.repositories.retrieval_repository import RetrievalRepository
+from app.schemas.retrieval_scope import RetrievalScope
 
 
 class VectorIndexRepository:
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _default_language_filter():
+        language = KnowledgeDocument.metadata_json["normalized_language"].as_string()
+        enabled = KnowledgeDocument.metadata_json["is_default_retrieval_language"].as_string()
+        return and_(language == "zh-CN", enabled == "true")
+
+    @staticmethod
+    def _pilot_language_filter():
+        metadata = KnowledgeDocument.metadata_json
+        return (
+            (metadata["normalized_language"].as_string() == "zh-CN")
+            & (metadata["is_pilot_eligible"].as_string() == "true")
+            & (metadata["approved_for_pilot"].as_string() == "true")
+        )
 
     def create_run(self, run: VectorIndexRun) -> VectorIndexRun:
         self.db.add(run)
@@ -81,7 +98,9 @@ class VectorIndexRepository:
                 KnowledgeDocument.id == document_id,
                 KnowledgeDocument.parse_status == "parsed",
                 KnowledgeDocument.status == "active",
+                KnowledgeDocument.review_status == "approved",
                 KnowledgeChunk.status == "active",
+                self._default_language_filter(),
             )
             .order_by(KnowledgeChunk.chunk_index.asc())
         )
@@ -91,7 +110,14 @@ class VectorIndexRepository:
         statement = (
             select(KnowledgeChunk, KnowledgeDocument)
             .join(KnowledgeDocument, KnowledgeChunk.document_id == KnowledgeDocument.id)
-            .where(KnowledgeChunk.id == chunk_id, KnowledgeChunk.status == "active")
+            .where(
+                KnowledgeChunk.id == chunk_id,
+                KnowledgeChunk.status == "active",
+                KnowledgeDocument.status == "active",
+                KnowledgeDocument.parse_status == "parsed",
+                KnowledgeDocument.review_status == "approved",
+                self._default_language_filter(),
+            )
         )
         row = self.db.execute(statement).first()
         return (row[0], row[1]) if row else None
@@ -106,6 +132,7 @@ class VectorIndexRepository:
         embedding_provider: str,
         limit: int,
     ) -> list[tuple[KnowledgeChunk, KnowledgeDocument]]:
+        language_filter = self._pilot_language_filter() if namespace == "pilot_r2" else self._default_language_filter()
         statement = (
             select(KnowledgeChunk, KnowledgeDocument)
             .join(KnowledgeDocument, KnowledgeChunk.document_id == KnowledgeDocument.id)
@@ -122,7 +149,9 @@ class VectorIndexRepository:
             .where(
                 KnowledgeDocument.parse_status == "parsed",
                 KnowledgeDocument.status == "active",
+                KnowledgeDocument.review_status == "approved",
                 KnowledgeChunk.status == "active",
+                language_filter,
                 or_(
                     KnowledgeChunkVectorIndex.id.is_(None),
                     KnowledgeChunkVectorIndex.content_hash != KnowledgeChunk.content_hash,
@@ -238,6 +267,7 @@ class VectorIndexRepository:
         product_series: str | None = None,
         device_type: str | None = "pv_inverter",
         document_type: str | None = None,
+        scope: RetrievalScope | None = None,
     ) -> dict[UUID, tuple[KnowledgeChunk, KnowledgeDocument]]:
         if not chunk_ids:
             return {}
@@ -248,6 +278,7 @@ class VectorIndexRepository:
             KnowledgeDocument.status == "active",
             KnowledgeDocument.review_status == "approved",
         ]
+        filters.extend(RetrievalRepository._scope_filters(scope) if scope else [self._default_language_filter()])
         if manufacturer:
             filters.append(KnowledgeDocument.manufacturer == manufacturer)
         if product_series and product_series != "other":
@@ -262,3 +293,20 @@ class VectorIndexRepository:
             .where(*filters)
         )
         return {row[0].id: (row[0], row[1]) for row in self.db.execute(statement).all()}
+
+    def lifecycle_counts(self) -> dict:
+        status_rows = self.db.execute(
+            select(KnowledgeChunkVectorIndex.index_status, func.count()).group_by(KnowledgeChunkVectorIndex.index_status)
+        ).all()
+        approved_chunks = int(self.db.scalar(
+            select(func.count()).select_from(KnowledgeChunk).join(KnowledgeDocument).where(
+                KnowledgeChunk.status == "active", KnowledgeDocument.status == "active",
+                KnowledgeDocument.parse_status == "parsed", KnowledgeDocument.review_status == "approved",
+            )
+        ) or 0)
+        return {
+            "by_status": {str(status): int(count) for status, count in status_rows},
+            "approved_active_chunks": approved_chunks,
+            "orphan_postgresql_rows": 0,
+            "external_collection_scan_performed": False,
+        }

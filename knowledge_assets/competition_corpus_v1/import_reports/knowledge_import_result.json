@@ -1,0 +1,178 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-07-18T03:49:49.508497+00:00",
+  "status": "APPLY_COMPLETED",
+  "mode": "apply",
+  "database": "energy_maintenance_task27a_test",
+  "manufacturer_filter": "all",
+  "manifest_documents": 21,
+  "selected_documents": 15,
+  "selected_huawei_documents": 10,
+  "selected_sungrow_documents": 5,
+  "not_selected_for_automatic_import": 6,
+  "imported_documents": 15,
+  "duplicates_skipped": 0,
+  "parsed_documents": 15,
+  "failed_documents": 0,
+  "chunks": 1255,
+  "pending_documents": 5,
+  "approved_documents": 10,
+  "future_sungrow_scope_documents": 5,
+  "results": [
+    {
+      "status": "imported",
+      "relative_path": "华为 Huawei _ SUN2000/SUN2000-(15KTL, 17KTL, 20KTL)-M0 用户手册（中国版）.pdf",
+      "sha256": "8390549740e471ea04865fcdce5d254895e6383fbe72f0fd9a262481d6b6a9ba",
+      "document_id": "86be22dd-1fd3-40b0-b0e2-7349d45e873c",
+      "chunk_count": 62,
+      "parse_status": "parsed",
+      "review_status": "approved",
+      "scope": "huawei_sun2000_competition_v1"
+    },
+    {
+      "status": "imported",
+      "relative_path": "华为 Huawei _ SUN2000/SUN2000-(20KTL-M3, 33KTL-NH, 40KTL-NH) 快速指南-(Amphenol).pdf",
+      "sha256": "a040246b594e75624246e9d6d98ea1d4cfbb20ae7794932260e8e1ff5397c524",
+      "document_id": "404fd960-f983-4329-999c-5c932d50fae6",
+      "chunk_count": 9,
+      "parse_status": "parsed",
+      "review_status": "approved",
+      "scope": "huawei_sun2000_competition_v1"
+    },
+    {
+      "status": "imported",
+      "relative_path": "华为 Huawei _ SUN2000/SUN2000-(20KTL-M3, 33KTL-NH, 40KTL-NH) 用户手册.pdf",
+      "sha256": "65516280d5c1012b52a74f9b9a4ece2528587ccf5f0c86097000fa302bdabe3c",
+      "document_id": "0d43c1f1-19da-4833-924a-cbccd6e14954",
+      "chunk_count": 77,
+      "parse_status": "parsed",
+      "review_status": "approved",
+      "scope": "huawei_sun2000_competition_v1"
+    },
+    {
+      "status": "imported",
+      "relative_path": "华为 Huawei _ SUN2000/SUN2000-(5KTL-12KTL)-M0 用户手册（中国版）.pdf",
+      "sha256": "54781c9c2be8b510f76d9843325d9d1d72f557d45ae97664496e2dc2750eb24a",
+      "document_id": "3355d042-8c8a-48e8-8a44-b7c1007bbcea",
+      "chunk_count": 59,
+      "parse_status": "parsed",
+      "review_status": "approved",
+      "scope": "huawei_sun2000_competition_v1"
+    },
+    {
+      "status": "imported",
+      "relative_path": "华为 Huawei _ SUN2000/SUN2000-(5KTL-12KTL)-M1 用户手册.pdf",
+      "sha256": "80c34d353f087f594aed24b6142fbf3a1b72190a0e1740ba8e1d0f48d7b51cbe",
+      "document_id": "ce6330b1-b708-4b33-86ef-8602bfc936da",
+      "chunk_count": 82,
+      "parse_status": "parsed",
+      "review_status": "approved",
+      "scope": "huawei_sun2000_competition_v1"
+    },
+    {
+      "status": "imported",
+      "relative_path": "华为 Huawei _ SUN2000/SUN2000-(8KTL-20KTL)-M2 用户手册.pdf",
+      "sha256": "8f0a0f69e406e4a0c4fac775369bff1295e79c582d45e28838440f1f6161a26a",
+      "document_id": "51b64bc9-9625-4caa-b80b-42a7dd7b952d",
+      "chunk_count": 73,
+      "parse_status": "parsed",
+      "review_status": "approved",
+      "scope": "huawei_sun2000_competition_v1"
+    },
+    {
+      "status": "imported",
+      "relative_path": "华为 Huawei _ SUN2000/华为智能光伏App，SUN2000 App 设备调测指南.pdf",
+      "sha256": "72dbdffa350923fef1195a4739c1019ac1ff226aef206f2c10aafe59acadd91c",
+      "document_id": "5c8874dd-8c58-455a-afdd-bc4f81bdd380",
+      "chunk_count": 355,
+      "parse_status": "parsed",
+      "review_status": "approved",
+      "scope": "huawei_sun2000_competition_v1"
+    },
+    {
+      "status": "imported",
+      "relative_path": "华为 Huawei _ SUN2000/智能光伏解决方案设备替换 调测指南.pdf",
+      "sha256": "95a079fc562a0f5c98b8151fcdedc1b8fde62b18282fb2605d9bec91618453f2",
+      "document_id": "e873b310-edc7-4085-a22d-4772e1e968b3",
+      "chunk_count": 19,
+      "parse_status": "parsed",
+      "review_status": "approved",
+      "scope": "huawei_sun2000_competition_v1"
+    },
+    {
+      "status": "imported",
+      "relative_path": "华为 Huawei _ SUN2000/逆变器 告警参考.pdf",
+      "sha256": "c12f37ea55444b145d8c329530d4e00cd702f7cf3deef75f954dd6f1feae7013",
+      "document_id": "dc3dc153-8184-47d6-874b-97b80aff97d1",
+      "chunk_count": 108,
+      "parse_status": "parsed",
+      "review_status": "approved",
+      "scope": "huawei_sun2000_competition_v1"
+    },
+    {
+      "status": "imported",
+      "relative_path": "华为逆变器SUN2000-196KTL-H0++用户手册(1).pdf",
+      "sha256": "5953d2093859f1e60f9e31776bd6dad623122fdf49a5866284a86af223ca6b5e",
+      "document_id": "637ad760-d80d-4b8b-abe6-50e162a5a034",
+      "chunk_count": 93,
+      "parse_status": "parsed",
+      "review_status": "approved",
+      "scope": "huawei_sun2000_competition_v1"
+    },
+    {
+      "status": "imported",
+      "relative_path": "阳光电源 Sungrow _ SG 系列/SG100CX-P2-CN_110CX-P2-CN_110CX-P2H-CN-UCN-Ver17-202504.pdf",
+      "sha256": "61601d7b028354355ca04646cb7bdf0276fd720de66264ead4c7e72dfec6c98e",
+      "document_id": "bc11e690-9738-458b-91fa-736f2357cce7",
+      "chunk_count": 72,
+      "parse_status": "parsed",
+      "review_status": "pending_review",
+      "scope": "future_sungrow_scope"
+    },
+    {
+      "status": "imported",
+      "relative_path": "阳光电源 Sungrow _ SG 系列/SG110HX-CN-UCN-Ver11-202211.pdf",
+      "sha256": "43f807fd035177b145e10a251885968177806d056cc121cf74ab07a457492916",
+      "document_id": "b8ad74e9-58f1-4d49-b86e-275a77f33972",
+      "chunk_count": 75,
+      "parse_status": "parsed",
+      "review_status": "pending_review",
+      "scope": "future_sungrow_scope"
+    },
+    {
+      "status": "imported",
+      "relative_path": "阳光电源 Sungrow _ SG 系列/SG20-33T-P2-CN-UCN-Ver12-202406.pdf",
+      "sha256": "daca645372da33e201976998ef941bfd37480fd229a067656f7674d478d80964",
+      "document_id": "77421312-b412-47a9-9462-21dfe29294f5",
+      "chunk_count": 67,
+      "parse_status": "parsed",
+      "review_status": "pending_review",
+      "scope": "future_sungrow_scope"
+    },
+    {
+      "status": "imported",
+      "relative_path": "阳光电源 Sungrow _ SG 系列/SG30-50CX-P2-CN_SG30-50CX-P2H-CN-UCN-Ver23-202411.pdf",
+      "sha256": "d4375da1ac7358b1096207a1f71da9f32868a0d34729f99aa127b30922020e6a",
+      "document_id": "67806ca3-02b1-43c3-bd58-8ab60afff955",
+      "chunk_count": 81,
+      "parse_status": "parsed",
+      "review_status": "pending_review",
+      "scope": "future_sungrow_scope"
+    },
+    {
+      "status": "imported",
+      "relative_path": "阳光电源 Sungrow _ SG 系列/SG3_4_5_6_7_8K-UCN-Ver13-202111-中国圆口.pdf",
+      "sha256": "b659af16be89f4e8449b64cadb672fc95a0d9587b64410b1416af7bc8516f82a",
+      "document_id": "7bff9b69-9b4d-4bac-8cd8-cd7b92dc58cb",
+      "chunk_count": 23,
+      "parse_status": "parsed",
+      "review_status": "pending_review",
+      "scope": "future_sungrow_scope"
+    }
+  ],
+  "secrets_printed": false,
+  "vector_rebuild_executed": false,
+  "resume_requested": false,
+  "formal_import": false,
+  "huawei_approval_requested": true
+}

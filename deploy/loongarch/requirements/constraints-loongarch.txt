@@ -1,0 +1,7 @@
+# Architecture policy: only py3-none-any or wheels built on the target loongarch64 host.
+# Native packages below must be built in the target's controlled build environment.
+lxml==6.1.1
+markupsafe==3.0.3
+pillow==12.3.0
+pydantic-core==2.46.4
+

@@ -66,6 +66,19 @@
       </div>
     </DataPanel>
 
+    <DataPanel
+      title="LoongArch 部署准备"
+      subtitle="展示脱敏的银河麒麟原生部署准备状态；Windows 开发机不能代替真实 LoongArch 验收。"
+    >
+      <div v-if="deploymentReadiness" class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div v-for="item in deploymentItems" :key="item.label" class="rounded-md border border-slate-600/20 bg-black/20 p-3">
+          <div class="text-xs font-bold text-slate-400">{{ item.label }}</div>
+          <div class="mt-1 break-words text-sm font-bold text-white">{{ item.value }}</div>
+        </div>
+      </div>
+      <EmptyState v-else text="尚未读取部署准备状态" />
+    </DataPanel>
+
     <div class="grid gap-4 lg:grid-cols-2">
       <DataPanel title="业务统计概览">
         <div v-if="statistics" class="grid gap-3 md:grid-cols-2">
@@ -108,12 +121,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RefreshCcw } from '@lucide/vue'
-import { getModelGatewayStatusApi, getSystemStatisticsApi, getSystemStatusApi } from '@/api'
+import { getDeploymentReadinessApi, getModelGatewayStatusApi, getSystemStatisticsApi, getSystemStatusApi } from '@/api'
 import DataPanel from '@/components/DataPanel.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import PageFrame from '@/components/PageFrame.vue'
 import StatusPill from '@/components/StatusPill.vue'
-import type { ModelGatewayStatus, SystemStatistics, SystemStatus } from '@/types'
+import type { DeploymentReadiness, ModelGatewayStatus, SystemStatistics, SystemStatus } from '@/types'
 import {
   formatMetricLabel,
   formatMetricSectionLabel,
@@ -125,6 +138,7 @@ import {
 const status = ref<SystemStatus | null>(null)
 const statistics = ref<SystemStatistics | null>(null)
 const modelGateway = ref<ModelGatewayStatus | null>(null)
+const deploymentReadiness = ref<DeploymentReadiness | null>(null)
 const loading = ref(false)
 const error = ref('')
 
@@ -203,6 +217,23 @@ const countItems = computed(() => [
   { label: 'SOP 模板', value: status.value?.sop_template_count ?? 0 }
 ])
 
+const deploymentItems = computed(() => {
+  const value = deploymentReadiness.value
+  if (!value) return []
+  return [
+    { label: 'Deployment Preparation', value: value.python_dependency_audit.status },
+    { label: 'Current Architecture', value: `${value.platform} / ${value.architecture}` },
+    { label: 'Real Machine Acceptance', value: value.real_machine_acceptance.status },
+    { label: 'Docker Required', value: String(value.docker_required) },
+    { label: 'Offline Manifest', value: value.offline_manifest_status },
+    { label: 'Native Dependency Risks', value: `${value.native_dependency_risks.count} / ${value.native_dependency_risks.status}` },
+    { label: 'Task25C', value: `${value.task25c_status.regression} / ${value.task25c_status.quality_gate}` },
+    { label: 'R6', value: value.r6_status },
+    { label: 'RAG Performance', value: value.rag_performance_status },
+    { label: 'Full Reindex', value: value.full_reindex_status }
+  ]
+})
+
 const statisticSections = computed(() => {
   if (!statistics.value) return []
   return Object.entries(statistics.value)
@@ -222,19 +253,22 @@ async function loadStatus() {
   loading.value = true
   error.value = ''
   try {
-    const [systemStatus, systemStatistics, gateway] = await Promise.all([
+    const [systemStatus, systemStatistics, gateway, deployment] = await Promise.all([
       getSystemStatusApi(),
       getSystemStatisticsApi(),
-      getModelGatewayStatusApi()
+      getModelGatewayStatusApi(),
+      getDeploymentReadinessApi()
     ])
     status.value = systemStatus
     statistics.value = systemStatistics
     modelGateway.value = gateway
+    deploymentReadiness.value = deployment
   } catch (err) {
     error.value = err instanceof Error ? err.message : '系统状态读取失败'
     status.value = null
     statistics.value = null
     modelGateway.value = null
+    deploymentReadiness.value = null
   } finally {
     loading.value = false
   }

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
 from typing import Any
-from urllib import error, request
+
+import httpx
 
 from app.core.config import Settings
 from app.schemas.model_gateway import ModelProviderStatus
@@ -13,6 +15,8 @@ from app.services.model_adapters.base import ModelAdapterRequest, ModelAdapterRe
 
 class CloudOpenAIAdapter:
     provider = "cloud_openai"
+    _shared_clients: dict[tuple[str, int], httpx.Client] = {}
+    _client_lock = threading.Lock()
 
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -65,28 +69,43 @@ class CloudOpenAIAdapter:
                 {"role": message.role, "content": message.content}
                 for message in adapter_request.messages
             ],
-            "temperature": self.settings.CLOUD_LLM_TEMPERATURE,
-            "max_tokens": self.settings.CLOUD_LLM_MAX_TOKENS,
+            "temperature": adapter_request.temperature if adapter_request.temperature is not None else self.settings.CLOUD_LLM_TEMPERATURE,
+            "max_tokens": adapter_request.max_tokens or self.settings.CLOUD_LLM_MAX_TOKENS,
         }
-        data = json.dumps(payload).encode("utf-8")
-        http_request = request.Request(
-            endpoint,
-            data=data,
-            headers={
+        if adapter_request.response_format:
+            payload["response_format"] = adapter_request.response_format
+        if adapter_request.reasoning_effort:
+            payload["reasoning_effort"] = adapter_request.reasoning_effort
+        timeout = adapter_request.timeout_seconds or self.settings.CLOUD_LLM_TIMEOUT_SECONDS
+        try:
+            response = self._shared_client(endpoint, timeout).post(
+                endpoint,
+                json=payload,
+                headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.settings.CLOUD_LLM_API_KEY}",
-            },
-            method="POST",
-        )
-        try:
-            with request.urlopen(http_request, timeout=self.settings.CLOUD_LLM_TIMEOUT_SECONDS) as response:
-                body = response.read().decode("utf-8")
-            parsed = json.loads(body)
+                },
+            )
+            response.raise_for_status()
+            parsed = response.json()
             if not isinstance(parsed, dict):
                 return self._call_failed(started_at, "Cloud model returned a non-object JSON response.")
             content = self._extract_content(parsed)
+            response_meta = self._response_meta(parsed)
             if not content:
-                return self._call_failed(started_at, "Cloud model returned empty content.")
+                return self._call_failed(
+                    started_at,
+                    "Cloud model returned empty content.",
+                    error_code="empty_content",
+                    provider_status="empty_content",
+                    provider_request_id=str(
+                        response.headers.get("x-request-id")
+                        or response.headers.get("request-id")
+                        or parsed.get("id")
+                        or ""
+                    ) or None,
+                    raw_payload=response_meta,
+                )
             usage = parsed.get("usage") if isinstance(parsed.get("usage"), dict) else None
             latency_ms = int((time.perf_counter() - started_at) * 1000)
             return ModelAdapterResponse(
@@ -101,19 +120,55 @@ class CloudOpenAIAdapter:
                     "object": parsed.get("object"),
                     "model": parsed.get("model"),
                     "usage": usage,
+                    **response_meta,
                 },
+                provider_status="success",
+                provider_request_id=str(
+                    response.headers.get("x-request-id")
+                    or response.headers.get("request-id")
+                    or parsed.get("id")
+                    or ""
+                ) or None,
             )
-        except error.HTTPError as exc:
-            return self._call_failed(started_at, self._sanitize_error(self._format_http_error(exc)))
-        except error.URLError as exc:
-            reason = getattr(exc, "reason", exc)
-            return self._call_failed(started_at, self._sanitize_error(f"Cloud model network error: {reason}"))
-        except TimeoutError:
-            return self._call_failed(started_at, "Cloud model call timed out.")
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            return self._call_failed(started_at, "Cloud model returned invalid JSON.")
-        except OSError as exc:
-            return self._call_failed(started_at, self._sanitize_error(f"Cloud model call failed: {exc}"))
+        except httpx.HTTPStatusError as exc:
+            return self._call_failed(
+                started_at,
+                self._sanitize_error(self._format_http_error(exc.response)),
+                error_code=f"http_{exc.response.status_code}",
+                provider_status="rejected",
+                provider_request_id=exc.response.headers.get("x-request-id") or exc.response.headers.get("request-id"),
+            )
+        except httpx.TimeoutException:
+            return self._call_failed(started_at, "Cloud model call timed out.", error_code="timeout", provider_status="timeout")
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            return self._call_failed(started_at, "Cloud model returned invalid JSON.", error_code="invalid_provider_json")
+        except (httpx.NetworkError, httpx.HTTPError, OSError) as exc:
+            return self._call_failed(
+                started_at,
+                self._sanitize_error(f"Cloud model call failed: {type(exc).__name__}"),
+                error_code="network_error",
+                provider_status="network_error",
+            )
+
+    @classmethod
+    def _shared_client(cls, endpoint: str, timeout_seconds: float) -> httpx.Client:
+        origin = str(httpx.URL(endpoint).copy_with(path="/", query=None, fragment=None))
+        key = (origin, max(1, int(round(timeout_seconds))))
+        with cls._client_lock:
+            client = cls._shared_clients.get(key)
+            if client is None or client.is_closed:
+                client = httpx.Client(
+                    timeout=httpx.Timeout(
+                        connect=min(10.0, float(timeout_seconds)),
+                        read=float(timeout_seconds),
+                        write=min(15.0, float(timeout_seconds)),
+                        pool=min(5.0, float(timeout_seconds)),
+                    ),
+                    limits=httpx.Limits(max_connections=12, max_keepalive_connections=8, keepalive_expiry=120),
+                    headers={"Connection": "keep-alive"},
+                )
+                cls._shared_clients[key] = client
+            return client
 
     @staticmethod
     def _chat_completions_url(base_url: str) -> str:
@@ -153,9 +208,20 @@ class CloudOpenAIAdapter:
             content="",
             success=False,
             error_message=message,
+            provider_status="blocked",
+            error_code="not_configured_or_disabled",
         )
 
-    def _call_failed(self, started_at: float, message: str) -> ModelAdapterResponse:
+    def _call_failed(
+        self,
+        started_at: float,
+        message: str,
+        *,
+        error_code: str = "provider_call_failed",
+        provider_status: str = "failed",
+        provider_request_id: str | None = None,
+        raw_payload: dict[str, Any] | None = None,
+    ) -> ModelAdapterResponse:
         latency_ms = int((time.perf_counter() - started_at) * 1000)
         return ModelAdapterResponse(
             provider=self.provider,
@@ -164,13 +230,37 @@ class CloudOpenAIAdapter:
             success=False,
             latency_ms=latency_ms,
             error_message=message,
+            provider_status=provider_status,
+            error_code=error_code,
+            provider_request_id=provider_request_id,
+            raw_payload=raw_payload,
         )
 
     @staticmethod
-    def _format_http_error(exc: error.HTTPError) -> str:
-        message = exc.reason or "HTTP error"
+    def _response_meta(payload: dict) -> dict[str, Any]:
+        """Return non-sensitive response shape diagnostics, never model reasoning/content."""
+        choices = payload.get("choices")
+        first = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
+        message = first.get("message") if isinstance(first.get("message"), dict) else {}
+        reasoning = message.get("reasoning") or message.get("reasoning_content")
+        usage = payload.get("usage") if isinstance(payload.get("usage"), dict) else {}
+        return {
+            "finish_reason": first.get("finish_reason"),
+            "message_field_names": sorted(str(key) for key in message)[:20],
+            "has_reasoning": isinstance(reasoning, str) and bool(reasoning),
+            "reasoning_length": len(reasoning) if isinstance(reasoning, str) else 0,
+            "usage": {
+                key: usage.get(key)
+                for key in ("prompt_tokens", "completion_tokens", "total_tokens")
+                if isinstance(usage.get(key), int)
+            },
+        }
+
+    @staticmethod
+    def _format_http_error(response: httpx.Response) -> str:
+        message = response.reason_phrase or "HTTP error"
         try:
-            body = exc.read().decode("utf-8", errors="replace")
+            body = response.text
             parsed: Any = json.loads(body) if body else None
             if isinstance(parsed, dict):
                 detail = parsed.get("error") or parsed.get("message") or parsed.get("detail")
@@ -184,7 +274,7 @@ class CloudOpenAIAdapter:
                 message = body[:300]
         except (json.JSONDecodeError, UnicodeDecodeError, OSError):
             pass
-        return f"Cloud model HTTP {exc.code}: {message}"
+        return f"Cloud model HTTP {response.status_code}: {message}"
 
     @staticmethod
     def _extract_content(payload: dict) -> str:
@@ -199,5 +289,13 @@ class CloudOpenAIAdapter:
             content = message.get("content")
             if isinstance(content, str):
                 return content.strip()
+            if isinstance(content, list):
+                parts: list[str] = []
+                for item in content:
+                    if isinstance(item, str):
+                        parts.append(item)
+                    elif isinstance(item, dict) and isinstance(item.get("text"), str):
+                        parts.append(item["text"])
+                return "\n".join(part.strip() for part in parts if part.strip()).strip()
         content = first.get("text")
         return content.strip() if isinstance(content, str) else ""

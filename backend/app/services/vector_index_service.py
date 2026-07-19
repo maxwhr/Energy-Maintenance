@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
+import json
 from uuid import UUID
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -9,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models import KnowledgeChunk, KnowledgeDocument, User, VectorIndexRun
+from app.schemas.retrieval_scope import RetrievalScope
 from app.repositories.vector_index_repository import VectorIndexRepository
 from app.schemas.vector_index import (
     ChunkVectorIndexRead,
@@ -40,28 +43,47 @@ class VerifiedVectorHit:
     score: float
     vector_id: str | None
     metadata: dict
+    raw_score: float | None = None
 
 
 class VectorIndexService:
-    def __init__(self, db: Session, *, allow_real_api: bool = False):
+    def __init__(
+        self,
+        db: Session,
+        *,
+        allow_real_api: bool | None = None,
+        collection_name: str | None = None,
+        namespace: str | None = None,
+    ):
         self.db = db
         self.settings = get_settings()
         self.repository = VectorIndexRepository(db)
-        self.embedding_service = EmbeddingService(allow_real_api=allow_real_api)
-        self.allow_real_api = allow_real_api
+        requested = self.settings.TASK25B_ALLOW_REAL_API if allow_real_api is None else allow_real_api
+        self.allow_real_api = bool(
+            requested
+            and self.settings.TASK25B_ALLOW_REAL_API
+            and self.settings.EMBEDDING_REAL_CALL_ENABLED
+            and self.settings.DASHVECTOR_REAL_CALL_ENABLED
+        )
+        self.embedding_service = EmbeddingService(allow_real_api=self.allow_real_api)
+        self.collection_name_override = collection_name
+        self.namespace_override = namespace
 
     def status(self) -> VectorSearchStatus:
         real_dashvector_configured = bool(
             self.settings.DASHVECTOR_ENDPOINT
             and self.settings.DASHVECTOR_API_KEY
-            and self.settings.DASHVECTOR_COLLECTION
-            and self.settings.DASHVECTOR_DIMENSION > 0
+            and self.settings.DASHVECTOR_PHYSICAL_COLLECTION
+            and self.settings.DASHVECTOR_DIMENSION == 1024
+            and self.settings.DASHVECTOR_METRIC == "cosine"
+            and self.settings.DASHVECTOR_DTYPE == "float"
         )
         real_embedding_configured = bool(
             self.settings.EMBEDDING_BASE_URL
             and self.settings.EMBEDDING_API_KEY
             and self.settings.EMBEDDING_MODEL
-            and self.settings.EMBEDDING_DIM > 0
+            and self.settings.EMBEDDING_MODEL == "text-embedding-v4"
+            and self.settings.EMBEDDING_DIM == 1024
         )
         blocked_reasons: list[str] = []
         warnings: list[str] = []
@@ -91,7 +113,7 @@ class VectorIndexService:
             vector_backend=self.settings.VECTOR_BACKEND,
             dashvector_enabled=self.settings.DASHVECTOR_ENABLED,
             dashvector_configured=real_dashvector_configured,
-            dashvector_collection=self.settings.DASHVECTOR_COLLECTION,
+            dashvector_collection=self.settings.DASHVECTOR_PHYSICAL_COLLECTION,
             dashvector_namespace=self.settings.DASHVECTOR_NAMESPACE,
             dashvector_dimension=self.settings.DASHVECTOR_DIMENSION,
             embedding_enabled=self.settings.EMBEDDING_ENABLED,
@@ -102,7 +124,7 @@ class VectorIndexService:
             deterministic_test_enabled=self.settings.EMBEDDING_TEST_PROVIDER_ENABLED,
             fake_adapter_available=True,
             real_adapter_available=real_dashvector_configured and real_embedding_configured,
-            status="blocked" if blocked_reasons else "available",
+            status="blocked" if blocked_reasons or not self.allow_real_api else "available",
             blocked_reasons=blocked_reasons,
             warnings=warnings,
         )
@@ -135,6 +157,36 @@ class VectorIndexService:
 
     def chunk_status(self, chunk_id: UUID) -> list[ChunkVectorIndexRead]:
         return [ChunkVectorIndexRead.model_validate(item) for item in self.repository.list_indexes_by_chunk(chunk_id)]
+
+    def lifecycle_report(self) -> dict:
+        result = self.repository.lifecycle_counts()
+        result.update({
+            "collection": self.settings.DASHVECTOR_PHYSICAL_COLLECTION,
+            "logical_collection": self.settings.DASHVECTOR_COLLECTION,
+            "embedding_version": self.settings.EMBEDDING_INDEX_VERSION,
+            "full_reindex_allowed": self.settings.TASK25B_ALLOW_FULL_REINDEX,
+            "warnings": ["DashVector-side orphan enumeration is not claimed unless a real collection scan is executed."],
+        })
+        return result
+
+    def reindex_approved(self, *, current_user: User, dry_run: bool, test_only: bool, limit: int) -> dict:
+        if not test_only and not self.settings.TASK25B_ALLOW_FULL_REINDEX:
+            raise VectorIndexServiceError("full approved-document reindex is blocked by TASK25B_ALLOW_FULL_REINDEX=false")
+        config = self._runtime_config()
+        chunks = self.repository.list_stale_chunks(
+            vector_backend=config["vector_backend"], collection_name=config["collection_name"],
+            namespace=config["namespace"], embedding_model=config["embedding_model"],
+            embedding_provider=config["embedding_provider"], limit=limit,
+        )
+        if test_only:
+            chunks = [item for item in chunks if item[1].title.startswith("Task25B_")]
+        if dry_run:
+            return {"dry_run": True, "test_only": test_only, "candidate_count": len(chunks), "external_api_called": False}
+        result = self._index_chunks(
+            chunks, run_type="reindex_approved", target_type="all", target_id=None,
+            current_user=current_user, provider=None, vector_backend=None, force=False,
+        )
+        return result.model_dump(mode="json")
 
     def index_document(
         self,
@@ -234,6 +286,7 @@ class VectorIndexService:
                     chunk_index=hit.chunk.chunk_index,
                     section_title=hit.chunk.section_title,
                     vector_score=hit.score,
+                    vector_raw_score=hit.raw_score,
                     vector_backend=diagnostics["vector_backend"],
                     vector_id=hit.vector_id,
                     metadata={**hit.metadata, "raw_vector_returned": False},
@@ -251,24 +304,71 @@ class VectorIndexService:
         vector_backend: str | None = None,
         top_k: int = 8,
         filters: dict | None = None,
+        scope: RetrievalScope | None = None,
+        query_vector: list[float] | None = None,
     ) -> tuple[list[VerifiedVectorHit], dict]:
         if not self.settings.VECTOR_SEARCH_ENABLED:
             return [], self._diagnostics(vector_available=False, fallback_reason="vector search disabled")
         config = self._runtime_config(provider=provider, vector_backend=vector_backend)
+        if scope is not None:
+            if config["collection_name"] != scope.collection_name or config["namespace"] != scope.partition_name:
+                return [], self._diagnostics(
+                    config=config, vector_available=False, fallback_reason="retrieval_scope_collection_or_partition_mismatch"
+                )
+        started = datetime.now(timezone.utc)
         try:
-            embedding = self.embedding_service.embed_text(text, provider=config["embedding_provider"])
+            embedding = None
+            vector = query_vector
+            if vector is None:
+                embedding = self.embedding_service.embed_query(text, provider=config["embedding_provider"])
+                vector = embedding.vectors[0]
             adapter = self._adapter(config)
-            raw_hits = adapter.query_vectors(vector=embedding.vectors[0], top_k=top_k, filters=filters)
+            clean_filters = {key: value for key, value in (filters or {}).items() if value is not None}
+            query_filters = {
+                **clean_filters,
+                "review_status": "approved",
+                "parse_status": "parsed",
+                "status": "active",
+            }
+            # Legacy pilot_r2 records do not uniformly carry normalized_language /
+            # approved_for_pilot metadata. Scope is enforced authoritatively by the
+            # PostgreSQL allowlist below; pushing absent fields to DashVector turns a
+            # valid partition into a false-empty channel.
+            scope_fingerprint = hashlib.sha256(
+                json.dumps(
+                    scope.public_dict() if scope else {"scope": "provider_raw_unscoped"},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            ).hexdigest()
+            raw_hits = adapter.query_vectors(
+                vector=vector,
+                top_k=top_k,
+                filters=query_filters,
+                request_context={
+                    "operation": "RAW_VECTOR",
+                    "query_mode": "raw_vector",
+                    "embedding_provider": config["embedding_provider"],
+                    "embedding_model": config["embedding_model"],
+                    "embedding_dimension": config["embedding_dim"],
+                    "score_threshold": self.settings.VECTOR_MIN_SCORE,
+                    "index_version": self.settings.EMBEDDING_INDEX_VERSION,
+                    "retrieval_config_version": "task25f_r1_coalescing_v2",
+                    "scope_fingerprint": scope_fingerprint,
+                },
+            )
         except (EmbeddingServiceError, VectorStoreAdapterError) as exc:
             return [], self._diagnostics(config=config, vector_available=False, fallback_reason=str(exc))
         chunk_ids = [self._metadata_uuid(hit, "chunk_id") for hit in raw_hits]
         chunk_ids = [item for item in chunk_ids if item]
         verified = self.repository.approved_active_chunks_by_ids(
             chunk_ids,
-            manufacturer=(filters or {}).get("manufacturer"),
-            product_series=(filters or {}).get("product_series"),
-            device_type=(filters or {}).get("device_type") or "pv_inverter",
-            document_type=(filters or {}).get("document_type"),
+            manufacturer=clean_filters.get("manufacturer"),
+            product_series=clean_filters.get("product_series"),
+            device_type=clean_filters.get("device_type"),
+            document_type=clean_filters.get("document_type"),
+            scope=scope,
         )
         result: list[VerifiedVectorHit] = []
         for hit in raw_hits:
@@ -283,9 +383,42 @@ class VectorIndexService:
                     score=hit.score,
                     vector_id=hit.vector_id,
                     metadata=hit.metadata,
+                    raw_score=hit.raw_score,
                 )
             )
-        return result, self._diagnostics(config=config, vector_available=True, raw_hits=len(raw_hits), verified_hits=len(result))
+        elapsed_ms = (datetime.now(timezone.utc) - started).total_seconds() * 1000
+        diagnostics = self._diagnostics(
+            config=config, vector_available=True, raw_hits=len(raw_hits), verified_hits=len(result),
+            query_embedding_cache_hit=query_vector is not None or bool(embedding and embedding.metadata.get("cache_hit")),
+            query_embedding_latency_ms=sum(
+                float(item.get("latency_ms") or 0) for item in (embedding.metadata.get("batches", []) if embedding else [])
+            ) if embedding and not embedding.metadata.get("cache_hit") else 0.0,
+            dashvector_latency_ms=getattr(adapter, "last_request_latency_ms", 0.0),
+            vector_total_latency_ms=round(elapsed_ms, 3),
+        )
+        diagnostics.update({
+            "collection_name": config["collection_name"], "partition_name": config["namespace"],
+            "scope_filtered_count": max(0, len(raw_hits) - len(result)),
+            "effective_scope": scope.public_dict() if scope else None,
+            "scope_validation_passed": scope is None or all(hit.document.id in scope.allowed_document_ids for hit in result),
+            "external_call_counts": {
+                "embedding": 0 if query_vector is not None or (embedding and embedding.metadata.get("cache_hit")) else 1,
+                "dashvector": 1,
+            },
+            "requested_filters": sorted((filters or {}).keys()),
+            "effective_filters": query_filters,
+            "none_filters_removed": sorted(key for key, value in (filters or {}).items() if value is None),
+            "raw_vector_ids_hash": hashlib.sha256(
+                "|".join(sorted(str(hit.vector_id or "") for hit in raw_hits)).encode("utf-8")
+            ).hexdigest(),
+            "verified_chunk_ids_hash": hashlib.sha256(
+                "|".join(sorted(str(hit.chunk.id) for hit in result)).encode("utf-8")
+            ).hexdigest(),
+            "filtered_reason_counts": {
+                "unmapped_scope_or_status_or_score": max(0, len(raw_hits) - len(result)),
+            },
+        })
+        return result, diagnostics
 
     def _index_chunks(
         self,
@@ -323,6 +456,7 @@ class VectorIndexService:
             succeeded = skipped = failed = 0
             records: list[VectorRecord] = []
             record_context: list[tuple[KnowledgeChunk, KnowledgeDocument, str]] = []
+            pending_embeddings: list[tuple[KnowledgeChunk, KnowledgeDocument, str]] = []
             for chunk, document in chunks:
                 content_hash = chunk.content_hash or EmbeddingService.content_hash(chunk.content)
                 existing = self.repository.get_index_for_chunk(
@@ -336,25 +470,27 @@ class VectorIndexService:
                 if existing and existing.index_status == "active" and existing.content_hash == content_hash and not force:
                     skipped += 1
                     continue
+                pending_embeddings.append((chunk, document, content_hash))
+            if pending_embeddings:
                 try:
-                    embedding = self.embedding_service.embed_text(chunk.content, provider=config["embedding_provider"])
-                    vector_id = self._vector_id(chunk.id, config)
-                    metadata = self._vector_metadata(chunk, document, config, content_hash)
-                    records.append(VectorRecord(vector_id=vector_id, vector=embedding.vectors[0], metadata=metadata))
-                    record_context.append((chunk, document, content_hash))
-                except EmbeddingServiceError as exc:
-                    failed += 1
-                    self.repository.mark_index_failed(
-                        chunk=chunk,
-                        document=document,
-                        vector_backend=config["vector_backend"],
-                        collection_name=config["collection_name"],
-                        namespace=config["namespace"],
-                        embedding_model=config["embedding_model"],
-                        embedding_provider=config["embedding_provider"],
-                        content_hash=content_hash,
-                        error_message=str(exc),
+                    embedding = self.embedding_service.embed_texts(
+                        [chunk.content for chunk, _, _ in pending_embeddings],
+                        provider=config["embedding_provider"],
                     )
+                    for vector, (chunk, document, content_hash) in zip(embedding.vectors, pending_embeddings):
+                        vector_id = self._vector_id(chunk.id, config)
+                        metadata = self._vector_metadata(chunk, document, config, content_hash)
+                        records.append(VectorRecord(vector_id=vector_id, vector=vector, metadata=metadata))
+                        record_context.append((chunk, document, content_hash))
+                except EmbeddingServiceError as exc:
+                    failed += len(pending_embeddings)
+                    for chunk, document, content_hash in pending_embeddings:
+                        self.repository.mark_index_failed(
+                            chunk=chunk, document=document, vector_backend=config["vector_backend"],
+                            collection_name=config["collection_name"], namespace=config["namespace"],
+                            embedding_model=config["embedding_model"], embedding_provider=config["embedding_provider"],
+                            content_hash=content_hash, error_message=str(exc),
+                        )
             if records:
                 adapter.upsert_vectors(records)
             for record, (chunk, document, content_hash) in zip(records, record_context):
@@ -369,7 +505,16 @@ class VectorIndexService:
                     embedding_provider=config["embedding_provider"],
                     embedding_dim=config["embedding_dim"],
                     content_hash=content_hash,
-                    metadata_json={**record.metadata, "raw_vector_stored_in_postgresql": False},
+                    metadata_json={
+                        **record.metadata,
+                        "partition": config["namespace"],
+                        "source_provenance": (document.metadata_json or {}).get("source_provenance"),
+                        "product_family": (document.metadata_json or {}).get("product_family"),
+                        "device_models": (document.metadata_json or {}).get("device_models") or [],
+                        "vendor_document_type": (document.metadata_json or {}).get("vendor_document_type"),
+                        "approved_for_pilot": bool((document.metadata_json or {}).get("approved_for_pilot")),
+                        "raw_vector_stored_in_postgresql": False,
+                    },
                 )
                 succeeded += 1
             run.succeeded_count = succeeded
@@ -419,8 +564,8 @@ class VectorIndexService:
             dimension = embedding_dim
         return {
             "vector_backend": backend,
-            "collection_name": self.settings.DASHVECTOR_COLLECTION,
-            "namespace": self.settings.DASHVECTOR_NAMESPACE,
+            "collection_name": self.collection_name_override or self.settings.DASHVECTOR_PHYSICAL_COLLECTION,
+            "namespace": self.namespace_override or self.settings.DASHVECTOR_NAMESPACE,
             "embedding_provider": embedding_provider,
             "embedding_model": embedding_model,
             "embedding_dim": int(dimension or embedding_dim or 0),
@@ -441,17 +586,25 @@ class VectorIndexService:
                 namespace=config["namespace"],
                 dimension=config["embedding_dim"],
                 metric=self.settings.DASHVECTOR_METRIC,
+                dtype=self.settings.DASHVECTOR_DTYPE,
                 timeout_seconds=self.settings.DASHVECTOR_TIMEOUT_SECONDS,
+                upsert_batch_size=self.settings.DASHVECTOR_UPSERT_BATCH_SIZE,
                 allow_real_api=self.allow_real_api and self.settings.DASHVECTOR_ENABLED,
+                embedding_provider=config["embedding_provider"],
+                embedding_model=config["embedding_model"],
+                index_version=self.settings.EMBEDDING_INDEX_VERSION,
+                retrieval_config_version="task25f_r1_coalescing_v2",
             )
         raise VectorIndexServiceError(f"Unsupported vector backend: {config['vector_backend']}")
 
     @staticmethod
     def _vector_id(chunk_id: UUID, config: dict) -> str:
-        return f"{config['collection_name']}:{config['namespace']}:{chunk_id}"
+        scope = f"{config['collection_name']}|{config['namespace']}|{chunk_id}"
+        return f"kc_{hashlib.sha256(scope.encode('utf-8')).hexdigest()[:48]}"
 
     @staticmethod
     def _vector_metadata(chunk: KnowledgeChunk, document: KnowledgeDocument, config: dict, content_hash: str) -> dict:
+        language_metadata = document.metadata_json or {}
         return {
             "chunk_id": str(chunk.id),
             "document_id": str(document.id),
@@ -465,9 +618,19 @@ class VectorIndexService:
             "parse_status": document.parse_status,
             "status": document.status,
             "content_hash": content_hash,
+            "embedding_dimension": config["embedding_dim"],
+            "embedding_version": get_settings().EMBEDDING_INDEX_VERSION,
+            "device_model": document.model,
+            "fault_codes": ",".join((chunk.metadata_json or {}).get("fault_codes", [])),
+            "section_path": str((chunk.metadata_json or {}).get("section_path") or chunk.section_title or ""),
+            "page_number": chunk.page_number,
+            "object_type": "knowledge_chunk",
             "vector_backend": config["vector_backend"],
             "embedding_provider": config["embedding_provider"],
             "embedding_model": config["embedding_model"],
+            "normalized_language": language_metadata.get("normalized_language"),
+            "approval_mode": language_metadata.get("approval_mode"),
+            "approved_for_pilot": bool(language_metadata.get("approved_for_pilot")),
         }
 
     @staticmethod
@@ -486,6 +649,7 @@ class VectorIndexService:
         fallback_reason: str | None = None,
         raw_hits: int = 0,
         verified_hits: int = 0,
+        **extra,
     ) -> dict:
         config = config or self._runtime_config(provider=None, vector_backend=None)
         warnings = []
@@ -502,7 +666,8 @@ class VectorIndexService:
             "fallback_reason": fallback_reason,
             "raw_vector_hits": raw_hits,
             "verified_vector_hits": verified_hits,
-            "external_api_called": False,
+            "external_api_called": self.allow_real_api and config["vector_backend"] == "dashvector",
             "test_backend": config["vector_backend"] == "fake_in_memory",
             "warnings": warnings,
+            **extra,
         }

@@ -13,8 +13,49 @@ from app.schemas.common import error_response, success_response
 from app.schemas.media import MediaUploadResponse
 from app.services.media_service import MediaService, MediaServiceError
 from app.services.ocr_service import OCRService, OCRServiceError
+from app.services.multimodal_retrieval_service import MultimodalRetrievalService, MultimodalRetrievalServiceError
 
 router = APIRouter(prefix="/media", tags=["media"])
+
+
+def _multimodal_matches(media_id: UUID, field: str, db: Session) -> dict:
+    try:
+        result = MultimodalRetrievalService(db).retrieve(media_id)
+    except MultimodalRetrievalServiceError as exc:
+        return error_response(str(exc), 40035)
+    return success_response({
+        "media_id": str(media_id),
+        "capability_label": result.capability_label,
+        "raw_image_embedding": False,
+        "items": [item.model_dump(mode="json") for item in getattr(result, field)],
+    })
+
+
+@router.get("/{media_id}/similar")
+def get_similar_media(
+    media_id: UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> dict:
+    return _multimodal_matches(media_id, "similar_media", db)
+
+
+@router.get("/{media_id}/knowledge-matches")
+def get_media_knowledge_matches(
+    media_id: UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> dict:
+    return _multimodal_matches(media_id, "manual_matches", db)
+
+
+@router.get("/{media_id}/case-matches")
+def get_media_case_matches(
+    media_id: UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> dict:
+    return _multimodal_matches(media_id, "case_matches", db)
 
 
 @router.post("/upload")
@@ -69,6 +110,7 @@ async def upload_media(
         task_id=media.task_id,
         fault_type=(media.metadata_json or {}).get("fault_type"),
         alarm_code=(media.metadata_json or {}).get("alarm_code"),
+        deduplicated=bool(result.get("deduplicated", False)),
     )
     return success_response(response.model_dump(mode="json"))
 

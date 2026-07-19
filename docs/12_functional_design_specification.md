@@ -1636,3 +1636,79 @@ Security behavior is intentionally conservative:
 Agent-generated drafts can be converted into formal business objects only after human approval. Conversion now has a dedicated audit table, conversion trace id, status lifecycle, target object pointer, source artifact snapshot, and failure recording.
 
 The conversion lifecycle is independent from approval. Approval does not automatically create formal objects. Duplicate and concurrent conversion requests for the same artifact and target are prevented by database constraint and service-level locking.
+
+## Task 24C Addendum: Real External API Acceptance
+
+The functional design now includes controlled real-call acceptance for enabled external providers. Real calls are never implicit: scripts and APIs must pass explicit `--allow-real-api` or `real_run=true`.
+
+Verified real provider behavior:
+
+- Cloud LLM can produce real text output through Model Gateway and External API Gateway while retaining rule-based fallback for normal fallback-enabled flows.
+- MIMO/Vision can create auxiliary real evidence in `media_ai_analyses`; the result remains pending human review.
+- OCR API can create auxiliary real OCR evidence in `media_ocr_results`; the result remains subject to manual verification.
+- Agent tools can read real MIMO, OCR, and Cloud LLM provider results and expose `provider_mode=real`.
+
+Blocked provider behavior:
+
+- DashVector and Embedding remain blocked until their real provider settings are enabled and complete.
+- Blocked providers must not be presented as passed, and dry-run/mock-run output must not be described as real-call output.
+
+No formal knowledge, SOP, task, or KG object is created directly from real provider output. Approval and explicit conversion remain required.
+
+## Task 25B Functional Addendum
+
+The high-precision retrieval pipeline is query understanding -> keyword/vector candidates -> metadata and PostgreSQL validation -> score normalization -> exact boosts -> RRF/weighted fusion -> feature rerank -> dedup/diversity -> citation validation -> top-k. PostgreSQL remains authoritative.
+
+Multimodal retrieval converts OCR and reviewed visual structure into a canonical text descriptor and embeds that descriptor. Similar media additionally combines pHash/dHash, OCR tokens, exact device/fault matches, and component overlap. The design does not support raw image embedding and does not replace field engineer judgment.
+
+
+<!-- TASK25B_R2_BEGIN -->
+## Task 25B-R2 正式知识 Pilot 状态
+
+- 状态：`BLOCKED_CONFIG`；正式可用语料只有 6 份文档、11 个 active Chunk，未达到 300。
+- 独立 Pilot Collection `energy_kn_te_v4_1024_pilot1` 创建被服务商 2 个 Collection 配额阻断；未删除或复用现有 Collection。
+- 已生成 150 条 `draft` 候选；`expert_verified=0`，未冻结或运行 `official_pilot_test_v1`。
+- 默认 Collection 与 `keyword` 策略未改变；`TASK25B_ALLOW_FULL_REINDEX=false`，全量重建决策为 NO-GO。
+- 本任务未打包、未提交 Git；LoongArch/Kylin 仍未实机验收。
+<!-- TASK25B_R2_END -->
+
+## Task 25B-R2-U3 官方语料与审核设计
+
+官方 HTML/公开 support 文档先经过来源、hash、正文长度、营销、重复、locator 与乱码质量检查，再以 pending 文档和 Chunk 入库。`equipment_categories`、`product_family`、`device_models` 与告警知识存入 metadata_json，保留既有数据库兼容字段。审核页对 viewer/engineer 只读，对 expert/admin 开放单条和最多 10 条批量操作；Pilot resume 依赖独立 corpus/benchmark gate，不允许 UI 直接触发全量重建。
+
+<!-- TASK25B_R3_DEV_BEGIN -->
+## Task 25B-R2-U3-R3-DEV 中文工程 Pilot 更新
+
+- 中文 Corpus Gate：`CHINESE_CORPUS_GATE_PASSED`，16 份文档、1262 个当前 Chunk。
+- 开发工程审批与真实专家审批严格分离；`expert_verified=false`。
+- 英文保留但不进入默认检索或 `pilot_r2`。
+- Pilot 索引：1262 upserted；恢复阶段未重复索引，正式全量重建未执行。
+- 质量门原 run 已完整产生 600/600 条结果；最终判定 `DEVELOPMENT_ENGINEERING_QUALITY_GATE_FAILED`。
+- 中断来自 Codex 模型容量，不是项目服务故障；恢复时未重复工程审批。
+<!-- TASK25B_R3_DEV_END -->
+
+<!-- TASK25B_R3_DEV_R1_BEGIN -->
+## Task 25B-R3-DEV-R1 检索治理更新
+
+- v1 run `f1941ec2-9878-45a1-b554-8d9f2f2ec911` 失败且保留；v2 run `3e40e25f-f1f1-4146-9e1e-629d2ce76045` 独立保存。
+- Benchmark 数据集状态：`BENCHMARK_DATASET_READY`；质量门状态：`QUALITY_GATE_FAILED`，二者不得混淆。
+- Scope：`chinese_engineering_pilot_r2`；Canary：`CANARY_PASSED`；正式 v2：`DEVELOPMENT_ENGINEERING_QUALITY_GATE_FAILED`。
+- Pilot 对账：1262/1262，re-embedded=0、re-upserted=0。
+- 工程审批不等于专家验证；正式全量重建未执行；不打包、不提交 Git。
+<!-- TASK25B_R3_DEV_R1_END -->
+
+<!-- Task25B-R3-DEV-R2 -->
+
+Task 25B-R3-DEV-R2 retrieval APIs return raw/surfaced counts, cutoff reason, collapsed groups, and section/document diversity; ordinary APIs do not return benchmark expected labels.
+
+<!-- TASK25B_R3_DEV_R3 -->
+## Task 25B-R3-DEV-R3 semantic recall diagnosis
+
+- R2 Canary remains `CANARY_FAILED` and its artifacts are preserved read-only.
+- Raw Chunk representation dilution was diagnosed with train/dev-only embedding pairs; DashVector filtering and mapping were not the root cause.
+- An isolated `pilot_r3_semantic` A/B partition was created with 416 source-only anchors. `pilot_r2`, the default partition, and the original 1,262 vectors were not changed.
+- The independent Canary failed: semantic Candidate Recall@50 = 0.444444, below 0.90. `test_v3_1` was not created or frozen and no formal quality run or full reindex occurred.
+- `expert_verified=false`; no package, Git commit, or LoongArch physical verification occurred.
+# R4 maintenance semantic units
+
+Maintenance semantic units are source-bounded section/alarm/procedure objects with stable IDs, one-or-more original chunk mappings, original page/section locators, reproducible source hashes, and typed retrieval anchors. Query intent selects no more than three typed anchor searches. Results merge by semantic-unit ID, retain per-anchor scores, and cite original chunks rather than canonical representation text. R4 remains an isolated engineering A/B route in `pilot_r4_grounded`.

@@ -27,6 +27,7 @@ SECRET_KEYS = {
     "OCR_API_KEY",
     "LOCAL_LLM_API_KEY",
     "RERANK_API_KEY",
+    "DASHSCOPE_API_KEY",
     "PRIVATE_KEY",
 }
 PLACEHOLDER_PREFIXES = ("<FILL_", "your_", "replace_", "example", "changeme", "change-", "dummy")

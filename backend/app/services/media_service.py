@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import hashlib
+import io
 import re
+import warnings
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
 
 from fastapi import UploadFile
+from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -15,13 +19,22 @@ from app.models import UploadedMedia, User
 from app.repositories.media_repository import MediaRepository
 from app.schemas.media import MediaContextItem
 from app.services.ocr_service import OCRService
+from app.services.ocr_adapters.base import OCRRecognitionResult
 
 
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
-ALLOWED_MEDIA_TYPES = {"fault_image", "nameplate", "site_photo", "inspection_photo", "other"}
+ALLOWED_MEDIA_TYPES = {
+    "fault_image", "nameplate", "alarm_screen", "indicator_light", "platform_screenshot",
+    "site_photo", "inspection_photo", "other",
+}
 ALLOWED_MANUFACTURERS = {"huawei", "sungrow"}
-ALLOWED_PRODUCT_SERIES = {"SUN2000", "FusionSolar", "SG"}
-ALLOWED_DEVICE_TYPES = {"pv_inverter"}
+ALLOWED_PRODUCT_SERIES = {"SUN2000", "FusionSolar", "LUNA2000", "SmartLogger", "SG"}
+ALLOWED_DEVICE_TYPES = {"pv_inverter", "battery_system", "smart_logger", "monitoring_platform", "unknown"}
+IMAGE_FORMAT_RULES = {
+    "JPEG": ({"jpg", "jpeg"}, "image/jpeg"),
+    "PNG": ({"png"}, "image/png"),
+    "WEBP": ({"webp"}, "image/webp"),
+}
 
 
 class MediaServiceError(ValueError):
@@ -36,6 +49,13 @@ class StoredMediaFile:
     file_ext: str
     file_size: int
     mime_type: str | None = None
+    source_sha256: str = ""
+    stored_sha256: str = ""
+    width: int = 0
+    height: int = 0
+    detected_format: str = ""
+    original_orientation: int | None = None
+    exif_removed: bool = True
 
 
 class MediaService:
@@ -67,8 +87,8 @@ class MediaService:
             device = self.repository.get_device(device_id)
             if not device:
                 raise MediaServiceError("Device not found")
-            if device.device_type != "pv_inverter":
-                raise MediaServiceError("Media device_type must be pv_inverter")
+            if device.device_type not in ALLOWED_DEVICE_TYPES:
+                raise MediaServiceError("Bound device type is not supported by multimodal maintenance")
             manufacturer = device.manufacturer
             product_series = device.product_series
             device_type = device.device_type
@@ -79,6 +99,14 @@ class MediaService:
         fault_type = self._clean_metadata_text(fault_type, 64)
         alarm_code = self._clean_metadata_text(alarm_code, 64)
         stored_file = await self._store_upload(file)
+        duplicate = self.repository.get_by_source_hash(stored_file.source_sha256, current_user.id)
+        if duplicate is not None:
+            self._delete_stored_file(stored_file.file_path)
+            return {
+                "media": duplicate,
+                "ocr": self._ocr_result_from_media(duplicate),
+                "deduplicated": True,
+            }
         ocr_result = self.ocr_service.extract_text(stored_file.file_path)
         ocr_metadata = {
             "status": ocr_result.status,
@@ -117,12 +145,20 @@ class MediaService:
                 "ocr_error_summary": ocr_result.error_summary,
                 "ocr_processed_at": ocr_metadata["processed_at"],
                 "ocr_metadata": ocr_result.metadata,
+                "source_sha256": stored_file.source_sha256,
+                "stored_sha256": stored_file.stored_sha256,
+                "image_width": stored_file.width,
+                "image_height": stored_file.height,
+                "image_pixels": stored_file.width * stored_file.height,
+                "detected_format": stored_file.detected_format,
+                "original_orientation": stored_file.original_orientation,
+                "exif_removed": stored_file.exif_removed,
             },
         )
         try:
             media = self.repository.create(media)
             self.db.commit()
-            return {"media": media, "ocr": ocr_result}
+            return {"media": media, "ocr": ocr_result, "deduplicated": False}
         except SQLAlchemyError as exc:
             self.db.rollback()
             self._delete_stored_file(stored_file.file_path)
@@ -297,7 +333,8 @@ class MediaService:
         return context
 
     def resolve_file_path(self, media: UploadedMedia) -> Path:
-        path = (self._backend_root() / media.file_path).resolve()
+        stored_path = Path(media.file_path)
+        path = (stored_path if stored_path.is_absolute() else self._backend_root() / stored_path).resolve()
         self._ensure_inside_upload_dir(path, self._safe_upload_dir())
         if not path.is_file():
             raise MediaServiceError("Media file is missing from storage")
@@ -319,21 +356,96 @@ class MediaService:
         if len(content) > max_bytes:
             raise MediaServiceError(f"Uploaded file exceeds {self.settings.MAX_UPLOAD_SIZE_MB}MB limit")
 
+        source_sha256 = hashlib.sha256(content).hexdigest()
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                with Image.open(io.BytesIO(content)) as probe:
+                    detected_format = str(probe.format or "").upper()
+                    width, height = probe.size
+                    if detected_format not in IMAGE_FORMAT_RULES:
+                        raise MediaServiceError("Unsupported image content. Allowed: JPEG, PNG, WEBP")
+                    allowed_extensions, canonical_mime = IMAGE_FORMAT_RULES[detected_format]
+                    if file_ext not in allowed_extensions:
+                        raise MediaServiceError("Image extension does not match detected image format")
+                    claimed_mime = (file.content_type or "").split(";", 1)[0].strip().lower()
+                    if claimed_mime and claimed_mime != canonical_mime:
+                        raise MediaServiceError("Image MIME type does not match detected image format")
+                    if width < 1 or height < 1:
+                        raise MediaServiceError("Uploaded image has invalid dimensions")
+                    if width * height > self.settings.MULTIMODAL_MAX_IMAGE_PIXELS:
+                        raise MediaServiceError(
+                            f"Uploaded image exceeds {self.settings.MULTIMODAL_MAX_IMAGE_PIXELS} pixel limit"
+                        )
+                    probe.verify()
+
+                with Image.open(io.BytesIO(content)) as opened:
+                    original_orientation = self._read_orientation(opened)
+                    opened.load()
+                    normalized = ImageOps.exif_transpose(opened).copy()
+                    sanitized = self._sanitized_image_bytes(normalized, detected_format)
+        except MediaServiceError:
+            raise
+        except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+            raise MediaServiceError("Uploaded image exceeds safe decompression limits") from exc
+        except (UnidentifiedImageError, OSError, ValueError, SyntaxError) as exc:
+            raise MediaServiceError("Uploaded file is not a valid image") from exc
+
         upload_dir = self._safe_upload_dir()
         target_dir = upload_dir / datetime.now(timezone.utc).strftime("%Y%m%d")
         target_dir.mkdir(parents=True, exist_ok=True)
         stored_name = f"{uuid4().hex}.{file_ext}"
         target_path = (target_dir / stored_name).resolve()
         self._ensure_inside_upload_dir(target_path, upload_dir)
-        target_path.write_bytes(content)
+        target_path.write_bytes(sanitized)
 
         return StoredMediaFile(
             original_file_name=safe_original_name,
             file_name=stored_name,
-            file_path=str(target_path.relative_to(self._backend_root()).as_posix()),
+            file_path=self._storage_path_value(target_path),
             file_ext=file_ext,
-            file_size=len(content),
-            mime_type=file.content_type,
+            file_size=len(sanitized),
+            mime_type=canonical_mime,
+            source_sha256=source_sha256,
+            stored_sha256=hashlib.sha256(sanitized).hexdigest(),
+            width=normalized.width,
+            height=normalized.height,
+            detected_format=detected_format,
+            original_orientation=original_orientation,
+            exif_removed=True,
+        )
+
+    @staticmethod
+    def _read_orientation(image: Image.Image) -> int | None:
+        try:
+            value = image.getexif().get(274)
+            return int(value) if value is not None else None
+        except (AttributeError, TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _sanitized_image_bytes(image: Image.Image, detected_format: str) -> bytes:
+        output = io.BytesIO()
+        if detected_format == "JPEG":
+            clean = image.convert("RGB")
+            clean.save(output, format="JPEG", quality=92, optimize=True)
+        elif detected_format == "PNG":
+            clean = image.convert("RGBA") if "A" in image.getbands() else image.convert("RGB")
+            clean.save(output, format="PNG", optimize=True)
+        else:
+            clean = image.convert("RGBA") if "A" in image.getbands() else image.convert("RGB")
+            clean.save(output, format="WEBP", quality=92, method=4)
+        return output.getvalue()
+
+    def _ocr_result_from_media(self, media: UploadedMedia) -> OCRRecognitionResult:
+        metadata = media.metadata_json or {}
+        ocr = metadata.get("ocr") if isinstance(metadata.get("ocr"), dict) else {}
+        return OCRRecognitionResult(
+            status=str(ocr.get("status") or metadata.get("ocr_status") or "disabled"),
+            text=media.ocr_text or "",
+            message=str(ocr.get("message") or metadata.get("ocr_message") or "OCR service is not configured"),
+            error_summary=ocr.get("error_summary") or metadata.get("ocr_error_summary"),
+            metadata=ocr.get("metadata") if isinstance(ocr.get("metadata"), dict) else {},
         )
 
     def _safe_upload_dir(self) -> Path:
@@ -352,7 +464,8 @@ class MediaService:
 
     def _delete_stored_file(self, relative_path: str) -> None:
         try:
-            path = (self._backend_root() / relative_path).resolve()
+            stored_path = Path(relative_path)
+            path = (stored_path if stored_path.is_absolute() else self._backend_root() / stored_path).resolve()
             self._ensure_inside_upload_dir(path, self._safe_upload_dir())
             if path.is_file():
                 path.unlink()
@@ -429,3 +542,9 @@ class MediaService:
     @staticmethod
     def _backend_root() -> Path:
         return Path(__file__).resolve().parents[2]
+
+    def _storage_path_value(self, path: Path) -> str:
+        try:
+            return path.relative_to(self._backend_root()).as_posix()
+        except ValueError:
+            return path.as_posix()

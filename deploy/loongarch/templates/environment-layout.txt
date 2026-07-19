@@ -1,0 +1,6 @@
+/etc/energy-maintenance/backend.env       root:energy-maintenance 0640
+/var/lib/energy-maintenance/uploads       energy-maintenance:energy-maintenance 0750
+/var/lib/energy-maintenance/processed-media energy-maintenance:energy-maintenance 0750
+/var/lib/energy-maintenance/tmp           energy-maintenance:energy-maintenance 0750
+/var/log/energy-maintenance               energy-maintenance:energy-maintenance 0750
+

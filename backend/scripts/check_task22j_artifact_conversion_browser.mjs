@@ -5,12 +5,17 @@ import path from "node:path";
 
 const BASE_URL = (process.env.TASK22J_BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
 const API_BASE_URL = `${BASE_URL}/api`;
-const ADMIN_USERNAME = process.env.TASK22J_ADMIN_USERNAME || "admin";
-const ADMIN_PASSWORD = process.env.TASK22J_ADMIN_PASSWORD || "admin123456";
-const VIEWER_USERNAME = process.env.TASK22J_VIEWER_USERNAME || `Task22J_viewer_${Date.now()}`;
-const VIEWER_PASSWORD = process.env.TASK22J_VIEWER_PASSWORD || "Task22J_pass123";
+const requiredEnv = (name) => {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is required; use the secure test credential loader`);
+  return value;
+};
+const ADMIN_USERNAME = requiredEnv("TASK22J_ADMIN_USERNAME");
+const ADMIN_PASSWORD = requiredEnv("TASK22J_ADMIN_PASSWORD");
+const VIEWER_USERNAME = requiredEnv("TASK22J_VIEWER_USERNAME");
+const VIEWER_PASSWORD = requiredEnv("TASK22J_VIEWER_PASSWORD");
 const CDP_PORT = Number(process.env.TASK22J_CDP_PORT || 9231);
-const RUN_ID = `Task22J_${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
+const RUN_ID = `${process.env.TASK25A_R1_DATA_PREFIX || "Task25AR1_"}${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
 const RUNTIME_DIR = path.resolve(process.cwd(), ".runtime", "task22j");
 const RESULT_FILE = path.join(RUNTIME_DIR, "artifact_conversion_browser_result.json");
 const SAMPLE_PNG = Buffer.from(

@@ -1,0 +1,12 @@
+{
+  "version": "task25g_native_dependency_risks_v1",
+  "blocking_unknown_count": 0,
+  "risks": [
+    {"name":"pydantic-core","category":"REAL_MACHINE_BUILD_REQUIRED","required":true,"removable":false,"fallback":null,"reason":"Rust native extension required by Pydantic v2.","real_machine_command":"python3 -m pip wheel --no-binary pydantic-core pydantic-core==2.46.4"},
+    {"name":"Pillow","category":"SYSTEM_LIBRARY_REQUIRED","required":true,"removable":false,"fallback":null,"reason":"Image codecs and C extension require target libraries.","real_machine_command":"python3 -m pip wheel --no-binary Pillow Pillow==12.3.0"},
+    {"name":"lxml","category":"SYSTEM_LIBRARY_REQUIRED","required":true,"removable":false,"fallback":null,"reason":"python-docx uses libxml2/libxslt-backed lxml.","real_machine_command":"python3 -m pip wheel --no-binary lxml lxml==6.1.1"},
+    {"name":"MarkupSafe","category":"REAL_MACHINE_BUILD_REQUIRED","required":true,"removable":false,"fallback":"pure Python implementation after explicit validation","reason":"Optional C speedups may lack a LoongArch wheel.","real_machine_command":"python3 -m pip wheel --no-binary MarkupSafe MarkupSafe==3.0.3"},
+    {"name":"psycopg","category":"SYSTEM_LIBRARY_REQUIRED","required":true,"removable":false,"fallback":null,"reason":"Pure Python package dynamically links the system libpq.","real_machine_command":"python3 -c \"import psycopg; print(psycopg.pq.__impl__)\""}
+  ]
+}
+

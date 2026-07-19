@@ -39,8 +39,11 @@ def alarm_screen_analysis_prompt() -> str:
 def ocr_correction_prompt() -> str:
     return (
         f"{PV_INVERTER_SCOPE}\n"
-        "Clean OCR text from inverter manuals, nameplates, or alarm screens while "
-        "preserving alarm codes, units, model identifiers, and numeric parameters."
+        "Extract all visible text from the attached inverter image or alarm screen. "
+        "Return strict JSON with fields: recognized_text, language, confidence, regions, "
+        "warnings, provider. Preserve model identifiers, alarm codes, units, and numeric "
+        "parameters exactly as visible. If no text is readable, return an empty "
+        "recognized_text field and explain the limitation in warnings."
     )
 
 

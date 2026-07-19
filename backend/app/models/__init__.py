@@ -26,7 +26,14 @@ from app.models.knowledge_graph import (
     KGNode,
     KGNodeAlias,
 )
+from app.models.query_aware_retrieval import QueryAwareRetrievalSession
 from app.models.maintenance import MaintenanceTask
+from app.models.maintenance_workflow import (
+    MaintenanceTaskExecutionRecord,
+    MaintenanceTaskStepExecution,
+    MaintenanceWorkflow,
+    MaintenanceWorkflowEvent,
+)
 from app.models.media import UploadedMedia
 from app.models.multimodal_evidence import (
     MediaAIAnalysis,
@@ -34,9 +41,24 @@ from app.models.multimodal_evidence import (
     MediaOCRResult,
     MediaProcessingJob,
 )
+from app.models.multimodal_case import (
+    MultimodalDiagnosticHypothesis,
+    MultimodalEvidenceConflict,
+    MultimodalEvidenceItem,
+    MultimodalMaintenanceCase,
+)
 from app.models.record import DiagnosisRecord, ModelCallLog, OperationLog, QARecord
+from app.models.retrieval_evaluation import (
+    MediaSimilarityFeature,
+    RetrievalDatasetFreeze,
+    RetrievalEvaluationCase,
+    RetrievalEvaluationResult,
+    RetrievalEvaluationRun,
+    RetrievalOfficialRunLock,
+)
 from app.models.review import KnowledgeContribution, KnowledgeReviewRecord, ModelOutputCorrection
 from app.models.sop import SOPExecutionRecord, SOPTemplate
+from app.models.semantic_anchor import MaintenanceSemanticAnchor
 from app.models.system import Device, User
 from app.models.vector_index import KnowledgeChunkVectorIndex, VectorIndexRun
 
@@ -57,6 +79,14 @@ __all__ = [
     "ExternalApiHealthCheck",
     "KnowledgeChunkVectorIndex",
     "VectorIndexRun",
+    "RetrievalEvaluationCase",
+    "RetrievalEvaluationRun",
+    "RetrievalEvaluationResult",
+    "RetrievalDatasetFreeze",
+    "RetrievalOfficialRunLock",
+    "MediaSimilarityFeature",
+    "MaintenanceSemanticAnchor",
+    "QueryAwareRetrievalSession",
     "KnowledgeDocument",
     "KnowledgeChunk",
     "KGNode",
@@ -68,11 +98,19 @@ __all__ = [
     "QARecord",
     "DiagnosisRecord",
     "MaintenanceTask",
+    "MaintenanceWorkflow",
+    "MaintenanceWorkflowEvent",
+    "MaintenanceTaskStepExecution",
+    "MaintenanceTaskExecutionRecord",
     "UploadedMedia",
     "MediaProcessingJob",
     "MediaOCRResult",
     "MediaAIAnalysis",
     "MediaEvidenceLink",
+    "MultimodalMaintenanceCase",
+    "MultimodalEvidenceItem",
+    "MultimodalEvidenceConflict",
+    "MultimodalDiagnosticHypothesis",
     "DeviceMaintenanceRecord",
     "KnowledgeContribution",
     "KnowledgeReviewRecord",

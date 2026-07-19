@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.schemas.media import MediaContextItem
 
 
-TASK_STATUSES = {"pending", "assigned", "in_progress", "completed", "cancelled"}
+TASK_STATUSES = {"pending", "assigned", "in_progress", "paused", "completed", "cancelled"}
 TASK_PRIORITIES = {"low", "medium", "high", "urgent"}
 
 

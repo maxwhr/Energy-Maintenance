@@ -24,6 +24,7 @@ from app.models import (
     UploadedMedia,
     User,
 )
+from app.repositories.record_center_query_repository import RecordCenterQueryRepository
 
 
 class RecordCenterRepository:
@@ -31,28 +32,15 @@ class RecordCenterRepository:
         self.db = db
 
     def overview(self) -> dict[str, Any]:
-        recent_records = self._collect_items(record_type="all", page=1, page_size=8)["items"]
-        return {
-            "qa_records": self._count(QARecord),
-            "diagnosis_records": self._count(DiagnosisRecord),
-            "maintenance_tasks": self._count(MaintenanceTask),
-            "maintenance_records": self._count(DeviceMaintenanceRecord),
-            "sop_executions": self._count(SOPExecutionRecord),
-            "knowledge_documents": self._count(KnowledgeDocument),
-            "knowledge_contributions": self._count(KnowledgeContribution),
-            "uploaded_media": self._count(UploadedMedia),
-            "devices": self._count(Device),
-            "knowledge_graph_nodes": self._count(KGNode),
-            "knowledge_graph_edges": self._count(KGEdge),
-            "knowledge_graph_extraction_runs": self._count(KGExtractionRun),
-            "recent_records": recent_records,
-        }
+        return RecordCenterQueryRepository(self.db).overview()
 
     def search(
         self,
         *,
         record_type: str = "all",
         device_id: UUID | None = None,
+        workflow_id: str | None = None,
+        actor_id: UUID | None = None,
         keyword: str | None = None,
         trace_id: str | None = None,
         status: str | None = None,
@@ -62,12 +50,15 @@ class RecordCenterRepository:
         product_series: str | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
+        sort_direction: str = "desc",
         page: int = 1,
         page_size: int = 20,
     ) -> dict[str, Any]:
         return self._collect_items(
             record_type=record_type,
             device_id=device_id,
+            workflow_id=workflow_id,
+            actor_id=actor_id,
             keyword=keyword,
             trace_id=trace_id,
             status=status,
@@ -77,6 +68,7 @@ class RecordCenterRepository:
             product_series=product_series,
             date_from=date_from,
             date_to=date_to,
+            sort_direction=sort_direction,
             page=page,
             page_size=page_size,
         )
@@ -155,6 +147,8 @@ class RecordCenterRepository:
         *,
         record_type: str,
         device_id: UUID | None = None,
+        workflow_id: str | None = None,
+        actor_id: UUID | None = None,
         keyword: str | None = None,
         trace_id: str | None = None,
         status: str | None = None,
@@ -164,54 +158,28 @@ class RecordCenterRepository:
         product_series: str | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
+        sort_direction: str = "desc",
         page: int = 1,
         page_size: int = 20,
     ) -> dict[str, Any]:
-        types = (
-            [
-                "qa",
-                "diagnosis",
-                "task",
-                "maintenance_record",
-                "sop_execution",
-                "knowledge_document",
-                "knowledge_contribution",
-                "media",
-                "knowledge_graph_node",
-                "knowledge_graph_edge",
-                "knowledge_graph_extraction_run",
-            ]
-            if record_type == "all"
-            else [record_type]
+        return RecordCenterQueryRepository(self.db).search(
+            record_type=record_type,
+            device_id=device_id,
+            workflow_id=workflow_id,
+            actor_id=actor_id,
+            keyword=keyword,
+            trace_id=trace_id,
+            status=status,
+            fault_type=fault_type,
+            alarm_code=alarm_code,
+            manufacturer=manufacturer,
+            product_series=product_series,
+            date_from=date_from,
+            date_to=date_to,
+            sort_direction=sort_direction,
+            page=page,
+            page_size=page_size,
         )
-        items: list[dict[str, Any]] = []
-        for current_type in types:
-            items.extend(
-                self._items_for_type(
-                    current_type,
-                    device_id=device_id,
-                    keyword=keyword,
-                    trace_id=trace_id,
-                    status=status,
-                    fault_type=fault_type,
-                    alarm_code=alarm_code,
-                    manufacturer=manufacturer,
-                    product_series=product_series,
-                    date_from=date_from,
-                    date_to=date_to,
-                )
-            )
-
-        fallback_time = datetime.min.replace(tzinfo=timezone.utc)
-        items.sort(key=lambda item: item.get("created_at") or fallback_time, reverse=True)
-        total = len(items)
-        start = (page - 1) * page_size
-        return {
-            "items": items[start : start + page_size],
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-        }
 
     def _items_for_type(
         self,

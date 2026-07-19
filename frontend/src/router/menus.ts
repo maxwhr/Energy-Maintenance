@@ -67,7 +67,8 @@ export const menuList: MenuItem[] = [
       { path: '/knowledge/search', title: TEXT.search, icon: Search, roles: operatorRoles },
       { path: '/knowledge/cases', title: TEXT.cases, icon: BookOpen, roles: operatorRoles },
       { path: '/media', title: '媒体资料', icon: Image, roles: operatorRoles },
-      { path: '/multimodal', title: '多模态证据中心', icon: Images, roles: allRoles }
+      { path: '/multimodal', title: '多模态证据中心', icon: Images, roles: allRoles },
+      { path: '/multimodal-maintenance', title: '多模态设备检修', icon: Stethoscope, roles: allRoles }
     ]
   },
   {
@@ -99,6 +100,7 @@ export const menuList: MenuItem[] = [
     icon: ClipboardList,
     roles: allRoles,
     children: [
+      { path: '/maintenance-workflow', title: '检修业务闭环', icon: GitBranch, roles: allRoles },
       { path: '/workorder/list', title: TEXT.workorderList, icon: ClipboardList, roles: allRoles },
       { path: '/workorder/create', title: TEXT.workorderCreate, icon: Plus, roles: operatorRoles }
     ]
@@ -115,7 +117,7 @@ export const menuList: MenuItem[] = [
     icon: ShieldCheck,
     roles: ['admin', 'expert', 'engineer'],
     children: [
-      { path: '/review', title: TEXT.reviewCenter, icon: ShieldCheck, roles: ['admin', 'expert'] },
+      { path: '/review', title: TEXT.reviewCenter, icon: ShieldCheck, roles: ['admin', 'expert', 'engineer', 'viewer'] },
       { path: '/review/corrections', title: '人工修正', icon: GitBranch, roles: ['admin', 'expert', 'engineer'] }
     ]
   },
@@ -124,6 +126,12 @@ export const menuList: MenuItem[] = [
     title: TEXT.modelService,
     icon: Settings2,
     roles: ['admin']
+  },
+  {
+    path: '/system/retrieval-quality',
+    title: '检索质量与向量索引',
+    icon: Gauge,
+    roles: ['admin', 'expert', 'engineer', 'viewer']
   },
   {
     path: '/system',

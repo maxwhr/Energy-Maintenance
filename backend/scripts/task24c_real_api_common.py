@@ -4,9 +4,11 @@ import base64
 import json
 import os
 import re
+import struct
 import sys
 import time
 import uuid
+import zlib
 from pathlib import Path
 from typing import Any
 from urllib import error, parse, request
@@ -24,13 +26,90 @@ ADMIN_USERNAME = os.getenv("TASK24C_ADMIN_USERNAME", os.getenv("FULL_SMOKE_ADMIN
 ADMIN_PASSWORD = os.getenv("TASK24C_ADMIN_PASSWORD", os.getenv("FULL_SMOKE_ADMIN_PASSWORD", "admin123456"))
 RUNTIME_DIR = ROOT_DIR / ".runtime" / "task24c"
 MARKER = f"Task24C_{time.strftime('%Y%m%d%H%M%S')}"
-SAMPLE_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
-)
 
 
 class Task24CError(AssertionError):
     pass
+
+
+_FONT_5X7: dict[str, tuple[str, ...]] = {
+    " ": ("00000", "00000", "00000", "00000", "00000", "00000", "00000"),
+    "-": ("00000", "00000", "00000", "11111", "00000", "00000", "00000"),
+    "0": ("01110", "10001", "10011", "10101", "11001", "10001", "01110"),
+    "1": ("00100", "01100", "00100", "00100", "00100", "00100", "01110"),
+    "2": ("01110", "10001", "00001", "00010", "00100", "01000", "11111"),
+    "3": ("11110", "00001", "00001", "01110", "00001", "00001", "11110"),
+    "4": ("00010", "00110", "01010", "10010", "11111", "00010", "00010"),
+    "5": ("11111", "10000", "10000", "11110", "00001", "00001", "11110"),
+    "6": ("01110", "10000", "10000", "11110", "10001", "10001", "01110"),
+    "7": ("11111", "00001", "00010", "00100", "01000", "01000", "01000"),
+    "8": ("01110", "10001", "10001", "01110", "10001", "10001", "01110"),
+    "9": ("01110", "10001", "10001", "01111", "00001", "00001", "01110"),
+    "A": ("01110", "10001", "10001", "11111", "10001", "10001", "10001"),
+    "B": ("11110", "10001", "10001", "11110", "10001", "10001", "11110"),
+    "C": ("01111", "10000", "10000", "10000", "10000", "10000", "01111"),
+    "D": ("11110", "10001", "10001", "10001", "10001", "10001", "11110"),
+    "E": ("11111", "10000", "10000", "11110", "10000", "10000", "11111"),
+    "F": ("11111", "10000", "10000", "11110", "10000", "10000", "10000"),
+    "G": ("01111", "10000", "10000", "10011", "10001", "10001", "01111"),
+    "H": ("10001", "10001", "10001", "11111", "10001", "10001", "10001"),
+    "I": ("01110", "00100", "00100", "00100", "00100", "00100", "01110"),
+    "J": ("00111", "00010", "00010", "00010", "00010", "10010", "01100"),
+    "K": ("10001", "10010", "10100", "11000", "10100", "10010", "10001"),
+    "L": ("10000", "10000", "10000", "10000", "10000", "10000", "11111"),
+    "M": ("10001", "11011", "10101", "10101", "10001", "10001", "10001"),
+    "N": ("10001", "11001", "10101", "10011", "10001", "10001", "10001"),
+    "O": ("01110", "10001", "10001", "10001", "10001", "10001", "01110"),
+    "P": ("11110", "10001", "10001", "11110", "10000", "10000", "10000"),
+    "Q": ("01110", "10001", "10001", "10001", "10101", "10010", "01101"),
+    "R": ("11110", "10001", "10001", "11110", "10100", "10010", "10001"),
+    "S": ("01111", "10000", "10000", "01110", "00001", "00001", "11110"),
+    "T": ("11111", "00100", "00100", "00100", "00100", "00100", "00100"),
+    "U": ("10001", "10001", "10001", "10001", "10001", "10001", "01110"),
+    "V": ("10001", "10001", "10001", "10001", "10001", "01010", "00100"),
+    "W": ("10001", "10001", "10001", "10101", "10101", "10101", "01010"),
+    "X": ("10001", "10001", "01010", "00100", "01010", "10001", "10001"),
+    "Y": ("10001", "10001", "01010", "00100", "00100", "00100", "00100"),
+    "Z": ("11111", "00001", "00010", "00100", "01000", "10000", "11111"),
+}
+
+
+def _png_chunk(chunk_type: bytes, data: bytes) -> bytes:
+    return struct.pack(">I", len(data)) + chunk_type + data + struct.pack(">I", zlib.crc32(chunk_type + data) & 0xFFFFFFFF)
+
+
+def _draw_text(pixels: bytearray, width: int, x: int, y: int, text: str, *, scale: int = 5) -> None:
+    for char in text.upper():
+        glyph = _FONT_5X7.get(char, _FONT_5X7[" "])
+        for row_index, row in enumerate(glyph):
+            for col_index, bit in enumerate(row):
+                if bit != "1":
+                    continue
+                for dy in range(scale):
+                    for dx in range(scale):
+                        px = x + col_index * scale + dx
+                        py = y + row_index * scale + dy
+                        offset = (py * width + px) * 3
+                        pixels[offset : offset + 3] = b"\x00\x00\x00"
+        x += (6 * scale)
+
+
+def _make_text_png() -> bytes:
+    width, height = 420, 150
+    pixels = bytearray(b"\xff\xff\xff" * width * height)
+    _draw_text(pixels, width, 24, 24, "SUN2000 ALM 2032", scale=5)
+    _draw_text(pixels, width, 24, 82, "PV INVERTER", scale=5)
+    rows = [b"\x00" + bytes(pixels[row * width * 3 : (row + 1) * width * 3]) for row in range(height)]
+    raw = b"".join(rows)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + _png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        + _png_chunk(b"IDAT", zlib.compress(raw, level=9))
+        + _png_chunk(b"IEND", b"")
+    )
+
+
+SAMPLE_PNG = _make_text_png()
 
 
 def api_base(base_url: str | None = None) -> str:

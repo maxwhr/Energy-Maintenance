@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { BackendUser, PageResponse, SystemStatistics, SystemStatus } from '@/types'
+import type { BackendUser, DeploymentReadiness, PageResponse, SystemStatistics, SystemStatus } from '@/types'
 
 export const getUsersApi = (params?: Record<string, unknown>) =>
   request.get<PageResponse<BackendUser>>('/users', { params })
@@ -19,3 +19,6 @@ export const getSystemStatusApi = () => request.get<SystemStatus>('/system/statu
 export const getSystemStatisticsApi = () => request.get<SystemStatistics>('/system/statistics')
 
 export const getSystemInfoApi = () => request.get<Record<string, unknown>>('/system/info')
+
+export const getDeploymentReadinessApi = () =>
+  request.get<DeploymentReadiness>('/system/deployment-readiness')

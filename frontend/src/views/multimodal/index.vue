@@ -194,6 +194,26 @@
         <AgentApprovalPanel :approvals="agentApprovals" />
       </div>
     </div>
+    <DataPanel title="跨模态检索" subtitle="descriptor_based_cross_modal：OCR 与结构化视觉描述使用文本向量检索；不使用 raw image embedding。">
+      <div class="mb-3 flex items-center gap-3">
+        <button class="scada-button primary" type="button" :disabled="!selectedMediaId || crossModalBusy" @click="loadCrossModalMatches">检索手册 / 案例 / 相似媒体</button>
+        <span class="text-xs text-amber-100">所有匹配仅供辅助，须人工审核。</span>
+      </div>
+      <div v-if="crossModalResult" class="space-y-3 text-sm text-slate-200">
+        <div class="rounded bg-white/[0.03] p-3 font-mono text-xs">capability={{ crossModalResult.capability_label }} · raw_image_embedding={{ crossModalResult.raw_image_embedding }}</div>
+        <div class="grid gap-3 lg:grid-cols-3">
+          <section v-for="group in crossModalGroups" :key="group.label" class="rounded border border-white/10 p-3">
+            <h3 class="font-black text-white">{{ group.label }}</h3>
+            <div v-for="item in group.items" :key="String(item.object_id)" class="mt-2 rounded bg-black/20 p-2">
+              <div>{{ item.title }}</div>
+              <div class="mt-1 text-xs text-slate-400">final={{ scoreOf(item, 'final_score') }} · vector={{ scoreOf(item, 'descriptor_vector_score') }} · OCR={{ scoreOf(item, 'ocr_token_score') }} · pHash={{ scoreOf(item, 'perceptual_hash_score') }}</div>
+            </div>
+            <EmptyState v-if="!group.items.length" text="暂无匹配" />
+          </section>
+        </div>
+      </div>
+      <EmptyState v-else text="选择媒体后执行受控跨模态检索。" />
+    </DataPanel>
   </PageFrame>
 </template>
 
@@ -227,6 +247,7 @@ import {
   getMediaOcrResults,
   mockRunExternalApi,
   reviewAnalysis
+  ,retrieveMultimodalMatches
 } from '@/api'
 import AgentApprovalPanel from '@/components/AgentApprovalPanel.vue'
 import AgentArtifactPanel from '@/components/AgentArtifactPanel.vue'
@@ -255,6 +276,8 @@ const loading = ref(false)
 const error = ref('')
 const jobBusy = ref(false)
 const evidenceBusy = ref(false)
+const crossModalBusy = ref(false)
+const crossModalResult = ref<Record<string, any> | null>(null)
 const agentBusy = ref(false)
 const mediaItems = ref<UploadedMediaItem[]>([])
 const selectedMediaId = ref<string>('')
@@ -263,6 +286,25 @@ const jobs = ref<MediaProcessingJob[]>([])
 const ocrResults = ref<MediaOCRResult[]>([])
 const analyses = ref<MediaAIAnalysis[]>([])
 const evidenceLinks = ref<MediaEvidenceLink[]>([])
+
+const crossModalGroups = computed(() => [
+  { label: '匹配手册', items: (crossModalResult.value?.manual_matches || []) as Record<string, any>[] },
+  { label: '匹配案例', items: (crossModalResult.value?.case_matches || []) as Record<string, any>[] },
+  { label: '相似媒体', items: (crossModalResult.value?.similar_media || []) as Record<string, any>[] }
+])
+
+async function loadCrossModalMatches() {
+  if (!selectedMediaId.value) return
+  crossModalBusy.value = true
+  try { crossModalResult.value = await retrieveMultimodalMatches(selectedMediaId.value) }
+  catch (err) { error.value = err instanceof Error ? err.message : '跨模态检索失败'; crossModalResult.value = null }
+  finally { crossModalBusy.value = false }
+}
+
+function scoreOf(item: Record<string, any>, key: string) {
+  const value = item.score_breakdown?.[key]
+  return typeof value === 'number' ? value.toFixed(3) : '-'
+}
 const providers = ref<ExternalApiProviderStatus[]>([])
 const lastProviderResult = ref<ExternalApiGatewayResult | null>(null)
 const agentDefinitions = ref<AgentDefinition[]>([])

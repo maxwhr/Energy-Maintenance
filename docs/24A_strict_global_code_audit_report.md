@@ -225,6 +225,12 @@ Task 24D addresses the security gaps identified in this audit by adding producti
 
 Remaining audit boundary: real exposed keys must still be rotated by the user before production or real-call acceptance; LoongArch/Kylin real-machine deployment and real external provider calls remain outside Task 24D.
 
+## Task 24C Update: Real Provider Acceptance
+
+Task 24C completed controlled real-call acceptance for the configured Cloud LLM, MIMO/Vision, and OCR API providers. The unified result was `passed=3`, `blocked=2`, `failed=0`.
+
+Remaining audit boundary: DashVector and Embedding remain blocked because the real vector/embedding configuration is incomplete. Previously exposed external API keys must still be rotated before production use. Real provider outputs remain auxiliary evidence and do not bypass approval/conversion workflows.
+
 ## Task 24E Update: Conversion Audit Gap Closed
 
 The previous artifact conversion gap is addressed by Task 24E through `agent_artifact_conversions`, a database unique constraint, row-level conversion locking, conversion history APIs, failed-conversion recording, and browser-visible conversion history. Remaining boundaries still include no package generation, no external real-call acceptance, and no LoongArch/Kylin real-machine acceptance.

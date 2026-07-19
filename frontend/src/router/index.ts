@@ -15,6 +15,12 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true, title: TEXT.login }
   },
   {
+    path: '/auth/login',
+    name: 'AuthLogin',
+    component: () => import('@/views/AuthLogin.vue'),
+    meta: { public: true, title: '进入系统' }
+  },
+  {
     path: '/register',
     name: 'Register',
     component: () => import('@/views/Register.vue'),
@@ -87,6 +93,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'assistant/chat',
+        alias: '/assistant',
         name: 'AssistantChat',
         component: () => import('@/views/assistant/Chat.vue'),
         meta: { title: TEXT.assistantChat, roles: operatorRoles }
@@ -143,7 +150,7 @@ const routes: RouteRecordRaw[] = [
         path: 'review',
         name: 'ReviewCenter',
         component: () => import('@/views/review/index.vue'),
-        meta: { title: TEXT.reviewCenter, roles: ['admin', 'expert'] as UserRole[] }
+        meta: { title: TEXT.reviewCenter, roles: allRoles }
       },
       {
         path: 'model-service',
@@ -164,10 +171,28 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '多模态证据中心', roles: allRoles }
       },
       {
+        path: 'multimodal-maintenance',
+        name: 'MultimodalMaintenance',
+        component: () => import('@/views/multimodalMaintenance/index.vue'),
+        meta: { title: '多模态设备检修', roles: allRoles }
+      },
+      {
+        path: 'maintenance-workflow',
+        name: 'MaintenanceWorkflow',
+        component: () => import('@/views/maintenanceWorkflow/index.vue'),
+        meta: { title: '检修业务闭环', roles: allRoles }
+      },
+      {
         path: 'review/corrections',
         name: 'CorrectionCenter',
         component: () => import('@/views/review/Corrections.vue'),
         meta: { title: '人工修正', roles: ['admin', 'expert', 'engineer'] as UserRole[] }
+      },
+      {
+        path: 'system/retrieval-quality',
+        name: 'RetrievalQuality',
+        component: () => import('@/views/system/RetrievalQuality.vue'),
+        meta: { title: '检索质量与向量索引', roles: allRoles }
       },
       {
         path: 'system/users',
@@ -210,7 +235,7 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
-  if (to.path === '/login' && userStore.isLoggedIn) {
+  if ((to.path === '/login' || to.path === '/auth/login') && userStore.isLoggedIn) {
     next('/dashboard')
     return
   }

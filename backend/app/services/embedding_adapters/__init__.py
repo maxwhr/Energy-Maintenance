@@ -1,5 +1,6 @@
 from app.services.embedding_adapters.base import EmbeddingAdapter, EmbeddingAdapterError, EmbeddingResult
 from app.services.embedding_adapters.deterministic_test_adapter import DeterministicTestEmbeddingAdapter
+from app.services.embedding_adapters.dashscope_openai_compatible_adapter import DashScopeOpenAICompatibleEmbeddingAdapter
 from app.services.embedding_adapters.openai_compatible_adapter import OpenAICompatibleEmbeddingAdapter
 
 __all__ = [
@@ -7,5 +8,6 @@ __all__ = [
     "EmbeddingAdapterError",
     "EmbeddingResult",
     "DeterministicTestEmbeddingAdapter",
+    "DashScopeOpenAICompatibleEmbeddingAdapter",
     "OpenAICompatibleEmbeddingAdapter",
 ]

@@ -36,6 +36,7 @@ Thumbs.db
 # Project runtime
 backend/storage/uploads/*
 backend/storage/tmp/*
+backend/storage/formal_corpus_inbox/*
 backend/logs/
 !backend/storage/uploads/.gitkeep
 !backend/storage/uploads/documents/

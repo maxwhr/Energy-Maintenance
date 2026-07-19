@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -161,6 +161,21 @@ class KnowledgeReviewActionRequest(BaseModel):
     comment: str | None = None
 
 
+class VendorOfficialBatchApproveRequest(BaseModel):
+    document_ids: list[UUID] = Field(min_length=1, max_length=10)
+    comment: str | None = Field(default=None, max_length=2000)
+
+
+class VendorOfficialFlagRequest(BaseModel):
+    action: Literal["needs_metadata", "marketing_only", "needs_ocr"]
+    comment: str | None = Field(default=None, max_length=2000)
+
+
+class VendorOfficialWithdrawRequest(BaseModel):
+    target_status: Literal["pending_review", "needs_revision"] = "pending_review"
+    reason: str = Field(min_length=10, max_length=2000)
+
+
 class KnowledgeReviewDocumentItem(BaseModel):
     id: UUID
     title: str
@@ -173,6 +188,9 @@ class KnowledgeReviewDocumentItem(BaseModel):
     review_status: str | None = None
     status: str | None = None
     chunk_count: int = 0
+    page_count: int | None = None
+    source_type: str | None = None
+    metadata_json: dict[str, Any] | None = None
     reviewed_by: UUID | None = None
     reviewed_by_name: str | None = None
     reviewed_at: datetime | None = None
