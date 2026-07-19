@@ -490,6 +490,9 @@ class ExternalApiGateway:
         return gateway_result
 
     def _enforce_task30a_real_call_gate(self, input_summary: dict[str, Any]) -> None:
+        if self._env_flag("TASK32A_ALLOW_REAL_PROVIDER"):
+            self._enforce_task32a_real_call_gate(input_summary)
+            return
         if not self._env_flag("TASK30A_ALLOW_REAL_PROVIDER"):
             return
         if not self._env_flag("TASK30A_ALLOW_TEST_DB_WRITES"):
@@ -514,6 +517,36 @@ class ExternalApiGateway:
         attempts = self.repository.count_real_call_attempts()
         if attempts >= max_calls:
             raise ExternalApiGatewayError("TASK30A_PROVIDER_CALL_BUDGET_EXCEEDED")
+
+    def _enforce_task32a_real_call_gate(self, input_summary: dict[str, Any]) -> None:
+        required_flags = {
+            "TASK32A_ALLOW_TEST_DB_WRITES": True,
+            "TASK32A_FORMAL_DB_ACCESS": False,
+            "TASK32A_ALLOW_EMBEDDING": False,
+            "TASK32A_ALLOW_VECTOR_REBUILD": False,
+            "TASK32A_GIT_OPERATIONS_ALLOWED": False,
+        }
+        if any(self._env_flag(key) is not expected for key, expected in required_flags.items()):
+            raise ExternalApiGatewayError("TASK32A_BLOCKED_EXPLICIT_APPROVAL_REQUIRED")
+
+        try:
+            max_calls = int(os.getenv("TASK32A_MAX_REAL_PROVIDER_CALLS", "0"))
+        except ValueError as exc:
+            raise ExternalApiGatewayError("TASK32A_BLOCKED_EXPLICIT_APPROVAL_REQUIRED") from exc
+        if max_calls != 4:
+            raise ExternalApiGatewayError("TASK32A_BLOCKED_EXPLICIT_APPROVAL_REQUIRED")
+
+        if self.repository.current_database() != "energy_maintenance_task32a_test":
+            raise ExternalApiGatewayError("TASK32A_SECURITY_BOUNDARY_VIOLATION")
+
+        marker = json.dumps(input_summary, ensure_ascii=False, default=str).lower()
+        if "task32a" not in marker or "approve_task32a_full_system_test_and_fix_v1" not in marker:
+            raise ExternalApiGatewayError("TASK32A_SECURITY_BOUNDARY_VIOLATION")
+
+        self.repository.acquire_real_call_budget_lock("task32a")
+        attempts = self.repository.count_real_call_attempts("task32a")
+        if attempts >= max_calls:
+            raise ExternalApiGatewayError("TASK32A_PROVIDER_CALL_BUDGET_EXCEEDED")
 
     def _invoke_adapter(
         self,

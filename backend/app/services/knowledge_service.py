@@ -332,10 +332,16 @@ class KnowledgeService:
         target_path = (target_dir / stored_name).resolve()
         self._ensure_inside_upload_dir(target_path, upload_dir)
         target_path.write_bytes(content)
+        try:
+            stored_path = target_path.relative_to(self._backend_root()).as_posix()
+        except ValueError:
+            # Absolute upload roots are valid deployment configurations. Reparse and
+            # guarded cleanup already support absolute paths outside the code tree.
+            stored_path = target_path.as_posix()
         return StoredFile(
             original_file_name=safe_original_name,
             file_name=stored_name,
-            file_path=str(target_path.relative_to(self._backend_root()).as_posix()),
+            file_path=str(stored_path),
             file_ext=file_ext,
             file_size=len(content),
             mime_type=file.content_type,

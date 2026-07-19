@@ -33,7 +33,6 @@ from app.schemas.multimodal_case import (
 from app.schemas.multimodal_evidence import MediaProcessingJobCreate
 from app.schemas.query_aware_retrieval import QueryAwareSearchRequest
 from app.services.cross_modal_retrieval_plan_service import CrossModalRetrievalPlanService
-from app.services.cross_modal_retrieval_service import CrossModalRetrievalService
 from app.services.image_preprocessing_service import ImagePreprocessingService
 from app.services.media_service import MediaService
 from app.services.multimodal_case_state_service import (
@@ -220,7 +219,9 @@ class MultimodalCaseOrchestratorService:
             occurrence_conditions=case.occurrence_conditions or [],
             requested_information=payload.requested_information,
         )
-        result = CrossModalRetrievalService(self.db, current_user=user).retrieve(plan, top_k=payload.top_k)
+        # Feed the evidence-derived cross-modal plan into one query-aware search.
+        # The previous implementation ran two full PostgreSQL retrieval passes
+        # for the same request and exceeded the product latency gate.
         qa_query = "；".join(item.query for item in plan.queries if item.query).strip()[:2000]
         request_material = json.dumps({
             "case_id": case.case_id,
@@ -243,19 +244,27 @@ class MultimodalCaseOrchestratorService:
             allow_real_api=False,
             persist_result=payload.persist_result,
         ))
-        case.knowledge_citations = result.citations
+        citations = list(qa_response.citations or qa_response.references or [])
+        generated_queries = [{
+            "query_type": item.query_type,
+            "query": item.query,
+            "evidence_ids": item.evidence_ids,
+            "hypothesis_signals": item.hypothesis_signals,
+        } for item in plan.queries]
+        external_call_counts = {"embedding": 0, "dashvector": 0, "qwen3_rerank": 0, "cloud_llm": 0}
+        case.knowledge_citations = citations
         metadata = dict(case.metadata_json or {})
         metadata["cross_modal_retrieval"] = {
-            "generated_queries": result.generated_queries,
-            "requested_channels": result.requested_channels,
-            "actual_channels": result.actual_channels,
-            "surface_count": len(result.surfaced_results),
-            "citation_validity_ratio": result.citation_validity_ratio,
-            "citation_coverage_ratio": result.citation_coverage_ratio,
-            "confidence_status": result.confidence_status,
-            "stage_latency": result.stage_latency,
-            "dedicated_rerank": result.dedicated_rerank,
-            "external_call_counts": result.external_call_counts,
+            "generated_queries": generated_queries,
+            "requested_channels": qa_response.requested_channels,
+            "actual_channels": qa_response.actual_channels,
+            "surface_count": len(qa_response.surfaced_results),
+            "citation_validity_ratio": qa_response.citation_validity_ratio,
+            "citation_coverage_ratio": qa_response.citation_coverage_ratio,
+            "confidence_status": qa_response.confidence_status,
+            "stage_latency": qa_response.stage_latency,
+            "dedicated_rerank": qa_response.dedicated_rerank,
+            "external_call_counts": external_call_counts,
             "qa_request_id": qa_response.request_id,
             "qa_record_id": qa_response.qa_record_id,
             "trace_id": qa_response.trace_id,
@@ -267,7 +276,7 @@ class MultimodalCaseOrchestratorService:
                 self.repository.get_media_items(self._case_media_ids(case)),
                 qa_response.trace_id,
             )
-        for citation in result.citations:
+        for citation in citations:
             source_hash = hashlib.sha256(
                 f"{citation['document_id']}:{citation['chunk_id']}".encode("utf-8")
             ).hexdigest()
@@ -290,28 +299,23 @@ class MultimodalCaseOrchestratorService:
                 },
             ), user)
         self.repository.save_case(case)
-        if result.citations and case.status in {"ANALYZING", "NEEDS_CLARIFICATION", "MEDIA_UPLOADED"}:
+        if citations and case.status in {"ANALYZING", "NEEDS_CLARIFICATION", "MEDIA_UPLOADED"}:
             self.state.transition(case, "EVIDENCE_READY", user, reason="cross_modal_retrieval_grounded")
-        elif not result.citations and case.status in {"ANALYZING", "EVIDENCE_READY"}:
+        elif not citations and case.status in {"ANALYZING", "EVIDENCE_READY"}:
             self.state.transition(case, "INSUFFICIENT_EVIDENCE", user, reason="cross_modal_retrieval_no_answer")
         self.state.audit(case, user, "cross_modal_retrieval_completed", detail={
-            "citation_count": len(result.citations),
+            "citation_count": len(citations),
             "qa_record_id": qa_response.qa_record_id,
             "trace_id": qa_response.trace_id,
             "qa_persistence_status": qa_response.persistence_status,
             "dedicated_rerank": "DEFERRED_QWEN3_RERANK_CONFIG",
-            "external_calls": result.external_call_counts,
+            "external_calls": external_call_counts,
         })
         self.db.commit()
-        response = result.as_dict()
+        response = qa_response.model_dump(mode="json")
         response.update({
-            "answer": qa_response.answer,
-            "references": qa_response.references,
-            "suggested_steps": qa_response.suggested_steps,
-            "safety_notes": qa_response.safety_notes,
-            "trace_id": qa_response.trace_id,
-            "qa_record_id": qa_response.qa_record_id,
-            "persistence_status": qa_response.persistence_status,
+            "generated_queries": generated_queries,
+            "external_call_counts": external_call_counts,
         })
         return response
 

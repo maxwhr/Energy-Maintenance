@@ -1,0 +1,142 @@
+{
+  "status": "TASK32A_SYSTEM_FUNCTIONAL_TEST_PASSED",
+  "run_id": "20260719214042",
+  "test_environment": {
+    "database": "energy_maintenance_task32a_test",
+    "database_port": 55433,
+    "backend_port": 8050,
+    "formal_database_accessed": false
+  },
+  "case_statistics": {
+    "planned": 37,
+    "executed": 37,
+    "passed": 37,
+    "failed": 0,
+    "p0": {"passed": 23, "total": 23},
+    "p1": {"passed": 14, "total": 14},
+    "p2": {"passed": 0, "total": 0},
+    "pass_rate_percent": 100.0
+  },
+  "backend_tests": {
+    "compileall": "passed",
+    "focused_pytest": "36 passed",
+    "product_regression": "451 passed, 1 skipped",
+    "excluded": ["R3G/R3H ranking research", "consumed holdout", "embedding/vector/DashVector", "formal-database tests"]
+  },
+  "frontend_tests": {
+    "typecheck": "passed via vue-tsc --noEmit; package has no standalone typecheck script",
+    "production_build": "passed",
+    "static_install": "passed; 82 files installed"
+  },
+  "browser_acceptance": {
+    "status": "passed",
+    "admin_routes": 25,
+    "viewer_routes": 9,
+    "blocking_console_errors": 0,
+    "core_api_failures": 0
+  },
+  "mobile_acceptance": {
+    "status": "passed",
+    "viewport": "390x844",
+    "routes": 10,
+    "horizontal_overflow": false,
+    "provider_action_clicked": false
+  },
+  "defects": {
+    "found": 6,
+    "closed": 6,
+    "open_p0": 0,
+    "open_p1": 0,
+    "external_controlled_failure": "one Vision empty response, no retry, safe downgrade",
+    "known_boundary": "stateless JWT logout"
+  },
+  "knowledge_lifecycle": {
+    "status": "passed",
+    "formats": ["txt", "md", "pdf", "docx"],
+    "pending_review_isolation": "passed",
+    "approval": "passed",
+    "archive_isolation": "passed",
+    "active_task32a_documents_after": 0
+  },
+  "rag_and_citation": {
+    "status": "passed",
+    "real_citations": true,
+    "preview_zero_write": true,
+    "confirm_idempotency": true,
+    "final_preview_qa_delta": 0
+  },
+  "multimodal": {
+    "status": "passed",
+    "cases": 2,
+    "media": 4,
+    "human_confirmation": "passed",
+    "sop_draft_boundary": "passed"
+  },
+  "provider_calls": {
+    "total": 4,
+    "structured_successes": 3,
+    "empty_responses": 1,
+    "retries": 0,
+    "fifth_call": false,
+    "provider_log_delta": 4,
+    "raw_response_persisted": false
+  },
+  "rbac": {
+    "admin": "passed",
+    "viewer": "passed",
+    "viewer_rejected_write_delta": 0
+  },
+  "record_center": {"status": "passed", "mobile_detail_opened": true},
+  "performance": {
+    "samples": 8,
+    "p50_ms": 2285.88,
+    "p95_ms": 4098.15,
+    "p95_gate_ms": 6000,
+    "passed": true,
+    "provider_delta": 0,
+    "qa_delta": 0
+  },
+  "database_delta": {
+    "knowledge_documents": 16,
+    "knowledge_chunks": 16,
+    "knowledge_review_records": 32,
+    "qa_records": 2,
+    "uploaded_media": 4,
+    "multimodal_maintenance_cases": 2,
+    "operation_logs": 107,
+    "external_api_call_logs": 4,
+    "diagnosis_records": 0,
+    "maintenance_tasks": 0,
+    "sop_execution_records": 0,
+    "vector_index_runs": 0
+  },
+  "security": {
+    "status": "passed",
+    "files_scanned": 71,
+    "secret_blocking_count": 0,
+    "jwt_persisted": 0,
+    "image_base64_persisted": 0,
+    "provider_raw_response_persisted": 0
+  },
+  "privacy": {"status": "passed", "privacy_blocking_count": 0},
+  "alembic": "20260712_0015",
+  "migration_executed": false,
+  "formal_database_accessed": false,
+  "embedding_calls": 0,
+  "vector_rebuilds": 0,
+  "environment_cleanup": {
+    "backend_8050": "stopped",
+    "postgresql_55433": "stopped",
+    "existing_8000": "preserved",
+    "windows_postgresql_service": "Stopped / Disabled",
+    "pg_hba_restored": true
+  },
+  "evidence": {
+    "checklist": ".runtime/task32a/regression/reconstructed_acceptance_checklist.json",
+    "database": ".runtime/task32a/database/final_reconciliation.json",
+    "provider": ".runtime/task32a/provider/provider_call_ledger.json",
+    "desktop_browser": ".runtime/task32a/browser/browser_acceptance.json",
+    "mobile_browser": ".runtime/task32a/browser/mobile_browser_acceptance.json",
+    "security": ".runtime/task32a/security/security_privacy_scan.json"
+  }
+}

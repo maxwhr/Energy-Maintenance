@@ -73,3 +73,48 @@ def test_pdf_title_fallback_requires_page_and_nonempty_chunk_content():
         "missing-page": "missing_pdf_page_or_section_locator",
         "empty-content": "empty_chunk_content",
     }
+
+
+def test_uploaded_txt_uses_document_and_chunk_locator_without_pdf_page():
+    document_id = uuid4()
+    chunk = SimpleNamespace(
+        status="active",
+        metadata_json={},
+        page_number=None,
+        section_title=None,
+        chunk_index=0,
+        content="SUN2000 绝缘阻抗低检修步骤",
+    )
+    document = SimpleNamespace(
+        id=document_id,
+        title="SUN2000 绝缘阻抗检修记录",
+        review_status="approved",
+        status="active",
+        parse_status="parsed",
+        metadata_json={"normalized_language": "zh-CN"},
+        source_type="user_upload",
+        source="task32a_upload",
+        file_ext="txt",
+    )
+    candidate = SimpleNamespace(
+        chunk=chunk,
+        document=document,
+        chunk_id="uploaded-txt",
+        scope_validation_passed=True,
+        source_locator={},
+    )
+    scope = SimpleNamespace(
+        allowed_document_ids=(document_id,),
+        required_document_status="approved",
+        required_chunk_status="active",
+        normalized_language="zh-CN",
+        approved_for_pilot=False,
+        include_alternate_language=False,
+        include_test_fixture=False,
+        include_marketing=False,
+    )
+
+    result = CitationBatchBuilderService().validate_candidates([candidate], scope=scope)
+
+    assert result.valid_reference_ids == ["uploaded-txt"]
+    assert result.source_type_by_reference["uploaded-txt"] == "TXT"

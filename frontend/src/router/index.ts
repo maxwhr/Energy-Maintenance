@@ -142,6 +142,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'trace',
+        alias: '/records',
         name: 'Trace',
         component: () => import('@/views/trace/index.vue'),
         meta: { title: TEXT.traceCenter, roles: allRoles }

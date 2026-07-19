@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from urllib.parse import urlparse
 from uuid import UUID
 
 from sqlalchemy import select
@@ -23,6 +24,45 @@ class CitationValidationResult:
     citation_validity_ratio: float = 0.0
     citation_coverage_ratio: float = 0.0
     source_type_by_reference: dict[str, str] = field(default_factory=dict)
+
+
+def validate_source_locator(document, chunk, locator: dict) -> tuple[bool, str, str]:
+    """Validate a traceable locator without treating every non-HTML source as PDF."""
+    metadata = document.metadata_json or {}
+    source_url = str(metadata.get("source_url") or document.source or "")
+    source_type = str(getattr(document, "source_type", "") or "").lower()
+    file_ext = str(getattr(document, "file_ext", "") or metadata.get("file_ext") or "").lower().lstrip(".")
+    mime_type = str(metadata.get("mime_type") or "").lower()
+    source_path = urlparse(source_url).path.lower()
+    is_pdf = file_ext == "pdf" or source_type.endswith("_pdf") or mime_type == "application/pdf" or source_path.endswith(".pdf")
+    is_html = source_type == "vendor_official_html" or (
+        source_url.lower().startswith(("http://", "https://")) and not is_pdf
+    )
+    if is_html:
+        valid = bool(
+            source_url
+            and (
+                locator.get("heading")
+                or locator.get("heading_path")
+                or locator.get("html_anchor")
+                or locator.get("section")
+                or chunk.section_title
+            )
+        )
+        return valid, "HTML", "missing_html_url_or_section_locator"
+    if is_pdf:
+        section = locator.get("section") or locator.get("heading_path") or chunk.section_title
+        title = str(getattr(document, "title", "") or "").strip()
+        valid = bool(
+            (locator.get("page_start") or locator.get("page_number") or chunk.page_number)
+            and (section or title)
+        )
+        return valid, "PDF", "missing_pdf_page_or_section_locator"
+
+    title = str(getattr(document, "title", "") or "").strip()
+    chunk_index = getattr(chunk, "chunk_index", None)
+    source_label = file_ext.upper() if file_ext else "DOCUMENT"
+    return bool(title and chunk_index is not None), source_label, "missing_document_chunk_locator"
 
 
 class CitationValidationService:
@@ -67,23 +107,8 @@ class CitationValidationService:
             rows = list(self.db.execute(statement))
             for chunk, document in rows:
                 locator = (chunk.metadata_json or {}).get("source_locator") or {}
-                metadata = document.metadata_json or {}
-                source_url = str(metadata.get("source_url") or document.source or "")
-                is_html = document.source_type == "vendor_official_html" or source_url.lower().startswith(("http://", "https://")) and not source_url.lower().endswith(".pdf")
-                if is_html:
-                    valid_locator = bool(
-                        source_url
-                        and (locator.get("heading") or locator.get("heading_path") or locator.get("html_anchor") or locator.get("section") or chunk.section_title)
-                    )
-                    source_types[str(chunk.id)] = "HTML"
-                    failure = "missing_html_url_or_section_locator"
-                else:
-                    valid_locator = bool(
-                        (locator.get("page_start") or locator.get("page_number") or chunk.page_number)
-                        and (locator.get("section") or locator.get("heading_path") or chunk.section_title)
-                    )
-                    source_types[str(chunk.id)] = "PDF"
-                    failure = "missing_pdf_page_or_section_locator"
+                valid_locator, source_label, failure = validate_source_locator(document, chunk, locator)
+                source_types[str(chunk.id)] = source_label
                 if not valid_locator:
                     reasons[str(chunk.id)] = failure
                     continue

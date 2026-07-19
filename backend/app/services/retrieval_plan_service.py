@@ -66,7 +66,11 @@ class RetrievalPlanService:
             item.query for item in variants
             if item.variant_type in {"ORIGINAL", "REQUEST_QUERY"}
         ][:2]
-        channel_queries = {channel: list(all_queries) for channel in channels}
+        scoped_queries = all_queries[:2] if understanding.fast_path else all_queries
+        channel_queries = {
+            channel: list(scoped_queries if channel == "SCOPED_KEYWORD" else all_queries)
+            for channel in channels
+        }
         if "EXACT_KEYWORD" in channel_queries:
             channel_queries["EXACT_KEYWORD"] = list(dict.fromkeys(explicit))
         if "RAW_VECTOR" in channel_queries:
