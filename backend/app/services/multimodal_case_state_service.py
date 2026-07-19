@@ -117,7 +117,7 @@ class MultimodalCaseStateService:
         return item
 
     def list(self, user: User, *, status: str | None, page: int, page_size: int) -> MultimodalCasePage:
-        owner = None if user.role in {"admin", "expert"} else user.id
+        owner = None if user.role in {"admin", "expert", "viewer"} else user.id
         items, total = self.repository.list_cases(created_by=owner, status=status, page=page, page_size=page_size)
         return MultimodalCasePage(items=[self.to_read(item) for item in items], total=total, page=page, page_size=page_size)
 
@@ -305,7 +305,7 @@ class MultimodalCaseStateService:
 
     @staticmethod
     def _require_access(item: MultimodalMaintenanceCase, user: User) -> None:
-        if user.role not in {"admin", "expert"} and item.created_by != user.id:
+        if user.role not in {"admin", "expert", "viewer"} and item.created_by != user.id:
             raise MultimodalCasePermissionError("Permission denied for this multimodal case")
 
     @staticmethod

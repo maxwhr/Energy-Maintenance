@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import time
 from datetime import datetime, timezone
@@ -438,6 +439,8 @@ class ExternalApiGateway:
         agent_run_id: str | None,
         agent_tool_call_id: UUID | None,
     ) -> ExternalApiGatewayResult:
+        if mode == "real_run":
+            self._enforce_task30a_real_call_gate(input_summary)
         route, provider = self.resolve_provider_for_tool(
             route_code=route_code,
             agent_code=agent_code,
@@ -466,7 +469,10 @@ class ExternalApiGateway:
             provider=provider,
             route=route,
             capability=capability,
-            request_summary=adapter_result.request_summary or safe_payload,
+            request_summary={
+                "gateway_request": safe_payload,
+                "provider_request": adapter_result.request_summary or {},
+            },
             adapter_result=adapter_result,
             latency_ms=latency_ms,
             trace_id=trace_id,
@@ -482,6 +488,32 @@ class ExternalApiGateway:
             latency_ms=latency_ms,
         )
         return gateway_result
+
+    def _enforce_task30a_real_call_gate(self, input_summary: dict[str, Any]) -> None:
+        if not self._env_flag("TASK30A_ALLOW_REAL_PROVIDER"):
+            return
+        if not self._env_flag("TASK30A_ALLOW_TEST_DB_WRITES"):
+            raise ExternalApiGatewayError("TASK30A_BLOCKED_EXPLICIT_APPROVAL_REQUIRED")
+
+        try:
+            max_calls = int(os.getenv("TASK30A_MAX_REAL_PROVIDER_CALLS", "0"))
+        except ValueError as exc:
+            raise ExternalApiGatewayError("TASK30A_BLOCKED_EXPLICIT_APPROVAL_REQUIRED") from exc
+        if max_calls != 16:
+            raise ExternalApiGatewayError("TASK30A_BLOCKED_EXPLICIT_APPROVAL_REQUIRED")
+
+        database_name = self.repository.current_database()
+        if database_name != "energy_maintenance_task30a_test":
+            raise ExternalApiGatewayError("TASK30A_SECURITY_BOUNDARY_VIOLATION")
+
+        marker = json.dumps(input_summary, ensure_ascii=False, default=str).lower()
+        if "task30a" not in marker:
+            raise ExternalApiGatewayError("TASK30A_SECURITY_BOUNDARY_VIOLATION")
+
+        self.repository.acquire_real_call_budget_lock("task30a")
+        attempts = self.repository.count_real_call_attempts()
+        if attempts >= max_calls:
+            raise ExternalApiGatewayError("TASK30A_PROVIDER_CALL_BUDGET_EXCEEDED")
 
     def _invoke_adapter(
         self,
@@ -693,6 +725,10 @@ class ExternalApiGateway:
             value = getattr(self.settings, key)
             return str(value or "").strip()
         return os.getenv(key, "").strip()
+
+    @staticmethod
+    def _env_flag(key: str) -> bool:
+        return os.getenv(key, "").strip().lower() in {"1", "true", "yes", "on"}
 
     def _int_env(self, key: str, default: int) -> int:
         try:

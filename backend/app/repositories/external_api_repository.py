@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.orm import Session
 
 from app.models.external_api import (
@@ -128,6 +128,32 @@ class ExternalApiRepository:
 
     def get_call_log_by_trace_id(self, trace_id: str) -> ExternalApiCallLog | None:
         return self.db.scalar(select(ExternalApiCallLog).where(ExternalApiCallLog.trace_id == trace_id))
+
+    def current_database(self) -> str:
+        return str(self.db.scalar(select(func.current_database())) or "")
+
+    def acquire_real_call_budget_lock(self, task_marker: str) -> None:
+        self.db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:task_marker))"),
+            {"task_marker": task_marker},
+        )
+
+    def count_real_call_attempts(self, task_marker: str | None = None) -> int:
+        statement = (
+            select(func.count())
+            .select_from(ExternalApiCallLog)
+            .where(
+                ExternalApiCallLog.response_summary_json["external_api_called"].as_string()
+                == "true",
+            )
+        )
+        if task_marker:
+            statement = statement.where(
+                cast(ExternalApiCallLog.request_summary_json, String).ilike(
+                    f"%{task_marker.strip()}%"
+                )
+            )
+        return int(self.db.scalar(statement) or 0)
 
     def list_call_logs(
         self,

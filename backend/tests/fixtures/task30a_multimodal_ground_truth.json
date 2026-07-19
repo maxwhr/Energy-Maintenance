@@ -1,0 +1,75 @@
+{
+  "task": "Task 30A",
+  "approval_token_id": "APPROVE_TASK30A_REAL_MULTIMODAL_TEST_V1",
+  "frozen_before_real_calls": true,
+  "test_only": true,
+  "provider_call_plan": {
+    "target_calls": 7,
+    "hard_limit": 16,
+    "automatic_retry": false
+  },
+  "images": [
+    {
+      "image_id": "task30a-nameplate",
+      "class": "nameplate",
+      "processed_sha256": "9f29a6946939e6f9bf2487cba3588ccc393b98a19082a310320e050aa8564d45",
+      "planned_capabilities": ["ocr", "nameplate_extract"],
+      "expected_visible_facts": {
+        "manufacturer": "Huawei",
+        "model": "SUN2000-196KTL-H0",
+        "product_series": "SUN2000",
+        "ratings_include": ["1500 Vd.c.", "196 kW", "216 kVA", "IP66"]
+      },
+      "must_not_infer": ["serial_number", "installation_site", "operating_fault"]
+    },
+    {
+      "image_id": "task30a-alarm-error225",
+      "class": "alarm_screen",
+      "processed_sha256": "993922cdae22212ecd5db3448faed20150eb26b124fbbab1711346fd21964863",
+      "planned_capabilities": ["ocr", "alarm_screen_analysis"],
+      "expected_visible_facts": {
+        "alarm_code": "225",
+        "alarm_name": "PV IsolationLow",
+        "visible_message": "Error: 225 PV IsolationLow"
+      },
+      "must_not_infer": ["final_root_cause", "safe_to_work_energized"]
+    },
+    {
+      "image_id": "task30a-connector",
+      "class": "connector_wiring",
+      "processed_sha256": "0113ce0662f4d941b705a42d7eeb6503ebcc106f5947b415168a96c79d8de536",
+      "planned_capabilities": ["fault_scene_analysis"],
+      "expected_visible_facts": {
+        "content_type": "technical installation illustration",
+        "component": "PV connector and cable assembly",
+        "visible_actions": ["terminal crimping", "connector insertion", "voltage measurement", "locking nut check"]
+      },
+      "expected_limitations": [
+        "A technical illustration cannot prove an actual field connector is seated correctly.",
+        "Discoloration, cable damage, and moisture cannot be assessed as real site conditions from this illustration."
+      ],
+      "must_not_infer": ["field_installation_passed", "live_disassembly_instruction", "final_root_cause"]
+    },
+    {
+      "image_id": "task30a-grid-display",
+      "class": "meter_display",
+      "processed_sha256": "93dd6ca0cdd94ef1914840df197c9f1740c13e4f7ce2a90731fd905d24ad27d0",
+      "planned_capabilities": ["ocr", "fault_scene_analysis"],
+      "expected_visible_facts": {
+        "display_text": "电网电压超限",
+        "date": "2016-10-27",
+        "time": "16:41:54"
+      },
+      "expected_limitations": ["The screen alone does not establish the grid fault root cause or measurement location."],
+      "must_not_infer": ["final_root_cause", "confirmed_grid_voltage_value"]
+    }
+  ],
+  "privacy": {
+    "contains_faces": false,
+    "contains_phone_or_email": false,
+    "contains_address_or_gps": false,
+    "contains_customer_name": false,
+    "contains_real_serial_number": false,
+    "approved_for_provider": true
+  }
+}

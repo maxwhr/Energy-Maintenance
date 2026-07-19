@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from app.services.multimodal_result_normalizer import MultimodalResultNormalizer
@@ -14,8 +15,12 @@ class ExternalApiResponseParser:
         elif isinstance(raw_response, dict):
             parsed = raw_response
         elif isinstance(raw_response, str):
+            candidate = raw_response.strip()
+            fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, flags=re.IGNORECASE | re.DOTALL)
+            if fenced:
+                candidate = fenced.group(1).strip()
             try:
-                parsed = json.loads(raw_response)
+                parsed = json.loads(candidate)
             except json.JSONDecodeError:
                 parsed = {"raw_text": raw_response}
         else:

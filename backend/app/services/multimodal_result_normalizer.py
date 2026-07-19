@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 from typing import Any
 
 
@@ -24,6 +26,7 @@ class MultimodalResultNormalizer:
         }.get(capability, "general")
         return {
             "image_type": image_type,
+            "summary": "",
             "visible_text": [],
             "detected_alarm_codes": [],
             "detected_device_info": {
@@ -147,12 +150,61 @@ class MultimodalResultNormalizer:
             mocked=bool(parsed_response.get("mocked")),
             capability=capability,
         )
+        if not result["mocked"]:
+            result["limitations"] = []
         source = parsed_response.get("normalized_result") if isinstance(parsed_response.get("normalized_result"), dict) else parsed_response
+        source = MultimodalResultNormalizer._merge_embedded_json(source)
         for key in result:
             if key in source:
                 result[key] = source[key]
-        if not result["visible_text"] and source.get("visible_text"):
-            result["visible_text"] = source.get("visible_text")
+        MultimodalResultNormalizer._apply_alias(
+            result,
+            source,
+            "visible_text",
+            ("visible_message", "display_text", "recognized_text", "text"),
+        )
+        MultimodalResultNormalizer._apply_alias(
+            result,
+            source,
+            "detected_alarm_codes",
+            ("alarm_codes", "alarm_code", "fault_codes"),
+        )
+        MultimodalResultNormalizer._apply_alias(
+            result,
+            source,
+            "detected_device_info",
+            ("device_info", "nameplate_info", "equipment_info"),
+        )
+        MultimodalResultNormalizer._apply_alias(
+            result,
+            source,
+            "visual_findings",
+            ("visible_findings", "visible_elements", "visible_display_findings", "observations", "detected_objects"),
+        )
+        MultimodalResultNormalizer._apply_alias(
+            result,
+            source,
+            "possible_fault_clues",
+            ("possible_fault_signals", "fault_clues", "possible_causes"),
+        )
+        MultimodalResultNormalizer._apply_alias(
+            result,
+            source,
+            "safety_risks",
+            ("safety_flags", "safety_warnings", "safety_notes"),
+        )
+        MultimodalResultNormalizer._apply_alias(
+            result,
+            source,
+            "recommended_next_steps",
+            ("recommended_actions", "safe_follow_up_checks", "recommended_checks", "next_steps"),
+        )
+        MultimodalResultNormalizer._apply_alias(
+            result,
+            source,
+            "limitations",
+            ("not_observable", "warnings", "uncertainties"),
+        )
         if source.get("summary") and not result.get("raw_text"):
             result["raw_text"] = str(source.get("summary"))
         if source.get("detected_objects") and not result.get("visual_findings"):
@@ -175,7 +227,8 @@ class MultimodalResultNormalizer:
         result["confidence"] = MultimodalResultNormalizer._bounded_confidence(result.get("confidence"))
         result["mocked"] = bool(result.get("mocked"))
         result["real_external_api_used"] = bool(source.get("real_external_api_used"))
-        result["needs_human_review"] = bool(source.get("needs_human_review", True))
+        result["needs_human_review"] = True
+        result["root_cause_determined"] = False
         return result
 
     @staticmethod
@@ -224,3 +277,43 @@ class MultimodalResultNormalizer:
         if isinstance(value, tuple):
             return list(value)
         return [value]
+
+    @staticmethod
+    def _merge_embedded_json(source: dict[str, Any]) -> dict[str, Any]:
+        raw_text = source.get("raw_text")
+        if not isinstance(raw_text, str) or not raw_text.strip():
+            return source
+        candidate = raw_text.strip()
+        fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, flags=re.IGNORECASE | re.DOTALL)
+        if fenced:
+            candidate = fenced.group(1).strip()
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            return source
+        if not isinstance(parsed, dict):
+            return source
+        return {**source, **parsed, "raw_text": raw_text}
+
+    @staticmethod
+    def _apply_alias(
+        result: dict[str, Any],
+        source: dict[str, Any],
+        target: str,
+        aliases: tuple[str, ...],
+    ) -> None:
+        if MultimodalResultNormalizer._has_content(result.get(target)):
+            return
+        for alias in aliases:
+            value = source.get(alias)
+            if value not in (None, "", [], {}):
+                result[target] = value
+                return
+
+    @staticmethod
+    def _has_content(value: Any) -> bool:
+        if isinstance(value, dict):
+            return any(MultimodalResultNormalizer._has_content(item) for item in value.values())
+        if isinstance(value, (list, tuple, set)):
+            return any(MultimodalResultNormalizer._has_content(item) for item in value)
+        return value not in (None, "")

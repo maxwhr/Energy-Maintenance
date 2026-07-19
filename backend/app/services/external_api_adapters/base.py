@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
@@ -250,8 +251,12 @@ class ExternalApiAdapter:
 
     @staticmethod
     def _json_or_text(value: str) -> dict[str, Any]:
+        candidate = value.strip()
+        fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, flags=re.IGNORECASE | re.DOTALL)
+        if fenced:
+            candidate = fenced.group(1).strip()
         try:
-            parsed = json.loads(value)
+            parsed = json.loads(candidate)
             return parsed if isinstance(parsed, dict) else {"text": value}
         except json.JSONDecodeError:
             return {"text": value, "raw_text": value}

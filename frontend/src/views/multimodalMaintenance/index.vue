@@ -158,9 +158,11 @@
               </div>
               <p class="mt-2 break-words text-sm text-white">{{ item.normalized_text || item.observed_text || summarizeVisual(item.visual_attributes) }}</p>
               <div class="mt-2 text-[11px] text-slate-500">region={{ item.region_id || '-' }} / source={{ item.source_type }}</div>
-              <div v-if="!isViewer && !['USER_CONFIRMED', 'REJECTED'].includes(item.observation_status)" class="mt-3 flex gap-2">
+              <div v-if="!isViewer && !['USER_CONFIRMED', 'REJECTED'].includes(item.observation_status)" class="mt-3 flex flex-wrap gap-2">
                 <button class="scada-button !min-h-8 !px-3" type="button" @click.stop="confirmEvidence(item.evidence_id)">确认</button>
+                <button class="scada-button !min-h-8 !px-3" type="button" @click.stop="editEvidence(item)">修正确认</button>
                 <button class="scada-button !min-h-8 !px-3" type="button" @click.stop="rejectEvidence(item.evidence_id)">识别错误</button>
+                <button class="scada-button !min-h-8 !px-3" type="button" @click.stop="requestRetake(item.evidence_id)">要求重拍</button>
               </div>
             </article>
             <EmptyState v-if="!evidenceItems.length" text="尚未产生证据；分析不会自动调用真实 Provider" />
@@ -183,7 +185,10 @@
 
         <div class="grid gap-4 xl:grid-cols-2">
           <DataPanel title="16. 检索查询">
-            <button class="scada-button primary mb-3" data-testid="multimodal-retrieve" type="button" :disabled="isViewer || busy" @click="retrieve">进入中文官方知识检索</button>
+            <div class="mb-3 flex flex-wrap gap-2">
+              <button class="scada-button primary" data-testid="multimodal-retrieve" type="button" :disabled="isViewer || busy" @click="retrieve(false)">预览中文官方知识检索</button>
+              <button class="scada-button" data-testid="multimodal-confirm-qa" type="button" :disabled="isViewer || busy || !retrieval?.citations?.length" @click="retrieve(true)">确认并保存 QA</button>
+            </div>
             <div v-for="query in retrieval?.generated_queries || []" :key="query.query_type + query.query" class="mb-2 rounded bg-black/20 p-3 text-sm">
               <span class="font-bold text-cyan-100">{{ query.query_type }}</span>
               <span class="ml-2 text-slate-200">{{ query.query }}</span>
@@ -498,13 +503,36 @@ async function uploadMedia() {
 }
 
 async function analyze() { await action(async () => { if (activeCase.value) await analyzeMultimodalCase(activeCase.value.case_id) }, '分析请求失败') }
-async function retrieve() { await action(async () => { if (activeCase.value) retrieval.value = await retrieveMultimodalCase(activeCase.value.case_id) }, '跨模态检索失败') }
+async function retrieve(persistResult = false) {
+  await action(async () => {
+    if (!activeCase.value) return
+    const requestId = `task30a-mm-${activeCase.value.case_id}`
+    retrieval.value = await retrieveMultimodalCase(activeCase.value.case_id, persistResult, requestId)
+  }, persistResult ? 'QA 确认保存失败' : '跨模态检索预览失败')
+}
 async function diagnose() { await action(async () => { if (activeCase.value) diagnosis.value = await diagnoseMultimodalCase(activeCase.value.case_id) }, '诊断失败') }
 async function createSop() { await action(async () => { if (activeCase.value) sopDraft.value = await createMultimodalSopDraft(activeCase.value.case_id) }, 'SOP 草稿生成失败') }
 async function createTask() { await action(async () => { if (activeCase.value) taskDraft.value = await createMultimodalTaskDraft(activeCase.value.case_id, sopUserConfirmed.value) }, 'Task 草稿生成失败') }
 
 async function confirmEvidence(evidenceId: string) { await action(async () => { if (activeCase.value) await confirmMultimodalEvidence(activeCase.value.case_id, evidenceId); await loadEvidence() }, '证据确认失败') }
 async function rejectEvidence(evidenceId: string) { await action(async () => { if (activeCase.value) await rejectMultimodalEvidence(activeCase.value.case_id, evidenceId); await loadEvidence() }, '证据拒绝失败') }
+
+async function editEvidence(item: MultimodalEvidenceItem) {
+  const current = item.normalized_text || item.observed_text || ''
+  const value = window.prompt('请输入人工核对后的内容', current)
+  if (value === null || !value.trim()) return
+  await action(async () => {
+    if (activeCase.value) await confirmMultimodalEvidence(activeCase.value.case_id, item.evidence_id, value.trim())
+    await loadEvidence()
+  }, '证据修正确认失败')
+}
+
+async function requestRetake(evidenceId: string) {
+  await action(async () => {
+    if (activeCase.value) await rejectMultimodalEvidence(activeCase.value.case_id, evidenceId, 'request_retake: 图片信息不足，请按安全要求重新拍摄')
+    await loadEvidence()
+  }, '重拍请求提交失败')
+}
 
 async function submitClarification() {
   if (!activeCase.value || isViewer.value) return

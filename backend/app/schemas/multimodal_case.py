@@ -44,6 +44,8 @@ class MultimodalAnalyzeRequest(BaseModel):
 class MultimodalRetrieveRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=10)
     requested_information: list[str] = Field(default_factory=list, max_length=10)
+    persist_result: bool = False
+    request_id: str | None = Field(default=None, min_length=8, max_length=128)
 
 
 class MultimodalDiagnoseRequest(BaseModel):

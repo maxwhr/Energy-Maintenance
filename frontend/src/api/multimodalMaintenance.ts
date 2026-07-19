@@ -41,18 +41,20 @@ export const confirmMultimodalEvidence = (caseId: string, evidenceId: string, co
     reason: '用户在多模态检修工作台确认'
   })
 
-export const rejectMultimodalEvidence = (caseId: string, evidenceId: string) =>
+export const rejectMultimodalEvidence = (caseId: string, evidenceId: string, reason = '用户在多模态检修工作台标记识别错误') =>
   request.post<MultimodalEvidenceItem>(`/multimodal/cases/${caseId}/evidence/${evidenceId}/reject`, {
-    reason: '用户在多模态检修工作台标记识别错误'
+    reason
   })
 
 export const clarifyMultimodalCase = (caseId: string, answers: Record<string, string>) =>
   request.post<MultimodalMaintenanceCase>(`/multimodal/cases/${caseId}/clarify`, { answers, confirmed_facts: {} })
 
-export const retrieveMultimodalCase = (caseId: string) =>
+export const retrieveMultimodalCase = (caseId: string, persistResult = false, requestId?: string) =>
   request.post<MultimodalRetrievalResult>(`/multimodal/cases/${caseId}/retrieve`, {
     top_k: 5,
-    requested_information: ['CAUSE', 'ACTION', 'SAFETY']
+    requested_information: ['CAUSE', 'ACTION', 'SAFETY'],
+    persist_result: persistResult,
+    request_id: requestId || null
   })
 
 export const diagnoseMultimodalCase = (caseId: string) =>

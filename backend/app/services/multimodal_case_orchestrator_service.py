@@ -227,7 +227,7 @@ class MultimodalCaseOrchestratorService:
             "queries": [item.query for item in plan.queries],
             "confirmed_facts": case.user_confirmed_facts or {},
         }, ensure_ascii=False, sort_keys=True)
-        qa_request_id = f"task28a-mm-{hashlib.sha256(request_material.encode('utf-8')).hexdigest()[:40]}"
+        qa_request_id = payload.request_id or f"task28a-mm-{hashlib.sha256(request_material.encode('utf-8')).hexdigest()[:40]}"
         qa_response = QueryAwareRetrievalService(self.db, current_user=user).search(QueryAwareSearchRequest(
             query=qa_query or case.user_query or case.title,
             request_id=qa_request_id,
@@ -241,7 +241,7 @@ class MultimodalCaseOrchestratorService:
             top_k=payload.top_k,
             enable_llm=False,
             allow_real_api=False,
-            persist_result=True,
+            persist_result=payload.persist_result,
         ))
         case.knowledge_citations = result.citations
         metadata = dict(case.metadata_json or {})

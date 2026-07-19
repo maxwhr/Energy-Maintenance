@@ -83,6 +83,8 @@ class MimoMultimodalAdapter(ExternalApiAdapter):
                     timeout_seconds=int(self.config.get("timeout_seconds") or 60),
                 )
             content = self._extract_text_content(raw_response)
+            if not raw_response or (profile != "custom_http_json" and not content):
+                raise RuntimeError("provider returned an empty response")
             parsed_content = self._json_or_text(content) if content else raw_response
             parsed = self.parse_response(
                 {
