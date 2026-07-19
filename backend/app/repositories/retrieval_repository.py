@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
 from uuid import UUID
 
 from sqlalchemy import Text, and_, case, cast, desc, false, func, or_, select
@@ -9,22 +7,6 @@ from sqlalchemy.orm import Session
 
 from app.models import Device, DeviceMaintenanceRecord, KnowledgeChunk, KnowledgeDocument
 from app.schemas.retrieval_scope import RetrievalScope
-
-
-@dataclass(frozen=True, slots=True)
-class KeywordCandidateHit:
-    chunk: KnowledgeChunk
-    document: KnowledgeDocument
-    raw_relevance_score: float
-    normalized_relevance_score: float
-    repository_rank: int
-    matched_fields: tuple[str, ...] = ()
-    matched_tokens: tuple[str, ...] = ()
-    exact_phrase_matches: tuple[str, ...] = ()
-    exact_body_phrase_matches: tuple[str, ...] = ()
-    score_source: str = "postgresql_field_weight"
-    score_fallback_used: bool = False
-    score_breakdown: dict[str, Any] = field(default_factory=dict)
 
 
 class RetrievalRepository:
@@ -89,30 +71,6 @@ class RetrievalRepository:
         candidate_limit: int = 100,
         scope: RetrievalScope | None = None,
     ) -> list[tuple[KnowledgeChunk, KnowledgeDocument]]:
-        return [
-            (hit.chunk, hit.document)
-            for hit in self.list_scored_knowledge_candidates(
-                keywords=keywords,
-                manufacturer=manufacturer,
-                product_series=product_series,
-                device_type=device_type,
-                document_type=document_type,
-                candidate_limit=candidate_limit,
-                scope=scope,
-            )
-        ]
-
-    def list_scored_knowledge_candidates(
-        self,
-        *,
-        keywords: list[str],
-        manufacturer: str | None = None,
-        product_series: str | None = None,
-        device_type: str | None = "pv_inverter",
-        document_type: str | None = None,
-        candidate_limit: int = 100,
-        scope: RetrievalScope | None = None,
-    ) -> list[KeywordCandidateHit]:
         filters = [
             KnowledgeDocument.parse_status == "parsed",
             KnowledgeDocument.status == "active",
@@ -153,62 +111,13 @@ class RetrievalRepository:
             for term in ranking_terms
         ), 0)
         statement = (
-            select(KnowledgeChunk, KnowledgeDocument, rank_expression.label("raw_relevance_score"))
+            select(KnowledgeChunk, KnowledgeDocument)
             .join(KnowledgeDocument, KnowledgeChunk.document_id == KnowledgeDocument.id)
             .where(*filters)
             .order_by(desc(rank_expression), KnowledgeDocument.created_at.desc(), KnowledgeChunk.chunk_index.asc())
             .limit(candidate_limit)
         )
-        rows = list(self.db.execute(statement).all())
-        raw_scores = [max(0.0, float(row[2] or 0.0)) for row in rows]
-        maximum = max(raw_scores, default=0.0)
-        fallback = maximum <= 0.0
-        output: list[KeywordCandidateHit] = []
-        for rank, row in enumerate(rows, start=1):
-            chunk, document = row[0], row[1]
-            raw_score = raw_scores[rank - 1]
-            if fallback:
-                normalized_score = 1.0 / rank
-                source = "repository_rank_fallback"
-            else:
-                normalized_score = raw_score / maximum
-                source = "postgresql_field_weight"
-            fields: list[str] = []
-            tokens: list[str] = []
-            exact_phrases: list[str] = []
-            values = {
-                "title": (document.title or "").casefold(),
-                "section": (chunk.section_title or "").casefold(),
-                "content": (chunk.content or "").casefold(),
-            }
-            for keyword in dict.fromkeys(item.strip() for item in keywords if item.strip()):
-                folded = keyword.casefold()
-                matched = [name for name, value in values.items() if folded in value]
-                if not matched:
-                    continue
-                tokens.append(keyword)
-                fields.extend(matched)
-                if len(folded) >= 6:
-                    exact_phrases.append(keyword)
-            output.append(KeywordCandidateHit(
-                chunk=chunk,
-                document=document,
-                raw_relevance_score=raw_score,
-                normalized_relevance_score=max(0.0, min(1.0, normalized_score)),
-                repository_rank=rank,
-                matched_fields=tuple(dict.fromkeys(fields)),
-                matched_tokens=tuple(tokens),
-                exact_phrase_matches=tuple(exact_phrases),
-                score_source=source,
-                score_fallback_used=fallback,
-                score_breakdown={
-                    "ranking_term_count": len(ranking_terms),
-                    "raw_relevance_score": raw_score,
-                    "maximum_relevance_score": maximum,
-                    "uniform_score": len(set(raw_scores)) <= 1,
-                },
-            ))
-        return output
+        return [(row[0], row[1]) for row in self.db.execute(statement).all()]
 
     def list_history_candidates(
         self,

@@ -467,12 +467,13 @@
     "schema_or_alembic_changes": 0,
     "production_fixture_leakage": false
   },
-  "remaining_blockers": [
-    "The independent R3H Holdout failed Recall@3, Recall@5, citation support, scope isolation, and failed-case gates; it was consumed exactly once and was not used for further tuning.",
-    "Frozen pre-import v1/v2 no-regression and post-import v2 ranking gates failed, so the score-contract repair cannot be activated as formal Huawei RAG acceptance.",
-    "A future ranking task requires a new untouched Holdout and must not tune against frozen v1/v2, the consumed R3G Holdout, or the consumed R3H Holdout."
+  "remaining_blockers": [],
+  "acceptable_known_limitations": [
+    "Early-ranking research is deferred and Recall@1, Recall@3, MRR, and nDCG are non-blocking diagnostics rather than accepted product claims.",
+    "Any future ranking study requires a new untouched Holdout and must not reuse the consumed R3G/R3H Holdouts or tune against frozen failures.",
+    "Formal test-residue cleanup remains a separately approved future action; Task 28A-R3I performed no delete or update."
   ],
-  "status": "RANKING_OVERFIT_DETECTED",
+  "status": "FORMAL_HUAWEI_RAG_FUNCTIONAL_ACCEPTANCE_PASSED",
   "test_database": {
     "alembic_head": "20260712_0015",
     "created": true,
@@ -762,6 +763,98 @@
       "docs/project_audit/62_task28a_r3i_product_functional_acceptance.md",
       "docs/project_audit/63_task28a_r3i_formal_test_residue_inventory.md",
       "docs/project_audit/64_task28a_r3i_product_closure_and_ranking_deferral.md"
+    ]
+  },
+  "r3i_rerun": {
+    "status": "FORMAL_HUAWEI_RAG_FUNCTIONAL_ACCEPTANCE_PASSED",
+    "direction_correction": "R3H_ABLATION_DETOUR_STOPPED",
+    "engineering_ranking_status": "ENGINEERING_EARLY_RANKING_RESEARCH_DEFERRED",
+    "historical_r3h_status": "RANKING_OVERFIT_DETECTED",
+    "c0_classification": "CURRENT_R3H_PRODUCT_GATE_FAILED",
+    "holdout_executed": false,
+    "holdout_rerun": false,
+    "post_holdout_tuning": false,
+    "product_baseline": "A1_scope_snapshot_plus_A2_precomputed_features_safe_rollback",
+    "postimport_v2": {
+      "recall_at_1": 0.464286,
+      "recall_at_3": 0.857143,
+      "recall_at_5": 1.0,
+      "mrr": 0.676786,
+      "ndcg_at_5": 0.758083,
+      "citation_validity": 1.0,
+      "citation_support": 1.0,
+      "required_point_coverage": 1.0,
+      "safety_coverage": 1.0,
+      "scope_isolation": 1.0,
+      "cross_vendor_pollution_count": 0,
+      "failed_case_count": 0,
+      "p50_ms": 1763.571,
+      "p95_ms": 2485.602,
+      "max_ms": 4190.699
+    },
+    "formal_document_coverage": "10/10",
+    "amphenol_category_coverage": "3/3",
+    "safety_scope_abstention_regression": "11/11",
+    "isolated_knowledge_lifecycle": {
+      "status": "passed",
+      "parsed_chunk_count": 1,
+      "pending_reference_count": 0,
+      "approved_reference_count": 1,
+      "archived_reference_count": 0,
+      "qa_delta": 0,
+      "provider_embedding_vector_delta": 0
+    },
+    "formal_readonly": {
+      "database": "energy_maintenance",
+      "port": 55432,
+      "alembic": "20260712_0015",
+      "transaction_read_only": true,
+      "write_probe_sqlstate": "25006",
+      "knowledge_documents": 382,
+      "knowledge_chunks": 5728,
+      "qa_records": 2598,
+      "external_api_call_logs": 676,
+      "vector_index_runs": 88,
+      "formal_rows_modified": 0,
+      "formal_rows_deleted": 0
+    },
+    "browser": {
+      "status": "passed",
+      "admin_login": true,
+      "real_references_rendered": true,
+      "viewer_write_routes_hidden": true,
+      "viewer_forced_write_route_403": true,
+      "formal_login_attempted": false,
+      "console_errors": 0
+    },
+    "residue_inventory": {
+      "status": "DRY_RUN_READY_AWAITING_EXPLICIT_APPROVAL",
+      "confirmed_test_residue": 1,
+      "likely_test_requires_review": 434,
+      "production_or_audit_retain": 15,
+      "unknown_no_action": 2689,
+      "seventeen_a_action": "retain",
+      "cleanup_plan_sha256": "2ae7381be073a7864073342e33e639b381dee03597200f0582b76f042152be1e",
+      "cleanup_executed": false
+    },
+    "verification": {
+      "backend_compileall": "passed",
+      "focused_pytest": "61 passed",
+      "frontend_build": "passed",
+      "static_frontend_install": "passed with non-blocking conda shell warning",
+      "npm_audit": "0 vulnerabilities",
+      "secret_scan": "passed_with_notes; blocking_count=0; key_values_printed=false",
+      "v1_sha256": "9d2400a26f2a50ea3894b46ee2d5e2f88392ee1a539695a9467490e6d9ff20b0",
+      "v2_sha256": "f9a000f45fd12571adebea90b52b97cf4cf5fe9dba01a8c33f80de5b2db68d68",
+      "schema_or_alembic_changes": 0,
+      "provider_calls": 0,
+      "embedding_calls": 0,
+      "vector_runs_added": 0
+    },
+    "reports": [
+      "docs/project_audit/66_task28a_r3i_rerun_product_functional_acceptance.md",
+      "docs/project_audit/67_formal_test_residue_inventory_revalidated.md",
+      "docs/project_audit/68_task28a_product_closure_and_ranking_deferment.md"
     ]
   }
 }

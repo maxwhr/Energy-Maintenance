@@ -1,6 +1,22 @@
 # Task 28A Delivery Status
 
-## Latest Authoritative Status: Task 28A-R3G
+## Latest Authoritative Status: Task 28A-R3I Rerun
+
+`FORMAL_HUAWEI_RAG_FUNCTIONAL_ACCEPTANCE_PASSED`
+
+The Huawei SUN2000 product functional gate now passes on the restored
+`A1_scope_snapshot_plus_A2_precomputed_features_safe_rollback` baseline:
+post-import/v2 Recall@5, citation validity/support, required-point coverage,
+safety, Scope, and abstention are all `1.0`, with zero failed cases. Formal
+10/10, Amphenol 3/3, isolated knowledge lifecycle, browser, compile, focused
+tests, frontend build, and zero-write reconciliation passed.
+
+Early ranking remains a separate, non-blocking deferred study:
+`ENGINEERING_EARLY_RANKING_RESEARCH_DEFERRED`. Historical R3H status remains
+`RANKING_OVERFIT_DETECTED`; no consumed Holdout was rerun or used for tuning.
+See reports 66-68 for the authoritative closure evidence.
+
+## Historical Status: Task 28A-R3G
 
 `EARLY_RANKING_OPTIMIZATION_PARTIAL`
 
@@ -189,7 +205,7 @@ import is implied by this preflight.
 - Authoritative status is now `RANKING_OVERFIT_DETECTED`. Full formal Huawei
   RAG acceptance must not be claimed.
 
-## Task 28A-R3I Product Acceptance Attempt
+## Task 28A-R3I Product Acceptance Attempt (Historical; Superseded)
 
 - Status: `TASK28A_R3I_BLOCKED_BY_PREEXISTING_UNRESOLVED_MERGE`.
 - The task-start working tree already contained `MERGE_HEAD` and eight

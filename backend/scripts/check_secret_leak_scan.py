@@ -67,6 +67,8 @@ NON_SECRET_KEY_PARTS = {
     "ACCESS_TOKEN_EXPIRE",
     "SECRET_TYPE",
     "SECRET_KEYS",
+    "SECRETS_SERIALIZED",
+    "SHOWPASSWORD",
 }
 CODE_IDENTIFIER_VALUES = {
     "token",
@@ -163,12 +165,13 @@ def is_allowed_test_marker(value: str, line: str) -> bool:
             "fake",
             "example",
             "placeholder",
+            "approve_task",
         )
     )
 
 
 def is_probable_secret_literal(key: str, value: str, line: str) -> bool:
-    stripped = value.strip().strip('"').strip("'")
+    stripped = value.strip().strip('"').strip("'").rstrip(",;")
     lowered = stripped.lower()
     if not stripped or is_placeholder(stripped) or is_allowed_test_marker(stripped, line):
         return False

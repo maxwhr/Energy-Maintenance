@@ -209,11 +209,7 @@ class QuerySignalExtractionService:
         if model:
             model_confidence = 0.75 if model.upper() == "SUN2000" else 0.98
         alarm_codes = self.EXPLICIT_ALARM_RE.findall(normalized)
-        alarm_codes.extend(
-            match.group(0)
-            for match in self.CODE_RE.finditer(normalized)
-            if not re.search(r"[/\\]\s*$", normalized[max(0, match.start() - 4):match.start()])
-        )
+        alarm_codes.extend(self.CODE_RE.findall(normalized))
         model_spans = [match.span() for match in self.SUN2000_MODEL_RE.finditer(normalized)]
         for match in self.NUMERIC_CODE_RE.finditer(normalized):
             if self._is_numeric_alarm_candidate(
@@ -228,7 +224,6 @@ class QuerySignalExtractionService:
             if value.upper() not in model_tokens
             and value.upper() not in {"RS232", "RS485"}
             and not value.upper().startswith(("SUN", "LUNA", "SMARTLOGGER"))
-            and not any(marker in value.upper() for marker in ("SUN2000", "LUNA2000", "SMARTLOGGER"))
         ]
         alarm_names = [*self.QUOTED_ALARM_NAME_RE.findall(normalized), *self.ALARM_NAME_RE.findall(normalized)]
         generic_alarm_names = {
@@ -347,11 +342,7 @@ class QuerySignalExtractionService:
             return "unsupported_sungrow_model"
         if "luna2000" in normalized:
             return "unsupported_luna2000_product"
-        huawei_context = any(
-            term in normalized
-            for term in ("华为", "huawei", "sun2000", "fusionsolar")
-        )
-        if "smartlogger" in normalized and not huawei_context:
+        if "smartlogger" in normalized:
             return "unsupported_smartlogger_product"
         return None
 
@@ -362,9 +353,17 @@ class QuerySignalExtractionService:
         normalized = unicodedata.normalize("NFKC", query or "").casefold()
         compact = re.sub(r"\s+", "", normalized)
         safety_explanation = any(term in compact for term in ("严禁", "禁止", "不得", "请勿", "不可"))
+        safety_inquiry = any(
+            term in compact
+            for term in (
+                "能否", "是否可以", "是否允许", "可以吗", "需要哪些防护",
+                "安全措施", "防护措施", "有什么风险", "有哪些风险",
+                "为什么不能", "为何禁止", "为什么严禁", "注意事项",
+            )
+        )
         if any(term in compact for term in ("忽略安全", "绕过绝缘", "强制并网")):
             return "unsafe_safety_bypass_request"
-        if not safety_explanation and "带电" in compact and any(
+        if not (safety_explanation or safety_inquiry) and "带电" in compact and any(
             term in compact for term in ("拆", "拔", "接线", "更换", "触碰")
         ):
             return "unsafe_live_electrical_operation"

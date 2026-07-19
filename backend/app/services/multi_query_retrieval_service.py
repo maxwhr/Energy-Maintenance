@@ -124,9 +124,7 @@ class MultiQueryRetrievalService:
                 channel_traces[key] = trace
         identity_diagnostics = EvidenceIdentityBatchResolver().resolve(rankings)
         rankings, aggregation_diagnostics = self._enforce_channel_identity_budget(
-            rankings,
-            limit=plan.per_channel_identity_limit,
-            query_weights=plan.query_weights,
+            rankings, limit=plan.per_channel_identity_limit,
         )
         actual_channels = sorted({key.split(":", 1)[0] for key, values in rankings.items() if values})
         executed_channels = sorted({key.split(":", 1)[0] for key in rankings if key not in errors})
@@ -225,23 +223,20 @@ class MultiQueryRetrievalService:
     def _keyword(self, channel, query, query_type, understanding, scope, top_k, *, hydrated_keyword_rows=None):
         keywords = self._keywords(query, understanding, exact=channel == "EXACT_KEYWORD")
         if hydrated_keyword_rows is not None:
-            hits = CandidateHydrationService.rank_keyword_candidate_hits(
+            rows = CandidateHydrationService.rank_keyword_candidates(
                 hydrated_keyword_rows, keywords=keywords, candidate_limit=top_k,
             )
         else:
             with SessionLocal() as db:
-                hits = RetrievalRepository(db).list_scored_knowledge_candidates(
+                rows = RetrievalRepository(db).list_knowledge_candidates(
                     keywords=keywords,
                     device_type=None,
                     candidate_limit=top_k,
                     scope=scope,
                 )
         result = []
-        for hit in hits:
-            candidate = self._candidate(
-                hit.chunk, hit.document, channel, query_type, hit.normalized_relevance_score,
-                understanding, scope, keyword_hit=hit,
-            )
+        for rank, (chunk, document) in enumerate(rows, start=1):
+            candidate = self._candidate(chunk, document, channel, query_type, 1.0 / rank, understanding, scope)
             result.append(candidate)
         return result
 
@@ -331,26 +326,22 @@ class MultiQueryRetrievalService:
             *understanding.device_models, *understanding.alarm_codes, *understanding.alarm_names,
             *model_parts, *understanding.components, *understanding.symptoms,
         ]
-        quoted_phrases = [
-            value.strip()
-            for value in re.findall(r"[“\"《]([^”\"》]{3,96})[”\"》]", query)
-            if value.strip()
-        ]
-        lexical_terms = QuerySignalExtractionService.retrieval_terms(query, limit=48)
-        values = list(dict.fromkeys([*explicit, *quoted_phrases, *lexical_terms]))
+        lexical_terms = QuerySignalExtractionService.retrieval_terms(query)
+        values = list(dict.fromkeys([*explicit, *lexical_terms]))
         if exact:
             return values[:112] or [query]
         return values[:128] or [query]
 
     @staticmethod
-    def _candidate(chunk, document, channel, query_type, score, understanding, scope, *, keyword_hit=None):
+    def _candidate(chunk, document, channel, query_type, score, understanding, scope):
         haystack = " ".join((document.title or "", document.model or "", chunk.section_title or "", chunk.content or "")).lower()
+        compact_haystack = MultiQueryRetrievalService._compact_identifier(haystack)
         specific_models = [
             value for value in understanding.device_models
             if MultiQueryRetrievalService._compact_identifier(value) != "sun2000"
         ]
         model_match = bool(specific_models) and any(
-            MultiQueryRetrievalService._contains_exact_identifier(haystack, value)
+            MultiQueryRetrievalService._compact_identifier(value) in compact_haystack
             for value in specific_models
         )
         alarm_terms = [*understanding.alarm_codes, *understanding.alarm_names]
@@ -364,7 +355,6 @@ class MultiQueryRetrievalService:
             "page_end": chunk.page_number,
             "source_chunk_ids": [str(chunk.id)],
         }
-        score_key = f"{channel}:{query_type}"
         return QueryAwareCandidate(
             candidate_id=str(chunk.id),
             chunk_id=str(chunk.id),
@@ -377,41 +367,17 @@ class MultiQueryRetrievalService:
             document=document,
             source_channels={channel},
             source_query_types={query_type},
-            raw_scores={score_key: float(score)},
+            raw_scores={f"{channel}:{query_type}": float(score)},
             exact_model_match=model_match,
             exact_alarm_match=alarm_match,
             source_chunk_ids=[str(chunk.id)],
             source_locator=locator,
             scope_validation_passed=document.id in scope.allowed_document_ids,
-            raw_relevance_score=float(keyword_hit.raw_relevance_score) if keyword_hit else float(score),
-            normalized_relevance_score=float(keyword_hit.normalized_relevance_score) if keyword_hit else float(score),
-            repository_rank=keyword_hit.repository_rank if keyword_hit else None,
-            matched_fields=set(keyword_hit.matched_fields) if keyword_hit else set(),
-            matched_tokens=set(keyword_hit.matched_tokens) if keyword_hit else set(),
-            exact_phrase_matches=set(keyword_hit.exact_phrase_matches) if keyword_hit else set(),
-            exact_body_phrase_matches=set(keyword_hit.exact_body_phrase_matches) if keyword_hit else set(),
-            score_source=keyword_hit.score_source if keyword_hit else channel.lower(),
-            score_fallback_used=bool(keyword_hit.score_fallback_used) if keyword_hit else False,
-            score_provenance={score_key: {
-                "raw_relevance_score": float(keyword_hit.raw_relevance_score) if keyword_hit else float(score),
-                "normalized_relevance_score": float(keyword_hit.normalized_relevance_score) if keyword_hit else float(score),
-                "repository_rank": keyword_hit.repository_rank if keyword_hit else None,
-                "matched_fields": list(keyword_hit.matched_fields) if keyword_hit else [],
-                "matched_tokens": list(keyword_hit.matched_tokens) if keyword_hit else [],
-                "exact_phrase_matches": list(keyword_hit.exact_phrase_matches) if keyword_hit else [],
-                "exact_body_phrase_matches": list(keyword_hit.exact_body_phrase_matches) if keyword_hit else [],
-                "score_source": keyword_hit.score_source if keyword_hit else channel.lower(),
-                "score_fallback_used": bool(keyword_hit.score_fallback_used) if keyword_hit else False,
-                "score_breakdown": dict(keyword_hit.score_breakdown) if keyword_hit else {},
-            }},
         )
 
     @staticmethod
     def _compact_identifier(value: str) -> str:
-        return "".join(
-            character for character in str(value).casefold()
-            if character.isalnum() or character == "+"
-        )
+        return "".join(character for character in str(value).casefold() if character.isalnum())
 
     @staticmethod
     def _contains_exact_term(haystack: str, value: str) -> bool:
@@ -423,59 +389,25 @@ class MultiQueryRetrievalService:
         return term in haystack
 
     @staticmethod
-    def _contains_exact_identifier(haystack: str, value: str) -> bool:
-        parts = [part for part in re.split(r"[-_/\s]+", str(value).strip()) if part]
-        if not parts:
-            return False
-        separator = r"[-_/\s]*"
-        pattern = separator.join(re.escape(part) for part in parts)
-        if re.search(rf"(?<![A-Za-z0-9+]){pattern}(?![A-Za-z0-9+])", haystack, re.I) is not None:
-            return True
-        compact_value = MultiQueryRetrievalService._compact_identifier(value)
-        compact_haystack = MultiQueryRetrievalService._compact_identifier(haystack)
-        if not compact_value:
-            return False
-        start = compact_haystack.find(compact_value)
-        while start >= 0:
-            following = compact_haystack[start + len(compact_value):]
-            if not (compact_value.endswith("h0") and following.startswith("+")):
-                return True
-            start = compact_haystack.find(compact_value, start + 1)
-        return False
-
-    @staticmethod
     def _enforce_channel_identity_budget(
         rankings: dict[str, list[QueryAwareCandidate]], *, limit: int,
-        query_weights: dict[str, float] | None = None,
     ) -> tuple[dict[str, list[QueryAwareCandidate]], dict[str, dict[str, int]]]:
         by_channel: dict[str, list[tuple[str, list[QueryAwareCandidate]]]] = {}
         for key, values in rankings.items():
             by_channel.setdefault(key.split(":", 1)[0], []).append((key, values))
-        diagnostics: dict[str, dict[str, object]] = {}
+        diagnostics: dict[str, dict[str, int]] = {}
         filtered = dict(rankings)
-        query_weights = query_weights or {}
         for channel, channel_rankings in by_channel.items():
             aggregate_scores: dict[str, float] = {}
             best_rank: dict[str, int] = {}
-            best_query_types: dict[str, str] = {}
-            for key, values in channel_rankings:
-                parts = key.split(":")
-                query_type = parts[1] if len(parts) > 1 else "ORIGINAL"
-                query_weight = query_weights.get(query_type, 1.0)
+            for _key, values in channel_rankings:
                 seen: set[str] = set()
                 for rank, item in enumerate(values, start=1):
                     identity = item.evidence_equivalence_key or item.evidence_identity or item.candidate_id
                     if identity in seen:
                         continue
                     seen.add(identity)
-                    contribution = query_weight * (
-                        1.0 / (60 + rank)
-                        + 0.012 * max(0.0, min(1.0, item.normalized_relevance_score))
-                    )
-                    previous = aggregate_scores.get(identity)
-                    if previous is None or contribution > previous:
-                        aggregate_scores[identity] = contribution
-                        best_query_types[identity] = query_type
+                    aggregate_scores[identity] = aggregate_scores.get(identity, 0.0) + 1.0 / (60 + rank)
                     best_rank[identity] = min(rank, best_rank.get(identity, rank))
             allowed = {
                 identity for identity, _score in sorted(
@@ -497,9 +429,5 @@ class MultiQueryRetrievalService:
                 "unique_evidence_identities": len(aggregate_scores),
                 "retained_evidence_identities": len(allowed),
                 "identity_limit": limit,
-                "aggregation_mode": "best_score_aware_vote_per_physical_channel",
-                "original_query_winners": sum(
-                    query_type == "ORIGINAL" for query_type in best_query_types.values()
-                ),
             }
         return filtered, diagnostics

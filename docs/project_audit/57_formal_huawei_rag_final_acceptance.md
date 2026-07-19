@@ -1,6 +1,20 @@
-# Task 28A-R3G Formal Huawei RAG Final Acceptance
+# Task 28A Formal Huawei RAG Final Acceptance
 
-## Final Status
+## R3I Authoritative Product Addendum
+
+`FORMAL_HUAWEI_RAG_FUNCTIONAL_ACCEPTANCE_PASSED`
+
+The restored R3G safe baseline reproduces the expert-v2 product gate with
+Recall@5, citation validity/support, required-point coverage, safety, Scope,
+and abstention all `1.000000`, failed cases `0`, P50 `1763.571 ms`, and P95
+`2485.602 ms`. Formal document coverage is `10/10`, Amphenol coverage is
+`3/3`, and formal database writes are `0`.
+
+Recall@1/3, MRR, and nDCG remain diagnostic only. Early ranking is deferred as
+`ENGINEERING_EARLY_RANKING_RESEARCH_DEFERRED`; historical R3H remains
+`RANKING_OVERFIT_DETECTED`. See reports 66 and 68.
+
+## Historical R3G Status
 
 `RANKING_OVERFIT_DETECTED` (superseded by the Task 28A-R3H addendum below)
 

@@ -1,6 +1,18 @@
 # Task 28A-R3H Final Ranking Acceptance
 
-## Final Status
+## R3I Direction-correction Addendum
+
+This document is retained as historical ranking-research evidence only.
+Current engineering status is `ENGINEERING_EARLY_RANKING_RESEARCH_DEFERRED`,
+and the R3I correction is `R3H_ABLATION_DETOUR_STOPPED`. No R3I Holdout was
+run or rerun, and no post-Holdout tuning occurred.
+
+The historical R3H conclusion below remains `RANKING_OVERFIT_DETECTED`; it
+does not block the separately proven Huawei product functional status
+`FORMAL_HUAWEI_RAG_FUNCTIONAL_ACCEPTANCE_PASSED` on the restored R3G safe
+baseline. R3H Recall@1/3, MRR, and nDCG must not be claimed as passed.
+
+## Historical R3H Status
 
 `RANKING_OVERFIT_DETECTED`
 

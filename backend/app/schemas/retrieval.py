@@ -37,11 +37,14 @@ class RetrievalQueryRequest(BaseModel):
     top_k: int = 5
     include_history: bool = True
     enable_kg_enhancement: bool = True
+    persist_result: bool = True
+    enable_llm: bool = False
+    allow_real_api: bool = False
     enable_model_enhancement: bool = False
     model_provider: str = "rule_based"
     allow_model_fallback: bool = True
     retrieval_mode: Literal["keyword", "vector", "hybrid", "hybrid_rerank", "adaptive"] = "keyword"
-    enable_vector: bool = True
+    enable_vector: bool = False
     vector_top_k: int = 8
     hybrid_keyword_weight: float = 0.35
     hybrid_vector_weight: float = 0.65

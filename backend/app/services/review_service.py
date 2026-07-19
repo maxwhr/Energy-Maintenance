@@ -11,6 +11,7 @@ from app.repositories.review_repository import ReviewRepository
 from app.schemas.knowledge import KnowledgeChunkRead
 from app.schemas.review import KnowledgeReviewDocumentItem, KnowledgeReviewRecordRead
 from app.services.candidate_hydration_service import CandidateHydrationService
+from app.services.retrieval_scope_service import RetrievalScopeService
 
 
 class ReviewServiceError(ValueError):
@@ -82,15 +83,16 @@ class ReviewService:
 
     def approve_document(self, document_id: UUID, *, comment: str | None, reviewer: User) -> dict:
         document = self.repository.get_document(document_id)
-        if document and self._is_vendor_official(document):
-            self._validate_vendor_official(document)
-            metadata = dict(document.metadata_json or {})
-            metadata.update(
-                approved_for_pilot=True,
-                approved_for_pilot_by=str(reviewer.id),
-                approved_for_pilot_at=datetime.now(timezone.utc).isoformat(),
-                vendor_review_status="approved_for_pilot",
-            )
+        if document:
+            metadata = self._approval_metadata(document, reviewer)
+            if self._is_vendor_official(document):
+                self._validate_vendor_official(document)
+                metadata.update(
+                    approved_for_pilot=True,
+                    approved_for_pilot_by=str(reviewer.id),
+                    approved_for_pilot_at=datetime.now(timezone.utc).isoformat(),
+                    vendor_review_status="approved_for_pilot",
+                )
             document.metadata_json = metadata
         return self._review_document(
             document_id=document_id,
@@ -99,6 +101,20 @@ class ReviewService:
             reviewer=reviewer,
             comment=comment,
         )
+
+    @staticmethod
+    def _approval_metadata(document: KnowledgeDocument, reviewer: User) -> dict:
+        metadata = dict(document.metadata_json or {})
+        if document.source_type in RetrievalScopeService.REVIEWED_CONTRIBUTION_SOURCE_TYPES:
+            now = datetime.now(timezone.utc).isoformat()
+            metadata.update(
+                human_expert_approved=True,
+                competition_approved=True,
+                approval_mode="human_expert_approval",
+                human_expert_approved_by=str(reviewer.id),
+                human_expert_approved_at=now,
+            )
+        return metadata
 
     def batch_approve_vendor_official(self, document_ids: list[UUID], *, comment: str | None, reviewer: User) -> dict:
         if reviewer.role not in self.REVIEWER_ROLES:

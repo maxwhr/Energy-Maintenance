@@ -18,6 +18,7 @@ from app.schemas.knowledge import KnowledgeDocumentCreate
 from app.services.document_parser import DocumentParser, DocumentParserError
 from app.services.semantic_chunker import SemanticChunker
 from app.services.candidate_hydration_service import CandidateHydrationService
+from app.services.knowledge_language_policy_service import KnowledgeLanguagePolicyService
 
 
 ALLOWED_MANUFACTURERS = {"huawei", "sungrow"}
@@ -282,7 +283,11 @@ class KnowledgeService:
         ]
         self.repository.create_chunks(chunk_models)
 
-        metadata = dict(document.metadata_json or {})
+        metadata = KnowledgeLanguagePolicyService().policy_metadata(
+            metadata=document.metadata_json,
+            title=document.title,
+            content=parsed_document.text,
+        )
         metadata.update(
             {
                 "parser_metadata": parsed_document.metadata,

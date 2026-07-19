@@ -1,6 +1,20 @@
 # Task 28A Checkpoint
 
-## Latest Checkpoint: Task 28A-R3G
+## Latest Checkpoint: Task 28A-R3I Rerun
+
+- Product status: `FORMAL_HUAWEI_RAG_FUNCTIONAL_ACCEPTANCE_PASSED`.
+- Engineering ranking status: `ENGINEERING_EARLY_RANKING_RESEARCH_DEFERRED`.
+- Historical R3H status: `RANKING_OVERFIT_DETECTED`.
+- Detour: `R3H_ABLATION_DETOUR_STOPPED`; C0 historical only, C1-C3 read-only,
+  C4 interrupted, C5 not started, Holdout runs `0`.
+- Product baseline: `A1_scope_snapshot_plus_A2_precomputed_features_safe_rollback`.
+- Post-import/v2: R@5/citation/support/coverage/safety/Scope/abstention `1.0`,
+  failed cases `0`, P50/P95 `1763.571/2485.602 ms`.
+- Formal 10/10, Amphenol 3/3, isolated lifecycle, browser, and zero-write gates:
+  passed.
+- Residue cleanup remains plan-only; formal writes/deletes `0`.
+
+## Historical Checkpoint: Task 28A-R3G
 
 - Status: `EARLY_RANKING_OPTIMIZATION_PARTIAL`.
 - Final candidate: A1 Scope snapshot plus A2 feature precomputation; A3-A7
@@ -101,7 +115,7 @@ checkpoint does not authorize an import.
   but has no own citation under the tested controlled retrieval queries.
 - Current checkpoint: `FORMAL_IMPORT_COMMITTED_RAG_COVERAGE_PARTIAL`.
 
-## Task 28A-R3I Checkpoint
+## Task 28A-R3I Checkpoint (Historical; Superseded)
 
 - Checkpoint: `TASK28A_R3I_BLOCKED_BY_PREEXISTING_UNRESOLVED_MERGE`.
 - Task 29B static `/login` and `/auth/login` remain available with zero browser

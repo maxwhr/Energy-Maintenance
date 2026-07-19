@@ -443,8 +443,20 @@ class RetrievalService:
         self._apply_model_enhancement(response, resolved_payload, current_user)
         if response.media_notice and response.media_notice not in response.answer:
             response.answer = f"{response.answer}\n\n{response.media_notice}"
-        self._save_qa_record(response, resolved_payload, current_user, media_items)
+        self._persist_qa_if_requested(response, resolved_payload, current_user, media_items)
         return response
+
+    def _persist_qa_if_requested(
+        self,
+        response: RetrievalQueryResponse,
+        payload: RetrievalQueryRequest,
+        current_user: User,
+        media_items: list,
+    ) -> bool:
+        if not payload.persist_result:
+            return False
+        self._save_qa_record(response, payload, current_user, media_items)
+        return True
 
     def _vector_search_isolated(self, text: str, top_k: int, filters: dict, scope=None):
         with SessionLocal() as vector_db:
@@ -869,7 +881,11 @@ class RetrievalService:
         payload: RetrievalQueryRequest,
         current_user: User,
     ) -> None:
-        if not payload.enable_model_enhancement:
+        if not (
+            payload.enable_model_enhancement
+            and payload.enable_llm
+            and payload.allow_real_api
+        ):
             return
         prompt = self.prompt_builder.build_retrieval_prompt(
             question=response.question,

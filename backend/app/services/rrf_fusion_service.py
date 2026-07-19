@@ -40,16 +40,6 @@ class QueryAwareCandidate:
     direct_answer_score: float = 0.0
     direct_answer_level: str = "NON_SUPPORTING"
     generality_penalty: float = 0.0
-    raw_relevance_score: float = 0.0
-    normalized_relevance_score: float = 0.0
-    repository_rank: int | None = None
-    matched_fields: set[str] = field(default_factory=set)
-    matched_tokens: set[str] = field(default_factory=set)
-    exact_phrase_matches: set[str] = field(default_factory=set)
-    exact_body_phrase_matches: set[str] = field(default_factory=set)
-    score_source: str | None = None
-    score_fallback_used: bool = False
-    score_provenance: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def merge_from(self, other: "QueryAwareCandidate") -> None:
         self.source_channels.update(other.source_channels)
@@ -70,29 +60,13 @@ class QueryAwareCandidate:
         self.requested_information_coverage = max(self.requested_information_coverage, other.requested_information_coverage)
         self.direct_answer_score = max(self.direct_answer_score, other.direct_answer_score)
         self.generality_penalty = min(self.generality_penalty, other.generality_penalty)
-        self.raw_relevance_score = max(self.raw_relevance_score, other.raw_relevance_score)
-        self.normalized_relevance_score = max(self.normalized_relevance_score, other.normalized_relevance_score)
-        if other.repository_rank is not None:
-            self.repository_rank = min(self.repository_rank or other.repository_rank, other.repository_rank)
-        self.matched_fields.update(other.matched_fields)
-        self.matched_tokens.update(other.matched_tokens)
-        self.exact_phrase_matches.update(other.exact_phrase_matches)
-        self.exact_body_phrase_matches.update(other.exact_body_phrase_matches)
-        self.score_fallback_used = self.score_fallback_used or other.score_fallback_used
-        self.score_provenance.update(other.score_provenance)
-        if self.score_source is None:
-            self.score_source = other.score_source
 
 
 class RRFFusionService:
-    def __init__(
-        self, *, rrf_k: int = 60, exact_boost: float = 0.02,
-        consistency_boost: float = 0.006, relevance_weight: float = 0.012,
-    ):
+    def __init__(self, *, rrf_k: int = 60, exact_boost: float = 0.02, consistency_boost: float = 0.006):
         self.rrf_k = rrf_k
         self.exact_boost = exact_boost
         self.consistency_boost = consistency_boost
-        self.relevance_weight = relevance_weight
         self.last_diagnostics: dict[str, Any] = {}
 
     def fuse(
@@ -104,7 +78,7 @@ class RRFFusionService:
         query_weights: dict[str, float] | None = None,
     ) -> list[QueryAwareCandidate]:
         merged: dict[str, QueryAwareCandidate] = {}
-        best_votes: dict[str, dict[str, tuple[float, str, int, float, float, str]]] = defaultdict(dict)
+        best_votes: dict[str, dict[str, tuple[float, str, int]]] = defaultdict(dict)
         duplicate_votes_removed = 0
         channel_weights = channel_weights or {}
         query_weights = query_weights or {}
@@ -127,20 +101,12 @@ class RRFFusionService:
                     merged[evidence_key].scope_validation_passed = candidate.scope_validation_passed
                 else:
                     merged[evidence_key].merge_from(candidate)
-                channel_weight = channel_weights.get(channel, 1.0)
-                query_weight = query_weights.get(query_type, 1.0)
-                reciprocal_contribution = channel_weight * query_weight / (self.rrf_k + rank)
-                normalized_relevance = max(0.0, min(1.0, candidate.normalized_relevance_score))
-                relevance_contribution = channel_weight * query_weight * normalized_relevance * self.relevance_weight
-                weighted_vote = reciprocal_contribution + relevance_contribution
+                weighted_vote = channel_weights.get(channel, 1.0) * query_weights.get(query_type, 1.0) / (self.rrf_k + rank)
                 previous = best_votes[evidence_key].get(channel)
                 if previous is None or weighted_vote > previous[0]:
                     if previous is not None:
                         duplicate_votes_removed += 1
-                    best_votes[evidence_key][channel] = (
-                        weighted_vote, vote_key, rank, reciprocal_contribution,
-                        relevance_contribution, self._query_family(query_type),
-                    )
+                    best_votes[evidence_key][channel] = (weighted_vote, vote_key, rank)
                 else:
                     duplicate_votes_removed += 1
         for evidence_key, candidate in merged.items():
@@ -179,41 +145,14 @@ class RRFFusionService:
             "duplicate_votes_removed": duplicate_votes_removed,
             "channel_weights_applied": bool(channel_weights),
             "query_weights_applied": bool(query_weights),
-            "normalized_relevance_weight": self.relevance_weight,
             "candidate_count_before": sum(len(values) for values in rankings.values()),
             "candidate_count_after": len(output),
             "vote_breakdown": {
                 merged[evidence_key].candidate_id: {
-                    channel: {
-                        "weighted_vote": round(value[0], 8), "vote_key": value[1], "rank": value[2],
-                        "rrf_contribution": round(value[3], 8),
-                        "normalized_relevance_contribution": round(value[4], 8),
-                        "query_family": value[5],
-                    }
+                    channel: {"weighted_vote": round(value[0], 8), "vote_key": value[1], "rank": value[2]}
                     for channel, value in channels.items()
                 }
                 for evidence_key, channels in best_votes.items()
             },
         }
         return output
-
-    @staticmethod
-    def _query_family(query_type: str) -> str:
-        value = str(query_type or "ORIGINAL").upper()
-        if value in {"ORIGINAL"}:
-            return "ORIGINAL"
-        if value in {"CANONICAL", "EXACT_CANONICAL"}:
-            return "EXACT_CANONICAL"
-        if "MODEL" in value:
-            return "MODEL"
-        if "ALARM" in value or "SYMPTOM" in value:
-            return "ALARM"
-        if "PARAMETER" in value:
-            return "PARAMETER"
-        if "CAUSE" in value:
-            return "CAUSE"
-        if "PROCEDURE" in value or "REQUEST" in value:
-            return "PROCEDURE"
-        if "SAFETY" in value:
-            return "SAFETY"
-        return "GENERIC_EXPANSION"

@@ -350,7 +350,10 @@ def query_retrieval(
         if route.active:
             pilot_mode = route.retrieval_strategy if route.retrieval_strategy in {"vector", "hybrid", "adaptive"} else "adaptive"
             resolved_payload = resolved_payload.model_copy(update={"retrieval_mode": pilot_mode})
-        result = RetrievalService(db).query(resolved_payload, current_user)
+        result = RetrievalService(db, allow_real_api=resolved_payload.allow_real_api).query(
+            resolved_payload,
+            current_user,
+        )
         result.retrieval_diagnostics["pilot_route"] = route.model_dump(mode="json")
     except RetrievalServiceError as exc:
         return error_response(str(exc), 40070)

@@ -21,7 +21,7 @@ class DeterministicEvidenceRerankResult:
 class DeterministicEvidenceRerankService:
     """V2 graded deterministic reranker; benchmark grades are never inputs."""
 
-    VERSION = "task28a_r3h_score_contract_monotonic_v1"
+    VERSION = "task27a_huawei_keyword_rerank_v5"
     MODEL_PATTERN = re.compile(r"(?:SUN2000|LUNA2000|SmartLogger|SG)[A-Z0-9()/_.-]*", re.I)
     ALARM_PATTERN = re.compile(r"(?:告警|故障(?:码)?)[：:\s-]*([A-Z]{0,4}\d{3,6})", re.I)
     SUPPORT_TERMS = {
@@ -46,8 +46,7 @@ class DeterministicEvidenceRerankService:
         "GENERAL_INFORMATION": (),
     }
     WEIGHTS = {
-        "normalized_rrf_score": 0.23,
-        "keyword_relevance": 0.08,
+        "normalized_rrf_score": 0.31,
         "query_lexical_support": 0.12,
         "direct_answer_score": 0.20,
         "requested_information_coverage": 0.08,
@@ -193,7 +192,6 @@ class DeterministicEvidenceRerankService:
             item.generality_penalty = round(generality, 6)
             values = {
                 "normalized_rrf_score": self._normalize(rrf_values[index], rrf_values),
-                "keyword_relevance": max(0.0, min(1.0, item.normalized_relevance_score)),
                 "query_lexical_support": query_lexical_support,
                 "direct_answer_score": direct_score,
                 "requested_information_coverage": coverage,
@@ -227,17 +225,15 @@ class DeterministicEvidenceRerankService:
             )
             item.rerank_score = round(final_score, 8)
             item.final_score = item.rerank_score
-            protection[item.candidate_id] = self._direct_anchor_strength(
-                item,
-                understanding=understanding,
-                query_lexical_support=query_lexical_support,
-                phrase_proximity_support=phrase_proximity_support,
-                citation_quality=citation_quality,
-                conflict_penalty=conflict_penalty,
+            protection[item.candidate_id] = int(
+                entity_match >= 1.0 and coverage > 0 and query_lexical_support >= 0.45
+                and citation_quality >= 1.0
+                and conflict_penalty == 0 and bool(
+                    (specific_models and item.exact_model_match)
+                    or ((understanding.alarm_codes or understanding.alarm_names) and item.exact_alarm_match)
+                )
             )
-            protection_reason = [
-                f"MONOTONIC_DIRECT_ANCHOR_LEVEL_{protection[item.candidate_id]}"
-            ] if protection[item.candidate_id] else []
+            protection_reason = ["EXACT_ENTITY_VALID_CITATION_PROTECTED"] if protection[item.candidate_id] else []
             breakdown[item.candidate_id] = {
                 "candidate_id": item.candidate_id,
                 "evidence_identity": item.evidence_identity,
@@ -255,8 +251,6 @@ class DeterministicEvidenceRerankService:
                 "phrase_anchor_terms": list(phrase_profile["anchor_terms"]),
                 "matched_phrase_anchor_terms": list(phrase_profile["matched_terms"]),
                 "document_purpose_match": round(document_purpose_match, 6),
-                "monotonic_anchor_strength": protection[item.candidate_id],
-                "monotonic_override_reason": protection_reason[0] if protection_reason else None,
                 "final_score": item.final_score,
                 "reason_codes": [direct_level, *protection_reason, *conflict_reasons],
             }
@@ -469,9 +463,6 @@ class DeterministicEvidenceRerankService:
             "source_modifications": 0 if source_unchanged else 1,
             "benchmark_relevance_grade_used": False,
             "score_breakdown": breakdown,
-            "monotonic_protection_count": sum(
-                bool(item.get("monotonic_anchor_strength")) for item in breakdown.values()
-            ),
         }
 
     @staticmethod
@@ -744,37 +735,4 @@ class DeterministicEvidenceRerankService:
 
     @staticmethod
     def _normalize_model_identifier(value: str) -> str:
-        return re.sub(r"[^A-Z0-9+]", "", str(value).upper())
-
-    @classmethod
-    def _direct_anchor_strength(
-        cls,
-        item: QueryAwareCandidate,
-        *,
-        understanding: QueryUnderstandingResult,
-        query_lexical_support: float,
-        phrase_proximity_support: float,
-        citation_quality: float,
-        conflict_penalty: float,
-    ) -> int:
-        if citation_quality < 1.0 or conflict_penalty > 0 or not item.scope_validation_passed:
-            return 0
-        if understanding.device_models and item.exact_model_match:
-            return 4
-        if (understanding.alarm_codes or understanding.alarm_names) and item.exact_alarm_match:
-            return 4
-        query = cls._compact_match_text(understanding.original_query or understanding.normalized_query)
-        text_value = cls._compact_match_text(f"{item.document_title} {item.section_title or ''} {item.content}")
-        safety_anchors = ("严禁", "禁止", "请勿", "不得", "带电", "反接", "断电", "下电", "验电")
-        shared_safety = [value for value in safety_anchors if value in query and value in text_value]
-        if shared_safety and query_lexical_support >= 0.40:
-            return 3
-        if item.exact_body_phrase_matches and item.normalized_relevance_score >= 0.80:
-            return 4
-        if item.exact_phrase_matches and item.normalized_relevance_score >= 0.80:
-            return 4 if len(item.exact_phrase_matches) >= 2 else 3
-        if phrase_proximity_support >= 0.75 and query_lexical_support >= 0.45:
-            return 2
-        if item.normalized_relevance_score >= 0.90 and query_lexical_support >= 0.55:
-            return 1
-        return 0
+        return re.sub(r"[^A-Z0-9]", "", str(value).upper())
