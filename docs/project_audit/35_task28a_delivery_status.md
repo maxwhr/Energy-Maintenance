@@ -188,3 +188,18 @@ import is implied by this preflight.
   leakage, and zero-write checks passed.
 - Authoritative status is now `RANKING_OVERFIT_DETECTED`. Full formal Huawei
   RAG acceptance must not be claimed.
+
+## Task 28A-R3I Product Acceptance Attempt
+
+- Status: `TASK28A_R3I_BLOCKED_BY_PREEXISTING_UNRESOLVED_MERGE`.
+- The task-start working tree already contained `MERGE_HEAD` and eight
+  unresolved paths, including Provider, knowledge, retrieval, and Task 29B
+  login/auth sources. Task boundaries prohibited resolving those conflicts.
+- Backend compile, targeted tests, frontend build, new backend startup, the
+  isolated workflow, and current-source formal API/browser acceptance were
+  therefore blocked. No trial retrieval rollback was retained.
+- Formal read-only identity, Alembic, all protected counts, 10 Huawei documents,
+  937 imported chunks, and zero Sungrow import contamination passed.
+- Residue inventory is ready for user review; formal writes/deletes remain 0.
+- Delivery must not be marked passed until the merge is explicitly resolved
+  and R3I is rerun.

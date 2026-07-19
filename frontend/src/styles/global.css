@@ -114,7 +114,26 @@ tr:hover td {
 .scada-panel {
   border: 1px solid var(--scada-line);
   background: var(--scada-panel);
-  box-shadow: 0 8px 24px rgba(25, 95, 168, 0.06);
+  box-shadow: 0 8px 26px rgba(25, 95, 168, 0.065);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.scada-panel:hover {
+  border-color: #c7daeb;
+  box-shadow: 0 10px 30px rgba(25, 95, 168, 0.085);
+}
+
+.page-heading {
+  border-bottom: 1px solid var(--scada-line);
+  padding-bottom: 16px;
+}
+
+.page-notice svg[class*="loader"] {
+  animation: notice-spin 900ms linear infinite;
+}
+
+@keyframes notice-spin {
+  to { transform: rotate(360deg); }
 }
 
 .scada-input {
@@ -156,6 +175,34 @@ tr:hover td {
 .scada-button:hover {
   border-color: #195fa8;
   background: #eef6ff;
+}
+
+.scada-button:focus-visible,
+.scada-input:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(25, 95, 168, 0.2);
+  outline-offset: 2px;
+}
+
+.scada-button.danger {
+  border-color: #fecdd3;
+  color: #b4232f;
+}
+
+.scada-button.danger:hover {
+  border-color: #d63b3b;
+  background: #fff1f2;
+}
+
+@media (max-width: 640px) {
+  th,
+  td {
+    padding: 10px;
+  }
+
+  .scada-button {
+    min-height: 40px;
+  }
 }
 
 .scada-button:active {

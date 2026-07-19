@@ -101,6 +101,21 @@ checkpoint does not authorize an import.
   but has no own citation under the tested controlled retrieval queries.
 - Current checkpoint: `FORMAL_IMPORT_COMMITTED_RAG_COVERAGE_PARTIAL`.
 
+## Task 28A-R3I Checkpoint
+
+- Checkpoint: `TASK28A_R3I_BLOCKED_BY_PREEXISTING_UNRESOLVED_MERGE`.
+- Task 29B static `/login` and `/auth/login` remain available with zero browser
+  warning/error entries, but the current source has eight unresolved merge
+  paths and cannot be built or started as a fresh instance.
+- Formal read-only counts remain exactly `382/5728/2598` for documents,
+  chunks, and QA; Alembic remains `20260712_0015`; task formal writes/deletes
+  are 0.
+- One confirmed QA test residue and 434 likely candidates require future exact
+  review. The `17A` match is a real page-81 current rating in an approved Huawei
+  manual and must be retained.
+- Frozen v1/v2 hashes remain unchanged. No Provider, embedding, vector, schema,
+  Alembic, or consumed-Holdout operation occurred.
+
 ## Task 28A-R3H Checkpoint
 
 - Frozen candidate: `B7_frozen_candidate_r4`; production aggregate SHA-256

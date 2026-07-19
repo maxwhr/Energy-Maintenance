@@ -98,3 +98,13 @@ the failed independent and frozen ranking gates.
 R3H final cleanup stopped temporary FastAPI and PostgreSQL instances; ports
 `8028`, `9338`, `55432`, `55433`, and `55434` were free, and the Windows
 PostgreSQL service remained `Stopped / Disabled`.
+
+## R3I Blocked Addendum
+
+Task 28A-R3I could not safely activate the historical R3G product candidate or
+rerun functional gates because the task-start tree already contained an
+unfinished merge with eight unresolved paths. The current-source compile,
+frontend build, regression, isolated workflow, and formal API/browser gates
+were not passed. Formal data-only checks still confirmed 10/10 imported
+documents, 937 chunks, exact protected counts, and zero writes. This addendum
+does not supersede historical metrics and does not grant formal acceptance.

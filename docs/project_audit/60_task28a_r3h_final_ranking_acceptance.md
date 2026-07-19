@@ -82,3 +82,12 @@ Ports `8028`, `9338`, `55432`, `55433`, and `55434` were confirmed free. The
 Windows service `postgresql-x64-16` ended `Stopped / Disabled`; browser tabs
 were finalized and the temporary JWT was removed without being written to an
 artifact.
+
+## R3I Safety Disposition Addendum
+
+R3I did not retain any attempted ranking change. The seven authorized retrieval
+files were restored to their exact R3I task-start hashes after a pre-existing
+unfinished merge was found to block compile, test collection, and new backend
+startup. Historical R3H status remains `RANKING_OVERFIT_DETECTED`, and early
+ranking research remains `ENGINEERING_EARLY_RANKING_RESEARCH_DEFERRED`. No
+consumed Holdout was rerun or used for tuning.

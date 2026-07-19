@@ -1,1 +1,0 @@
-import{G as e,V as t,Z as n,ut as r}from"./index-CHz8Cnus.js";var i={class:`rounded-md border border-slate-600/20 bg-black/10 px-4 py-6 text-center text-sm text-slate-400`},a=e({__name:`EmptyState`,props:{text:{}},setup(e){return(a,o)=>(n(),t(`div`,i,r(e.text),1))}});export{a as t};
