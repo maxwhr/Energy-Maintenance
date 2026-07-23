@@ -44,7 +44,11 @@ class QueryUnderstanding:
 
 
 class QueryUnderstandingService:
-    MODEL_PATTERN = re.compile(r"(?:SUN2000(?:[-(][A-Z0-9/()\-]+)?|LUNA2000(?:[-(][A-Z0-9/()\-]+)?|SmartLogger\d*|SG\d+[A-Z0-9-]*|FusionSolar)", re.I)
+    MODEL_PATTERN = re.compile(
+        r"(?:SUN2000(?:[-(][A-Z0-9/()\-]+)?|LUNA2000(?:[-(][A-Z0-9/()\-]+)?|"
+        r"SmartLogger\d*|SG(?:\s*系列|\d+[A-Z0-9-]*)?|FusionSolar)",
+        re.I,
+    )
     FAULT_PATTERN = re.compile(r"\b(?:[A-Z]{1,4}[-_]?)?\d{3,6}\b", re.I)
     ALIASES = {
         "绝缘低": ["绝缘阻抗低", "低绝缘电阻", "low insulation resistance"],

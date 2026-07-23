@@ -62,7 +62,7 @@
               <td><div class="font-black text-white">{{ device.device_name }}</div><div class="mt-1 text-xs text-slate-400">{{ device.device_code || device.id }}</div></td>
               <td>{{ manufacturerLabel(device.manufacturer) }} / {{ device.product_series || '-' }}</td>
               <td class="font-bold text-cyan-200">{{ device.model || '未填写' }}</td>
-              <td>{{ device.station_name || device.location || '-' }}</td>
+              <td>{{ formatStationDisplay(device) }}</td>
               <td><StatusPill :value="device.status" /></td>
             </tr>
           </tbody>
@@ -121,7 +121,7 @@ async function loadDevices() {
   loading.value = true
   error.value = ''
   try {
-    const result = await getDevicesApi({ page: 1, page_size: 200, device_type: 'pv_inverter' })
+    const result = await getDevicesApi({ page: 1, page_size: 100, device_type: 'pv_inverter' })
     devices.value = result.items
   } catch (err) {
     error.value = err instanceof Error ? err.message : '设备台账统计读取失败'
@@ -133,6 +133,12 @@ async function loadDevices() {
 
 function manufacturerLabel(value?: string | null) {
   return value === 'huawei' ? '华为' : value === 'sungrow' ? '阳光电源' : value || '-'
+}
+
+function formatStationDisplay(device: DeviceItem) {
+  const value = device.station_name || device.location || ''
+  const normalized = value.replace(/^Task(?:21|22|24|25)[A-Za-z]*_\d+\s*/i, '').trim()
+  return normalized || (value ? `历史业务记录-${device.id.slice(0, 8)}` : '-')
 }
 
 onMounted(loadDevices)

@@ -342,11 +342,7 @@ def query_retrieval(
 ) -> dict:
     try:
         route = RetrievalPilotService(db).route_for(current_user, payload.normalized_question)
-        resolved_payload = payload.model_copy(update={
-            "scope_id": HUAWEI_SUN2000_COMPETITION_SCOPE_ID,
-            "manufacturer": "huawei",
-            "device_type": "pv_inverter",
-        })
+        resolved_payload = payload
         if route.active:
             pilot_mode = route.retrieval_strategy if route.retrieval_strategy in {"vector", "hybrid", "adaptive"} else "adaptive"
             resolved_payload = resolved_payload.model_copy(update={"retrieval_mode": pilot_mode})

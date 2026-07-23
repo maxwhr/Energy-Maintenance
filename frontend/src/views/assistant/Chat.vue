@@ -182,7 +182,7 @@ import MediaEvidenceGallery from '@/components/MediaEvidenceGallery.vue'
 import MediaEvidencePicker from '@/components/MediaEvidencePicker.vue'
 import PageFrame from '@/components/PageFrame.vue'
 import { documentTypeOptions, manufacturerOptions, productSeriesOptions } from '@/types'
-import type { DeviceItem, RetrievalResponse } from '@/types'
+import type { DeviceItem, RetrievalQueryRequest, RetrievalResponse } from '@/types'
 
 interface ChatMessage {
   id: string
@@ -197,7 +197,17 @@ const selectedMediaIds = ref<string[]>([])
 const lastResult = ref<RetrievalResponse | null>(null)
 const loading = ref(false)
 const error = ref('')
-const form = reactive({
+const form = reactive<{
+  query: string
+  device_id: string
+  manufacturer: '' | 'huawei' | 'sungrow'
+  product_series: '' | 'SUN2000' | 'FusionSolar' | 'SG' | 'other'
+  document_type: string
+  top_k: number
+  retrieval_mode: 'keyword' | 'vector' | 'hybrid' | 'hybrid_rerank' | 'adaptive'
+  enable_kg_enhancement: boolean
+  use_ocr_text: boolean
+}>({
   query: '',
   device_id: '',
   manufacturer: '',
@@ -225,7 +235,7 @@ async function submit() {
   const question = form.query
   messages.value.push({ id: crypto.randomUUID(), role: 'user', content: question, time: now() })
   try {
-    const payload: Record<string, unknown> = {
+    const payload: RetrievalQueryRequest = {
       query: question,
       device_type: 'pv_inverter',
       top_k: form.top_k,
@@ -264,8 +274,10 @@ watch(
   (deviceId) => {
     const device = devices.value.find((item) => item.id === deviceId)
     if (!device) return
-    form.manufacturer = device.manufacturer
-    form.product_series = device.product_series || ''
+    form.manufacturer = device.manufacturer === 'sungrow' ? 'sungrow' : 'huawei'
+    form.product_series = ['SUN2000', 'FusionSolar', 'SG', 'other'].includes(device.product_series || '')
+      ? device.product_series as 'SUN2000' | 'FusionSolar' | 'SG' | 'other'
+      : ''
   }
 )
 

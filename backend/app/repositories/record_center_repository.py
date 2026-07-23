@@ -24,7 +24,7 @@ from app.models import (
     UploadedMedia,
     User,
 )
-from app.repositories.record_center_query_repository import RecordCenterQueryRepository
+from app.repositories.record_center_query_repository import RecordCenterQueryRepository, kg_extraction_run_display_source
 
 
 class RecordCenterRepository:
@@ -954,7 +954,7 @@ class RecordCenterRepository:
         if record_type == "knowledge_graph_edge":
             return f"知识图谱关系：{record.display_relation or record.relation_type}"
         if record_type == "knowledge_graph_extraction_run":
-            return f"图谱抽取运行：{record.source_type}"
+            return f"图谱抽取运行：{kg_extraction_run_display_source(record.source_type, record.id)}"
         return str(record.id)
 
     @staticmethod

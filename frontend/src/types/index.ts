@@ -251,6 +251,24 @@ export interface RetrievedChunk {
   vector_backend?: string | null
 }
 
+export interface RetrievalQueryRequest {
+  query: string
+  manufacturer?: 'huawei' | 'sungrow'
+  product_series?: 'SUN2000' | 'FusionSolar' | 'SG' | 'other'
+  device_type?: 'pv_inverter'
+  device_id?: string
+  document_type?: string
+  top_k?: number
+  retrieval_mode?: 'keyword' | 'vector' | 'hybrid' | 'hybrid_rerank' | 'adaptive'
+  enable_vector?: boolean
+  enable_kg_enhancement?: boolean
+  media_ids?: string[]
+  use_ocr_text?: boolean
+  persist_result?: boolean
+  enable_llm?: boolean
+  allow_real_api?: boolean
+}
+
 export interface RetrievalResponse {
   trace_id: string
   question: string
@@ -977,6 +995,8 @@ export interface KGOverview {
   node_type_counts: Record<string, number>
   relation_type_counts: Record<string, number>
   recent_runs: KGExtractionRun[]
+  eligible_document_count?: number
+  initialization_status?: 'NOT_INITIALIZED' | 'READY'
 }
 
 export interface KGNeighborhood {

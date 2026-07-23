@@ -1,14 +1,27 @@
 from __future__ import annotations
 
 import re
+import hashlib
 from collections import deque
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.models import KGCandidate, KGEdge, KGEvidenceLink, KGExtractionRun, KGNode, User
+from app.models import (
+    KGCandidate,
+    KGEdge,
+    KGEvidenceLink,
+    KGExtractionRun,
+    KGNode,
+    KnowledgeChunk,
+    KnowledgeDocument,
+    OperationLog,
+    User,
+)
 from app.repositories.knowledge_graph_repository import KnowledgeGraphRepository
 from app.schemas.knowledge_graph import (
     KGEdgeCreate,
@@ -26,6 +39,7 @@ from app.services.knowledge_graph_production_scope_service import (
     KnowledgeGraphProductionScopeService,
     ProductionScopeEvaluation,
 )
+from app.services.kg_rule_extractor import KGExtractionSource, KGRuleExtractor
 
 
 class KnowledgeGraphServiceError(ValueError):
@@ -71,6 +85,11 @@ RELATION_LEGEND = {
     "DERIVED_FROM": "来源于",
     "RELATED_TO": "相关",
 }
+
+SOURCE_NODE_TYPES = {"knowledge_document", "knowledge_chunk"}
+SOURCE_RELATION_TYPES = {"MENTIONED_IN", "DERIVED_FROM"}
+BUSINESS_NODE_TYPES = set(NODE_LEGEND) - SOURCE_NODE_TYPES
+BUSINESS_RELATION_TYPES = set(RELATION_LEGEND) - SOURCE_RELATION_TYPES
 
 DOMAIN_TERMS = [
     "逆变器",
@@ -134,6 +153,15 @@ class KnowledgeGraphService:
     def overview(self, *, current_user: User) -> dict[str, Any]:
         self._require_read(current_user)
         recent_runs, _ = self.repository.list_runs(page=1, page_size=5)
+        eligible_document_count = self.db.scalar(
+            select(func.count()).select_from(KnowledgeDocument).where(
+                KnowledgeDocument.status == "active",
+                KnowledgeDocument.parse_status == "parsed",
+                KnowledgeDocument.review_status == "approved",
+                KnowledgeDocument.device_type == "pv_inverter",
+                KnowledgeDocument.manufacturer.in_(["huawei", "sungrow"]),
+            )
+        ) or 0
         return {
             "node_count": self.repository.count_nodes(KGNode.status == "active"),
             "edge_count": self.repository.count_edges(KGEdge.status == "active"),
@@ -143,6 +171,8 @@ class KnowledgeGraphService:
             "node_type_counts": self.repository.node_type_counts(),
             "relation_type_counts": self.repository.relation_type_counts(),
             "recent_runs": [self._run_payload(run) for run in recent_runs],
+            "eligible_document_count": eligible_document_count,
+            "initialization_status": "READY" if self.repository.count_edges(KGEdge.status == "active") else "NOT_INITIALIZED",
         }
 
     def list_nodes(
@@ -428,6 +458,7 @@ class KnowledgeGraphService:
         keyword: str | None = None,
         limit: int = 80,
         depth: int = 1,
+        include_source_nodes: bool = False,
     ) -> dict[str, Any]:
         self._require_read(current_user)
         safe_limit = max(1, min(limit, 200))
@@ -447,6 +478,8 @@ class KnowledgeGraphService:
             keyword=graph_keyword,
             limit=safe_limit,
         )
+        if not include_source_nodes:
+            seed_nodes = [node for node in seed_nodes if node.node_type not in SOURCE_NODE_TYPES]
         if not seed_nodes and terms:
             seed_nodes = self.repository.search_active_nodes(
                 keywords=terms,
@@ -465,6 +498,13 @@ class KnowledgeGraphService:
             edges = self.repository.graph_edges(relation_type=relation_type, keyword=keyword, limit=safe_limit)
         if relation_type:
             edges = [edge for edge in edges if edge.relation_type == relation_type]
+        if not include_source_nodes:
+            edges = [
+                edge for edge in edges
+                if edge.relation_type not in SOURCE_RELATION_TYPES
+                and getattr(edge.source_node, "node_type", None) not in SOURCE_NODE_TYPES
+                and getattr(edge.target_node, "node_type", None) not in SOURCE_NODE_TYPES
+            ]
         for edge in edges:
             if self._active_edge(edge):
                 node_ids.add(edge.source_node_id)
@@ -504,6 +544,119 @@ class KnowledgeGraphService:
             },
             "legend": {"node_types": NODE_LEGEND, "relation_types": RELATION_LEGEND},
         }
+
+    def bootstrap(self, *, current_user: User, max_documents: int = 6, max_chunks_per_document: int = 40) -> dict[str, Any]:
+        """Create a small, deterministic graph only from approved document chunks."""
+        self._require_manager(current_user)
+        max_documents = max(1, min(max_documents, 12))
+        max_chunks_per_document = max(1, min(max_chunks_per_document, 80))
+        before = self._bootstrap_counts()
+        documents = list(self.db.scalars(
+            select(KnowledgeDocument)
+            .where(
+                KnowledgeDocument.status == "active",
+                KnowledgeDocument.parse_status == "parsed",
+                KnowledgeDocument.review_status == "approved",
+                KnowledgeDocument.device_type == "pv_inverter",
+                KnowledgeDocument.manufacturer.in_(["huawei", "sungrow"]),
+                KnowledgeDocument.product_series.in_(["SUN2000", "FusionSolar", "SG"]),
+            )
+            .order_by(KnowledgeDocument.manufacturer, KnowledgeDocument.product_series, KnowledgeDocument.created_at.desc())
+            .limit(max_documents)
+        ))
+        extractor = KGRuleExtractor()
+        processed: list[str] = []
+        skipped: list[str] = []
+        approved = 0
+        try:
+            for document in documents:
+                chunks = list(self.db.scalars(
+                    select(KnowledgeChunk)
+                    .where(KnowledgeChunk.document_id == document.id, KnowledgeChunk.status == "active", KnowledgeChunk.content != "")
+                    .order_by(KnowledgeChunk.chunk_index.asc())
+                    .limit(max_chunks_per_document)
+                ))
+                if not chunks:
+                    skipped.append(str(document.id))
+                    continue
+                source_hash = self._source_hash(chunks)
+                existing = self.repository.find_completed_run(
+                    source_type="knowledge_document",
+                    source_id=document.id,
+                    extractor=extractor.extractor_name,
+                    source_content_hash=source_hash,
+                    candidate_profile="formal_kg_minimal_v1",
+                )
+                if existing:
+                    skipped.append(str(document.id))
+                    continue
+                sources = [KGExtractionSource(
+                    source_type="knowledge_document", source_id=document.id, text=chunk.content,
+                    manufacturer=document.manufacturer, product_series=document.product_series,
+                    device_type=document.device_type, document_id=document.id, chunk_id=chunk.id,
+                ) for chunk in chunks]
+                raw = extractor.extract(sources)
+                valid = [item for item in raw if self._bootstrap_candidate_valid(item, document, {chunk.id for chunk in chunks})]
+                run = self.repository.create_run(KGExtractionRun(
+                    source_type="knowledge_document", source_id=document.id, extractor=extractor.extractor_name,
+                    status="completed", candidate_count=len(valid), started_at=datetime.now(timezone.utc), finished_at=datetime.now(timezone.utc),
+                    created_by=current_user.id, metadata_json={"candidate_profile": "formal_kg_minimal_v1", "source_content_hash": source_hash, "bootstrap": True},
+                ))
+                candidates = [KGCandidate(run_id=run.id, candidate_type=item["candidate_type"], payload_json=item["payload"], status="pending", confidence=float(item.get("confidence") or 0.6), evidence_text=item.get("evidence_text")) for item in valid]
+                self.repository.create_candidates(candidates)
+                self.db.flush()
+                for candidate in candidates:
+                    KGCandidateService(self.db).approve(candidate.id, current_user=current_user, comment="production_rule_bootstrap_v1")
+                    approved += 1
+                processed.append(str(document.id))
+            self.db.add(OperationLog(module="knowledge_graph", action="bootstrap", target_type="knowledge_graph", operator=current_user.username, detail={"documents": processed, "skipped": skipped, "approved_candidates": approved}))
+            self.db.commit()
+        except (SQLAlchemyError, KGCandidateServiceError) as exc:
+            self.db.rollback()
+            raise KnowledgeGraphServiceError(f"Knowledge graph bootstrap failed: {exc}") from exc
+        after = self._bootstrap_counts()
+        return {"processed_document_ids": processed, "skipped_document_ids": skipped, "approved_candidate_count": approved, "before": before, "after": after}
+
+    def _bootstrap_counts(self) -> dict[str, int]:
+        return {
+            "nodes": self.repository.count_nodes(KGNode.status == "active"),
+            "edges": self.repository.count_edges(KGEdge.status == "active"),
+            "evidence": self.repository.count_evidence(),
+            "candidates": self.repository.count_candidates(),
+            "runs": self.repository.count_runs(KGExtractionRun.status == "completed"),
+        }
+
+    @staticmethod
+    def _source_hash(chunks: list[KnowledgeChunk]) -> str:
+        value = "\n".join(f"{chunk.id}:{chunk.content_hash or hashlib.sha256(chunk.content.encode('utf-8')).hexdigest()}" for chunk in chunks)
+        return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _bootstrap_candidate_valid(item: dict[str, Any], document: KnowledgeDocument, chunk_ids: set[UUID]) -> bool:
+        if item.get("candidate_type") not in {"node", "edge"}:
+            return False
+        payload = item.get("payload") or {}
+        evidence = payload.get("evidence") or {}
+        try:
+            document_id = UUID(str(evidence.get("document_id")))
+            chunk_id = UUID(str(evidence.get("chunk_id")))
+        except (TypeError, ValueError):
+            return False
+        if document_id != document.id or chunk_id not in chunk_ids or not str(evidence.get("evidence_text") or "").strip():
+            return False
+        if item["candidate_type"] == "node":
+            return payload.get("node_type") in BUSINESS_NODE_TYPES and bool(str(payload.get("canonical_name") or "").strip())
+        source, target = payload.get("source_node") or {}, payload.get("target_node") or {}
+        return (
+            payload.get("relation_type") in BUSINESS_RELATION_TYPES
+            and source.get("node_type") in BUSINESS_NODE_TYPES
+            and target.get("node_type") in BUSINESS_NODE_TYPES
+            and source.get("manufacturer") == document.manufacturer
+            and target.get("manufacturer") == document.manufacturer
+            and source.get("product_series") == document.product_series
+            and target.get("product_series") == document.product_series
+            and source.get("canonical_name") != target.get("canonical_name")
+        )
 
     def search(
         self,

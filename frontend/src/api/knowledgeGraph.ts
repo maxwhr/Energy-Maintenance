@@ -20,6 +20,9 @@ export const getKnowledgeGraphOverviewApi = () => request.get<KGOverview>('/kg/o
 export const getKnowledgeGraphGraphApi = (params?: Record<string, unknown>) =>
   request.get<KGGraphResponse>('/kg/graph', { params })
 
+export const bootstrapKnowledgeGraphApi = (params?: Record<string, unknown>) =>
+  request.post<Record<string, unknown>>('/kg/bootstrap', undefined, { params })
+
 export const searchKnowledgeGraphApi = (params?: Record<string, unknown>) =>
   request.get<KGSearchResponse>('/kg/search', { params })
 

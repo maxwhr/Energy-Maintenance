@@ -168,7 +168,9 @@ class KGCandidateService:
         else:
             node.status = "active"
             node.confidence = max(float(node.confidence or 0.0), float(confidence or 0.6))
-            if payload.get("display_name"):
+            # A later rule run may use a shorter alias.  Do not erase a
+            # deliberately curated display name during idempotent bootstrap.
+            if payload.get("display_name") and not (node.display_name or "").strip():
                 node.display_name = payload.get("display_name")
             node = self.repository.update_node(node)
         self.repository.add_aliases(node.id, payload.get("aliases") or [], source_type=payload.get("source_type"))
@@ -186,14 +188,29 @@ class KGCandidateService:
         evidence_text = evidence.get("evidence_text") or payload.get("evidence_text")
         if not evidence_text:
             return None
+        source_type = evidence.get("source_type") or payload.get("source_type") or "kg_extraction"
+        source_id = self._uuid_or_none(evidence.get("source_id") or payload.get("source_id"))
+        document_id = self._uuid_or_none(evidence.get("document_id"))
+        chunk_id = self._uuid_or_none(evidence.get("chunk_id"))
+        existing = self.repository.find_evidence(
+            node_id=node_id,
+            edge_id=edge_id,
+            document_id=document_id,
+            chunk_id=chunk_id,
+            source_type=source_type,
+            source_id=source_id,
+            evidence_text=evidence_text,
+        )
+        if existing:
+            return None
         return self.repository.create_evidence(
             KGEvidenceLink(
                 node_id=node_id,
                 edge_id=edge_id,
-                source_type=evidence.get("source_type") or payload.get("source_type") or "kg_extraction",
-                source_id=self._uuid_or_none(evidence.get("source_id") or payload.get("source_id")),
-                document_id=self._uuid_or_none(evidence.get("document_id")),
-                chunk_id=self._uuid_or_none(evidence.get("chunk_id")),
+                source_type=source_type,
+                source_id=source_id,
+                document_id=document_id,
+                chunk_id=chunk_id,
                 contribution_id=self._uuid_or_none(evidence.get("contribution_id")),
                 diagnosis_trace_id=evidence.get("diagnosis_trace_id"),
                 task_id=self._uuid_or_none(evidence.get("task_id")),

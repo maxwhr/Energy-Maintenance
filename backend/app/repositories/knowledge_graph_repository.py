@@ -227,6 +227,54 @@ class KnowledgeGraphRepository:
         self.db.refresh(evidence)
         return evidence
 
+    def find_evidence(
+        self,
+        *,
+        node_id: UUID | None,
+        edge_id: UUID | None,
+        document_id: UUID | None,
+        chunk_id: UUID | None,
+        source_type: str,
+        source_id: UUID | None,
+        evidence_text: str,
+    ) -> KGEvidenceLink | None:
+        """Return the exact evidence identity used by controlled KG writes.
+
+        PostgreSQL unique constraints cannot express the node-or-edge branch
+        without complicating historical data.  Keeping this lookup in the
+        repository makes repeated deterministic extraction safe and preserves
+        existing evidence rows unchanged.
+        """
+        statement = select(KGEvidenceLink).where(
+            KGEvidenceLink.node_id.is_(None) if node_id is None else KGEvidenceLink.node_id == node_id,
+            KGEvidenceLink.edge_id.is_(None) if edge_id is None else KGEvidenceLink.edge_id == edge_id,
+            KGEvidenceLink.document_id.is_(None) if document_id is None else KGEvidenceLink.document_id == document_id,
+            KGEvidenceLink.chunk_id.is_(None) if chunk_id is None else KGEvidenceLink.chunk_id == chunk_id,
+            KGEvidenceLink.source_type == source_type,
+            KGEvidenceLink.source_id.is_(None) if source_id is None else KGEvidenceLink.source_id == source_id,
+            KGEvidenceLink.evidence_text == evidence_text,
+        )
+        return self.db.scalar(statement)
+
+    def find_completed_run(
+        self,
+        *,
+        source_type: str,
+        source_id: UUID | None,
+        extractor: str,
+        source_content_hash: str,
+        candidate_profile: str,
+    ) -> KGExtractionRun | None:
+        statement = select(KGExtractionRun).where(
+            KGExtractionRun.source_type == source_type,
+            KGExtractionRun.source_id.is_(None) if source_id is None else KGExtractionRun.source_id == source_id,
+            KGExtractionRun.extractor == extractor,
+            KGExtractionRun.status == "completed",
+            KGExtractionRun.metadata_json["source_content_hash"].as_string() == source_content_hash,
+            KGExtractionRun.metadata_json["candidate_profile"].as_string() == candidate_profile,
+        ).order_by(KGExtractionRun.created_at.desc())
+        return self.db.scalar(statement)
+
     def list_evidence(
         self,
         *,

@@ -27,7 +27,8 @@ class ResultSetRefinementService:
     def _section_key(item: "HybridScoredCandidate") -> str:
         metadata = item.chunk.metadata_json or {}
         locator = metadata.get("heading_path") or metadata.get("source_locator") or item.chunk.section_title
-        return f"{item.document.id}:{str(locator or f'page:{item.chunk.page_number or "unknown"}').strip().lower()}"
+        fallback_locator = f"page:{item.chunk.page_number or 'unknown'}"
+        return f"{item.document.id}:{str(locator or fallback_locator).strip().lower()}"
 
     @staticmethod
     def _content_key(item: "HybridScoredCandidate") -> str:

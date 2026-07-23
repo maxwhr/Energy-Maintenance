@@ -10,6 +10,7 @@ from app.models import KnowledgeDocument
 from app.schemas.retrieval_scope import (
     CHINESE_ENGINEERING_PILOT_SCOPE_ID,
     HUAWEI_SUN2000_COMPETITION_SCOPE_ID,
+    SUNGROW_SG_FORMAL_SCOPE_ID,
     RetrievalScope,
 )
 
@@ -39,6 +40,8 @@ class RetrievalScopeService:
             return None
         if scope_id == HUAWEI_SUN2000_COMPETITION_SCOPE_ID:
             return self._resolve_huawei_sun2000_competition()
+        if scope_id == SUNGROW_SG_FORMAL_SCOPE_ID:
+            return self._resolve_sungrow_sg_formal()
         if scope_id != CHINESE_ENGINEERING_PILOT_SCOPE_ID:
             raise RetrievalScopeError(f"unsupported retrieval scope: {scope_id}")
         document_ids = tuple(self.db.scalars(select(KnowledgeDocument.id).where(
@@ -84,6 +87,36 @@ class RetrievalScopeService:
             product_families=self.HUAWEI_PRODUCT_FAMILIES,
             device_type="pv_inverter",
             allowed_source_types=(*self.OFFICIAL_SOURCE_TYPES, *self.REVIEWED_CONTRIBUTION_SOURCE_TYPES),
+        )
+
+    def _resolve_sungrow_sg_formal(self) -> RetrievalScope:
+        document_ids = tuple(self.db.scalars(
+            select(KnowledgeDocument.id)
+            .where(
+                func.lower(KnowledgeDocument.manufacturer) == "sungrow",
+                KnowledgeDocument.product_series == "SG",
+                KnowledgeDocument.device_type == "pv_inverter",
+                KnowledgeDocument.status == "active",
+                KnowledgeDocument.parse_status == "parsed",
+                KnowledgeDocument.review_status == "approved",
+            )
+            .order_by(KnowledgeDocument.id)
+        ))
+        return RetrievalScope(
+            scope_id=SUNGROW_SG_FORMAL_SCOPE_ID,
+            corpus_type="formal_knowledge",
+            normalized_language=None,
+            allowed_document_ids=document_ids,
+            required_document_status="approved",
+            required_chunk_status="active",
+            required_approval_mode=("approved", "human_expert_approval"),
+            approved_for_pilot=False,
+            current_version_only=True,
+            collection_name=self.settings.DASHVECTOR_PHYSICAL_COLLECTION,
+            partition_name="sungrow_sg_formal_v1",
+            manufacturer="sungrow",
+            product_families=("SG",),
+            device_type="pv_inverter",
         )
 
     @classmethod

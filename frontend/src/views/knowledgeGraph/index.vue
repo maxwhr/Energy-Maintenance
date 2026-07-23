@@ -52,6 +52,17 @@
           </div>
         </DataPanel>
       </div>
+
+      <DataPanel v-if="(overview?.node_count || 0) === 0" title="知识图谱尚未初始化" subtitle="仅会从已审核、已解析、启用的华为和阳光电源光伏逆变器文档中生成可追溯事实。">
+        <div class="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+          <span>可用正式文档：{{ overview?.eligible_document_count || 0 }}</span>
+          <span>状态：{{ overview?.initialization_status || 'NOT_INITIALIZED' }}</span>
+          <button v-if="canManage" class="scada-button" type="button" :disabled="initializing || !(overview?.eligible_document_count || 0)" @click="bootstrapGraph">
+            {{ initializing ? '初始化中…' : '初始化图谱' }}
+          </button>
+          <span v-else>图谱等待管理员或专家初始化。</span>
+        </div>
+      </DataPanel>
     </section>
 
     <section v-if="activeTab === 'graph'" class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -78,14 +89,14 @@
         </div>
 
         <div v-if="graphData.nodes.length" class="graph-canvas">
-          <svg class="graph-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg class="graph-svg" viewBox="0 0 1000 600" preserveAspectRatio="none">
             <line
               v-for="edge in graphEdgeLines"
               :key="edge.edge.id"
-              :x1="edge.source.x"
-              :y1="edge.source.y"
-              :x2="edge.target.x"
-              :y2="edge.target.y"
+              :x1="edge.source.x * 10"
+              :y1="edge.source.y * 6"
+              :x2="edge.target.x * 10"
+              :y2="edge.target.y * 6"
               class="graph-link"
               :class="{ selected: selectedGraphEdge?.id === edge.edge.id }"
               @click="selectGraphEdge(edge.edge)"
@@ -394,6 +405,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { RefreshCcw } from '@lucide/vue'
 import {
   approveKnowledgeGraphCandidateApi,
+  bootstrapKnowledgeGraphApi,
   archiveKnowledgeGraphEdgeApi,
   archiveKnowledgeGraphNodeApi,
   createKnowledgeGraphEdgeApi,
@@ -426,6 +438,7 @@ import {
 
 const userStore = useUserStore()
 const loading = ref(false)
+const initializing = ref(false)
 const error = ref('')
 const activeTab = ref('overview')
 const overview = ref<KGOverview | null>(null)
@@ -537,18 +550,24 @@ const graphLegendItems = computed(() => {
   return Object.entries(nodeLegend).map(([key, label]) => ({ key, label }))
 })
 const graphNodePositions = computed(() => {
-  const nodes = graphData.value.nodes || []
-  const count = Math.max(nodes.length, 1)
-  const radiusX = 38
-  const radiusY = 34
-  return nodes.map((node, index) => {
-    const angle = (Math.PI * 2 * index) / count - Math.PI / 2
-    return {
+  const layerByType: Record<string, number> = {
+    manufacturer: 0, product_series: 0,
+    device_model: 1, fault: 1, alarm: 1,
+    symptom: 2, cause: 2, component: 2, inspection_item: 2,
+    action: 3, tool: 3, part: 3, safety_risk: 3, sop_template: 3
+  }
+  const layers = new Map<number, KGNode[]>()
+  for (const node of graphData.value.nodes || []) {
+    const layer = layerByType[node.node_type] ?? 2
+    layers.set(layer, [...(layers.get(layer) || []), node])
+  }
+  return [...layers.entries()].flatMap(([layer, items]) =>
+    items.map((node, index) => ({
       node,
-      x: 50 + Math.cos(angle) * radiusX,
-      y: 50 + Math.sin(angle) * radiusY
-    }
-  })
+      x: ((index + 1) / (items.length + 1)) * 84 + 8,
+      y: 12 + layer * 25
+    }))
+  )
 })
 const graphPositionMap = computed(() => new Map(graphNodePositions.value.map((item) => [item.node.id, item])))
 const graphEdgeLines = computed(() =>
@@ -598,6 +617,16 @@ async function loadGraph() {
   selectedGraphNode.value = null
   selectedGraphEdge.value = null
   selectedEvidence.value = []
+}
+
+async function bootstrapGraph() {
+  initializing.value = true
+  await action(async () => {
+    await bootstrapKnowledgeGraphApi({ max_documents: 6, max_chunks_per_document: 40 })
+    await Promise.all([loadOverview(), loadGraph(), loadNodes(), loadEdges(), loadCandidates(), loadRuns(), loadEvidence()])
+    activeTab.value = 'graph'
+  }, '图谱初始化完成')
+  initializing.value = false
 }
 
 async function loadEdges() {
@@ -784,7 +813,7 @@ onMounted(loadAll)
 <style scoped>
 .graph-canvas {
   position: relative;
-  min-height: 520px;
+  min-height: 560px;
   overflow: hidden;
   border: 1px solid rgb(71 85 105 / 0.28);
   border-radius: 8px;
@@ -805,13 +834,13 @@ onMounted(loadAll)
 .graph-link {
   cursor: pointer;
   stroke: rgb(125 211 252 / 0.38);
-  stroke-width: 0.35;
+  stroke-width: 2;
 }
 
 .graph-link:hover,
 .graph-link.selected {
   stroke: rgb(103 232 249 / 0.9);
-  stroke-width: 0.65;
+  stroke-width: 4;
 }
 
 .graph-node {

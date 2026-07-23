@@ -10,12 +10,11 @@ from sqlalchemy.orm import Session
 from app.models import KGEvidenceLink, KnowledgeChunk, KnowledgeDocument
 
 
+# Graph publication is gated by the document's lifecycle review fields, not
+# by optional historical metadata.  Older approved documents did not always
+# carry normalized_language/approval_mode and must not disappear from a
+# source-traceable graph solely for that reason.
 PRODUCTION_LANGUAGES = {"zh", "zh-cn", "zh_cn", "chinese"}
-ENGINEERING_APPROVAL_MODES = {
-    "development_engineering_auto",
-    "human_expert_approval",
-    "engineering_approved",
-}
 NON_PRODUCTION_DOCUMENT_TYPES = {"marketing"}
 
 
@@ -94,12 +93,8 @@ class KnowledgeGraphProductionScopeService:
             reasons.append(f"parse_{document.parse_status or 'missing'}")
         if (document.document_type or "").lower() in NON_PRODUCTION_DOCUMENT_TYPES:
             reasons.append("marketing_document")
-        if language not in PRODUCTION_LANGUAGES:
-            reasons.append(f"language_{language or 'missing'}")
         if not current_version:
             reasons.append("superseded_document")
-        if approval_mode and approval_mode not in ENGINEERING_APPROVAL_MODES:
-            reasons.append(f"approval_mode_{approval_mode}")
         return DocumentScopeDecision(
             eligible=not reasons,
             reasons=tuple(reasons),

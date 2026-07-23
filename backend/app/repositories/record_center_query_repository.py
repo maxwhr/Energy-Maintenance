@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime
+import re
 from typing import Any, Iterable
 from uuid import UUID
 
@@ -43,6 +44,13 @@ RECORD_TYPE_ORDER = (
     "knowledge_graph_edge",
     "knowledge_graph_extraction_run",
 )
+
+_KG_RUN_TEST_SOURCE_PREFIX = re.compile(r"^task(?:21|22|24|25)[a-z]*_r\d+_", re.IGNORECASE)
+
+
+def kg_extraction_run_display_source(value: str, record_id: UUID) -> str:
+    normalized = _KG_RUN_TEST_SOURCE_PREFIX.sub("", value).strip(" _-")
+    return normalized or f"历史业务记录-{str(record_id)[:8]}"
 
 
 class RecordCenterQueryRepository:
@@ -546,7 +554,7 @@ class RecordCenterQueryRepository:
         if record_type == "knowledge_graph_edge":
             return f"知识图谱关系：{record.display_relation or record.relation_type}"
         if record_type == "knowledge_graph_extraction_run":
-            return f"图谱抽取运行：{record.source_type}"
+            return f"图谱抽取运行：{kg_extraction_run_display_source(record.source_type, record.id)}"
         return str(record.id)
 
     @staticmethod

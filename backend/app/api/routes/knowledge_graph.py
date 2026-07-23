@@ -48,6 +48,7 @@ def get_graph(
     product_series: str | None = Query(default=None),
     fault_type: str | None = Query(default=None),
     keyword: str | None = Query(default=None),
+    include_source_nodes: bool = Query(default=False),
     limit: int = Query(default=80, ge=1, le=200),
     depth: int = Query(default=1, ge=1, le=3),
     db: Session = Depends(get_db),
@@ -64,9 +65,30 @@ def get_graph(
             keyword=keyword,
             limit=limit,
             depth=depth,
+            include_source_nodes=include_source_nodes,
         )
     except KnowledgeGraphPermissionError as exc:
         return error_response(str(exc), 403205)
+    return success_response(data)
+
+
+@router.post("/bootstrap")
+def bootstrap_graph(
+    max_documents: int = Query(default=6, ge=1, le=12),
+    max_chunks_per_document: int = Query(default=40, ge=1, le=80),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    try:
+        data = KnowledgeGraphService(db).bootstrap(
+            current_user=current_user,
+            max_documents=max_documents,
+            max_chunks_per_document=max_chunks_per_document,
+        )
+    except KnowledgeGraphPermissionError as exc:
+        return error_response(str(exc), 403208)
+    except KnowledgeGraphServiceError as exc:
+        return error_response(str(exc), 400208)
     return success_response(data)
 
 

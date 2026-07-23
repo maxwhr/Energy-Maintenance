@@ -1,5 +1,5 @@
 <template>
-  <DataPanel title="外部 Provider 状态" subtitle="未配置真实 API 时不会外呼；dry-run 仅构造请求，mock-run 仅用于本地联调。">
+  <DataPanel title="外部 Provider 状态" subtitle="未配置真实 API 时不会外呼；dry-run 仅构造请求，本地联调仅在当前服务内生成模拟结果。">
     <template #actions>
       <button class="scada-button !min-h-8 !px-3" type="button" :disabled="loading" @click="$emit('refresh')">刷新</button>
     </template>
@@ -19,7 +19,7 @@
           <div class="flex flex-wrap gap-2">
             <button class="scada-button !min-h-8 !px-3" type="button" :disabled="!canCheck" @click="$emit('check', provider.provider_code)">检查</button>
             <button class="scada-button !min-h-8 !px-3" type="button" :disabled="readonly" @click="$emit('dry-run', provider.provider_code)">dry-run</button>
-            <button class="scada-button primary !min-h-8 !px-3" type="button" :disabled="!canMock" @click="$emit('mock-run', provider.provider_code)">mock-run</button>
+            <button class="scada-button primary !min-h-8 !px-3" type="button" :disabled="!canMock" @click="$emit('mock-run', provider.provider_code)">本地联调</button>
             <button v-if="canReal" class="scada-button danger !min-h-8 !px-3" type="button" @click="$emit('real-run', provider.provider_code)">real-run</button>
           </div>
         </div>

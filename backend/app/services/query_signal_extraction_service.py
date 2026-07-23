@@ -21,7 +21,8 @@ class QuerySignalExtractionService:
         re.IGNORECASE,
     )
     OTHER_MODEL_RE = re.compile(
-        r"(?<![A-Za-z0-9])(?:LUNA2000|SmartLogger)(?:[-_/ ]?[A-Za-z0-9]{1,16}){0,4}(?![A-Za-z0-9])",
+        r"(?<![A-Za-z0-9])(?:LUNA2000|SmartLogger)(?:[-_/ ]?[A-Za-z0-9]{1,16}){0,4}(?![A-Za-z0-9])"
+        r"|(?<![A-Za-z0-9])SG(?:\s*系列|[-_/ ]?\d{2,4}[A-Za-z0-9-]*)?(?![A-Za-z0-9])",
         re.IGNORECASE,
     )
     EXPLICIT_ALARM_RE = re.compile(
@@ -71,15 +72,18 @@ class QuerySignalExtractionService:
         "COMMUNICATION": ("老是掉线", "通信异常", "通信中断"),
         "ALARM_MEANING": ("表示什么", "什么状态", "属于什么状态", "告警含义", "含义"),
     }
-    MANUFACTURER_ALIASES = ("华为", "huawei")
-    FORMAL_SUPPORT_MESSAGE = "当前版本正式支持华为 SUN2000 系列光伏逆变器检修知识。"
+    HUAWEI_MANUFACTURER_ALIASES = ("华为", "huawei")
+    SUNGROW_MANUFACTURER_ALIASES = ("阳光电源", "sungrow")
+    MANUFACTURER_ALIASES = (*HUAWEI_MANUFACTURER_ALIASES, *SUNGROW_MANUFACTURER_ALIASES)
+    FORMAL_SUPPORT_MESSAGE = "当前版本正式支持华为 SUN2000、FusionSolar 与阳光电源 SG 系列光伏逆变器检修知识。"
     UNSUPPORTED_VENDOR_TERMS = (
-        "阳光电源", "sungrow", "锦浪", "ginlong", "solis", "固德威", "goodwe",
+        "锦浪", "ginlong", "solis", "固德威", "goodwe",
         "古瑞瓦特", "growatt", "上能电气", "sineng",
     )
     KNOWN_NUMERIC_ALARM_CODES = {"103", "301", "318", "321", "322", "326", "400", "410", "2061", "2062"}
     GENERIC_RETRIEVAL_TERMS = {
-        "huawei", "华为", "sun2000", "fusionsolar", "光伏", "逆变器", "光伏逆变器", "设备",
+        "huawei", "华为", "sun2000", "fusionsolar", "sungrow", "阳光电源", "sg",
+        "光伏", "逆变器", "光伏逆变器", "设备",
         "如何", "怎么", "怎样", "什么", "哪些", "是否", "能否", "应该", "需要", "可以",
         "当前", "其中", "这里", "这个", "那个", "表示", "属于", "相关", "要求", "处理",
         "排查", "检查", "确认", "设置", "查询", "进行", "时候", "哪里", "哪个", "一下",
@@ -194,14 +198,20 @@ class QuerySignalExtractionService:
             models = [self._normalize_model(match.group(0)) for match in self.OTHER_MODEL_RE.finditer(normalized)]
         models = self._unique(models)
         has_fusionsolar = "fusionsolar" in normalized.lower()
-        manufacturer = "huawei" if (
-            any(alias in normalized.lower() for alias in self.MANUFACTURER_ALIASES)
+        has_huawei = (
+            any(alias in normalized.lower() for alias in self.HUAWEI_MANUFACTURER_ALIASES)
             or any(model.upper().startswith("SUN2000") for model in models)
             or has_fusionsolar
-        ) else None
+        )
+        has_sungrow = (
+            any(alias in normalized.lower() for alias in self.SUNGROW_MANUFACTURER_ALIASES)
+            or any(model.upper().startswith("SG") for model in models)
+        )
+        manufacturer = "sungrow" if has_sungrow and not has_huawei else "huawei" if has_huawei and not has_sungrow else None
         product_family = (
             "SUN2000" if any(model.upper().startswith("SUN2000") for model in models)
             else "FusionSolar" if has_fusionsolar
+            else "SG" if has_sungrow
             else None
         )
         model = models[0] if models else None
@@ -210,7 +220,10 @@ class QuerySignalExtractionService:
             model_confidence = 0.75 if model.upper() == "SUN2000" else 0.98
         alarm_codes = self.EXPLICIT_ALARM_RE.findall(normalized)
         alarm_codes.extend(self.CODE_RE.findall(normalized))
-        model_spans = [match.span() for match in self.SUN2000_MODEL_RE.finditer(normalized)]
+        model_spans = [
+            *(match.span() for match in self.SUN2000_MODEL_RE.finditer(normalized)),
+            *(match.span() for match in self.OTHER_MODEL_RE.finditer(normalized)),
+        ]
         for match in self.NUMERIC_CODE_RE.finditer(normalized):
             if self._is_numeric_alarm_candidate(
                 match.group(0), match.start(), match.end(), normalized,
@@ -283,6 +296,10 @@ class QuerySignalExtractionService:
             compact = re.sub(r"(?i)^SUN\s*[-_]?\s*2000", "SUN2000", compact)
             compact = re.sub(r"\s*[-_/]\s*|\s+", "-", compact).strip("-_/ ")
             return compact.upper()
+        if re.match(r"(?i)^SG(?:\s*系列)?$", compact):
+            return "SG"
+        if re.match(r"(?i)^SG", compact):
+            return re.sub(r"[\s_/-]+", "", compact).upper()
         prefixes = {"sun2000": "SUN2000", "luna2000": "LUNA2000", "smartlogger": "SmartLogger"}
         value = re.sub(r"\s+", "-", compact).rstrip("-_/ ")
         lowered = value.lower()
@@ -334,12 +351,10 @@ class QuerySignalExtractionService:
         normalized_product = str(product_series or "").strip().casefold()
         if normalized_manufacturer and normalized_manufacturer not in cls.MANUFACTURER_ALIASES:
             return "unsupported_manufacturer"
-        if normalized_product and normalized_product not in {"sun2000", "fusionsolar"}:
+        if normalized_product and normalized_product not in {"sun2000", "fusionsolar", "sg"}:
             return "unsupported_product_series"
         if any(term.casefold() in normalized for term in cls.UNSUPPORTED_VENDOR_TERMS):
             return "unsupported_manufacturer"
-        if re.search(r"(?<![a-z0-9])sg\s*[-_]?\s*\d{2,4}[a-z0-9-]*(?![a-z0-9])", normalized):
-            return "unsupported_sungrow_model"
         if "luna2000" in normalized:
             return "unsupported_luna2000_product"
         if "smartlogger" in normalized:

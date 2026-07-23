@@ -38,3 +38,4 @@ class RetrievalScope:
 
 CHINESE_ENGINEERING_PILOT_SCOPE_ID = "chinese_engineering_pilot_r2"
 HUAWEI_SUN2000_COMPETITION_SCOPE_ID = "huawei_sun2000_competition_v1"
+SUNGROW_SG_FORMAL_SCOPE_ID = "sungrow_sg_formal_v1"

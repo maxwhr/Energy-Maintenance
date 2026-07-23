@@ -147,7 +147,7 @@
             </label>
             <label class="flex items-center gap-2 rounded-md border border-slate-600/20 bg-black/20 p-3 text-sm font-bold text-slate-200" :class="!canMock ? 'opacity-60' : ''">
               <input v-model="agentForm.mock_run" type="checkbox" :disabled="!canMock" />
-              <span>mock-run：生成本地模拟 OCR / AI 证据</span>
+              <span>本地联调：生成本地模拟 OCR / AI 证据</span>
             </label>
           </div>
           <div class="mt-3 flex flex-wrap gap-2">

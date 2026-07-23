@@ -227,7 +227,7 @@ const deploymentItems = computed(() => {
     { label: 'Docker Required', value: String(value.docker_required) },
     { label: 'Offline Manifest', value: value.offline_manifest_status },
     { label: 'Native Dependency Risks', value: `${value.native_dependency_risks.count} / ${value.native_dependency_risks.status}` },
-    { label: 'Task25C', value: `${value.task25c_status.regression} / ${value.task25c_status.quality_gate}` },
+    { label: '专项回归', value: `${value.task25c_status.regression} / ${value.task25c_status.quality_gate}` },
     { label: 'R6', value: value.r6_status },
     { label: 'RAG Performance', value: value.rag_performance_status },
     { label: 'Full Reindex', value: value.full_reindex_status }

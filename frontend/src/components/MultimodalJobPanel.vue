@@ -1,5 +1,5 @@
 <template>
-  <DataPanel title="处理任务" subtitle="dry-run 只构造请求，不调用外部 API；mock-run 是本地联调结果。">
+  <DataPanel title="处理任务" subtitle="dry-run 只构造请求，不调用外部 API；本地联调生成本地模拟结果。">
     <template #actions>
       <div class="flex flex-wrap gap-2">
         <button class="scada-button !min-h-8 !px-3" type="button" :disabled="!mediaId || busy || readonly" @click="$emit('create-ocr-dry-run')">
@@ -9,10 +9,10 @@
           AI dry-run
         </button>
         <button class="scada-button primary !min-h-8 !px-3" type="button" :disabled="!mediaId || busy || !canMock" @click="$emit('create-ai-mock-run')">
-          AI mock-run
+          AI 本地联调
         </button>
         <button class="scada-button primary !min-h-8 !px-3" type="button" :disabled="!mediaId || busy || !canMock" @click="$emit('create-ocr-mock-run')">
-          OCR mock-run
+          OCR 本地联调
         </button>
       </div>
     </template>

@@ -3,10 +3,11 @@ import type {
   PageResponse,
   QueryAwareRetrievalRequest,
   QueryAwareRetrievalResponse,
+  RetrievalQueryRequest,
   RetrievalResponse
 } from '@/types'
 
-export const queryRetrievalApi = (data: Record<string, unknown>) =>
+export const queryRetrievalApi = (data: RetrievalQueryRequest) =>
   request.post<RetrievalResponse>('/retrieval/query', data)
 
 export const getRetrievalRecordsApi = (params?: Record<string, unknown>) =>

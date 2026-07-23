@@ -43,6 +43,7 @@ from app.services.retrieval_scope_service import RetrievalScopeError, RetrievalS
 from app.schemas.retrieval_scope import (
     CHINESE_ENGINEERING_PILOT_SCOPE_ID,
     HUAWEI_SUN2000_COMPETITION_SCOPE_ID,
+    SUNGROW_SG_FORMAL_SCOPE_ID,
 )
 from app.services.result_set_refinement_service import ResultSetRefinementService
 from app.core.database import SessionLocal
@@ -85,20 +86,15 @@ class RetrievalService:
 
     def query(self, payload: RetrievalQueryRequest, current_user: User) -> RetrievalQueryResponse:
         self._validate_request(payload)
+        resolved_payload = self._resolve_device_context(payload)
+        resolved_payload = self._resolve_retrieval_scope(resolved_payload)
         unsupported_scope_reason = QuerySignalExtractionService.unsupported_scope_reason(
-            payload.normalized_question,
-            manufacturer=payload.manufacturer,
-            product_series=payload.product_series,
+            resolved_payload.normalized_question,
+            manufacturer=resolved_payload.manufacturer,
+            product_series=resolved_payload.product_series,
         )
         if unsupported_scope_reason:
             raise RetrievalServiceError(QuerySignalExtractionService.FORMAL_SUPPORT_MESSAGE)
-        resolved_payload = self._resolve_device_context(payload)
-        if resolved_payload.scope_id is None:
-            resolved_payload = resolved_payload.model_copy(update={
-                "scope_id": HUAWEI_SUN2000_COMPETITION_SCOPE_ID,
-                "manufacturer": "huawei",
-                "device_type": "pv_inverter",
-            })
         try:
             retrieval_scope = self.scope_service.resolve(resolved_payload.scope_id, pilot_required=False)
         except RetrievalScopeError as exc:
@@ -570,6 +566,39 @@ class RetrievalService:
         update_data["product_series"] = payload.product_series or device.product_series
         update_data["device_type"] = payload.device_type or device.device_type
         return RetrievalQueryRequest(**update_data)
+
+    @staticmethod
+    def _resolve_retrieval_scope(payload: RetrievalQueryRequest) -> RetrievalQueryRequest:
+        signals = QuerySignalExtractionService().extract(payload.normalized_question)
+        manufacturer = payload.manufacturer or signals.manufacturer
+        product_series = payload.product_series or signals.product_family
+
+        if manufacturer is None:
+            if product_series == "SG":
+                manufacturer = "sungrow"
+            elif product_series in {"SUN2000", "FusionSolar"}:
+                manufacturer = "huawei"
+        if product_series is None:
+            product_series = "SG" if manufacturer == "sungrow" else "SUN2000"
+        if manufacturer is None:
+            manufacturer = "huawei"
+
+        scope_id = payload.scope_id
+        if scope_id is None:
+            scope_id = (
+                SUNGROW_SG_FORMAL_SCOPE_ID
+                if manufacturer == "sungrow"
+                else HUAWEI_SUN2000_COMPETITION_SCOPE_ID
+            )
+        elif scope_id == HUAWEI_SUN2000_COMPETITION_SCOPE_ID and manufacturer == "sungrow":
+            scope_id = SUNGROW_SG_FORMAL_SCOPE_ID
+
+        return payload.model_copy(update={
+            "manufacturer": manufacturer,
+            "product_series": product_series,
+            "scope_id": scope_id,
+            "device_type": "pv_inverter",
+        })
 
     def _payload_with_media_context(
         self,
