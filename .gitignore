@@ -70,3 +70,8 @@ coverage/
 delivery/
 delivery_staging/
 prompt.txt
+
+# Local-only credentials and runtime data
+.private/
+.local/
+backend/.env
