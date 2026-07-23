@@ -841,6 +841,27 @@ export interface SystemStatus {
   version?: string
   environment?: string
   security?: Record<string, unknown>
+  retrieval?: {
+    default_strategy: string
+    manufacturers: string[]
+    approved_active_document_count: number
+    approved_active_chunk_count: number
+    citation_validity_rate: number
+    citation_count: number
+    valid_citation_count: number
+    controlled_refusal_enabled: boolean
+    vector_enabled: boolean
+    embedding_enabled: boolean
+    rerank_enabled: boolean
+    external_provider_configured: boolean
+    external_real_calls_enabled: boolean
+    latest_formal_index: {
+      status: string
+      backend?: string | null
+      finished_at?: string | null
+    }
+    lab_enabled: boolean
+  }
 }
 
 export interface DeploymentReadiness {
@@ -866,10 +887,6 @@ export interface DeploymentReadiness {
     items?: Array<{ name: string; category: string; required: boolean; action: string }>
   }
   real_machine_acceptance: { status: string; executed: boolean }
-  task25c_status: { regression: string; quality_gate: string }
-  r6_status: string
-  rag_performance_status: string
-  full_reindex_status: string
 }
 
 export interface SystemStatistics {

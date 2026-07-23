@@ -11,6 +11,7 @@ vi.mock('@/utils/request', () => ({
 
 import { queryRetrievalApi } from '@/api/retrieval'
 import type { RetrievalQueryRequest } from '@/types'
+import { isRetrievalLabEnabled } from '@/utils/retrievalLab'
 
 describe('retrieval request scope', () => {
   beforeEach(() => {
@@ -36,4 +37,15 @@ describe('retrieval request scope', () => {
       expect(requestMock.post).toHaveBeenCalledWith('/retrieval/query', payload)
     }
   )
+})
+
+describe('retrieval lab visibility', () => {
+  it('keeps the lab hidden when production status disables it', () => {
+    expect(isRetrievalLabEnabled({ lab_enabled: false })).toBe(false)
+    expect(isRetrievalLabEnabled(undefined)).toBe(false)
+  })
+
+  it('shows the lab only when the backend explicitly enables it', () => {
+    expect(isRetrievalLabEnabled({ lab_enabled: true })).toBe(true)
+  })
 })

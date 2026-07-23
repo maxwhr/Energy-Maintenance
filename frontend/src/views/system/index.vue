@@ -79,6 +79,15 @@
       <EmptyState v-else text="尚未读取部署准备状态" />
     </DataPanel>
 
+    <DataPanel title="正式检索状态" subtitle="仅展示正式知识、Citation 和当前启用的检索组件。">
+      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div v-for="item in retrievalDetails" :key="item.label" class="rounded-md border border-slate-600/20 bg-black/20 p-3">
+          <div class="text-xs font-bold text-slate-400">{{ item.label }}</div>
+          <div class="mt-1 break-words text-sm font-bold text-white">{{ item.value }}</div>
+        </div>
+      </div>
+    </DataPanel>
+
     <div class="grid gap-4 lg:grid-cols-2">
       <DataPanel title="业务统计概览">
         <div v-if="statistics" class="grid gap-3 md:grid-cols-2">
@@ -217,6 +226,20 @@ const countItems = computed(() => [
   { label: 'SOP 模板', value: status.value?.sop_template_count ?? 0 }
 ])
 
+const retrievalDetails = computed(() => {
+  const retrieval = status.value?.retrieval
+  return [
+    { label: '默认策略', value: retrieval?.default_strategy || 'keyword' },
+    { label: '厂家范围', value: retrieval?.manufacturers?.join(' / ') || 'huawei / sungrow' },
+    { label: '正式文档 / 切片', value: `${retrieval?.approved_active_document_count ?? 0} / ${retrieval?.approved_active_chunk_count ?? 0}` },
+    { label: 'Citation 有效率', value: `${((retrieval?.citation_validity_rate ?? 0) * 100).toFixed(1)}%` },
+    { label: '受控拒答', value: formatBoolean(retrieval?.controlled_refusal_enabled) },
+    { label: 'Vector / Embedding / Rerank', value: `${formatBoolean(retrieval?.vector_enabled)} / ${formatBoolean(retrieval?.embedding_enabled)} / ${formatBoolean(retrieval?.rerank_enabled)}` },
+    { label: '外部 Provider', value: formatConfigured(retrieval?.external_provider_configured) },
+    { label: '最近正式索引', value: retrieval?.latest_formal_index?.status || 'not_run' }
+  ]
+})
+
 const deploymentItems = computed(() => {
   const value = deploymentReadiness.value
   if (!value) return []
@@ -226,11 +249,7 @@ const deploymentItems = computed(() => {
     { label: 'Real Machine Acceptance', value: value.real_machine_acceptance.status },
     { label: 'Docker Required', value: String(value.docker_required) },
     { label: 'Offline Manifest', value: value.offline_manifest_status },
-    { label: 'Native Dependency Risks', value: `${value.native_dependency_risks.count} / ${value.native_dependency_risks.status}` },
-    { label: '专项回归', value: `${value.task25c_status.regression} / ${value.task25c_status.quality_gate}` },
-    { label: 'R6', value: value.r6_status },
-    { label: 'RAG Performance', value: value.rag_performance_status },
-    { label: 'Full Reindex', value: value.full_reindex_status }
+    { label: 'Native Dependency Risks', value: `${value.native_dependency_risks.count} / ${value.native_dependency_risks.status}` }
   ]
 })
 

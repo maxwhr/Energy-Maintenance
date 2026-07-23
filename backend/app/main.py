@@ -29,6 +29,7 @@ from app.api.routes.system import router as system_router
 from app.api.routes.users import router as users_router
 from app.api.routes.vector_search import router as vector_search_router
 from app.core.config import get_settings
+from app.core.retrieval_lab_config import get_retrieval_lab_settings
 from app.core.security_config import enforce_startup_security
 from app.core.security_middleware import InMemoryRateLimitMiddleware, RequestSizeLimitMiddleware
 from app.core.static_frontend import register_static_frontend
@@ -63,30 +64,43 @@ app.add_middleware(
 app.add_middleware(InMemoryRateLimitMiddleware, settings=settings)
 app.add_middleware(RequestSizeLimitMiddleware, settings=settings)
 
-api_router = APIRouter(prefix="/api")
-api_router.include_router(health_router)
-api_router.include_router(system_router)
-api_router.include_router(vector_search_router)
-api_router.include_router(auth_router)
-api_router.include_router(agents_router)
-api_router.include_router(users_router)
-api_router.include_router(devices_router)
-api_router.include_router(external_apis_router)
-api_router.include_router(knowledge_router)
-api_router.include_router(knowledge_contributions_router)
-api_router.include_router(knowledge_graph_router)
-api_router.include_router(maintenance_tasks_router)
-api_router.include_router(maintenance_workflows_router)
-api_router.include_router(media_router)
-api_router.include_router(model_gateway_router)
-api_router.include_router(multimodal_evidence_router)
-api_router.include_router(multimodal_cases_router)
-api_router.include_router(retrieval_router)
-api_router.include_router(diagnosis_router)
-api_router.include_router(sop_router)
-api_router.include_router(record_center_router)
-api_router.include_router(review_router)
-api_router.include_router(corrections_router)
+def create_api_router(*, retrieval_lab_enabled: bool) -> APIRouter:
+    router = APIRouter(prefix="/api")
+    router.include_router(health_router)
+    router.include_router(system_router)
+    router.include_router(vector_search_router)
+    router.include_router(auth_router)
+    router.include_router(agents_router)
+    router.include_router(users_router)
+    router.include_router(devices_router)
+    router.include_router(external_apis_router)
+    router.include_router(knowledge_router)
+    router.include_router(knowledge_contributions_router)
+    router.include_router(knowledge_graph_router)
+    router.include_router(maintenance_tasks_router)
+    router.include_router(maintenance_workflows_router)
+    router.include_router(media_router)
+    router.include_router(model_gateway_router)
+    router.include_router(multimodal_evidence_router)
+    router.include_router(multimodal_cases_router)
+    router.include_router(retrieval_router)
+    router.include_router(diagnosis_router)
+    router.include_router(sop_router)
+    router.include_router(record_center_router)
+    router.include_router(review_router)
+    router.include_router(corrections_router)
+    if retrieval_lab_enabled:
+        from app.api.routes.retrieval_lab import router as retrieval_lab_router
+
+        router.include_router(retrieval_lab_router)
+    return router
+
+
+api_router = create_api_router(
+    retrieval_lab_enabled=(
+        get_retrieval_lab_settings().ENABLE_RETRIEVAL_LAB
+    )
+)
 
 app.include_router(api_router)
 

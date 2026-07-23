@@ -1,6 +1,11 @@
+from pathlib import Path
+
+from fastapi import FastAPI
 from sqlalchemy import func, select
 
 from app.models import QARecord
+from app.main import create_api_router
+from app.api.routes.system import get_system_status
 from app.schemas.retrieval import RetrievalQueryRequest
 from app.schemas.retrieval_scope import (
     HUAWEI_SUN2000_COMPETITION_SCOPE_ID,
@@ -23,6 +28,14 @@ def request(question: str, **overrides) -> RetrievalQueryRequest:
     }
     values.update(overrides)
     return RetrievalQueryRequest(**values)
+
+
+def registered_api_paths(*, retrieval_lab_enabled: bool) -> set[str]:
+    app = FastAPI()
+    app.include_router(
+        create_api_router(retrieval_lab_enabled=retrieval_lab_enabled)
+    )
+    return set(app.openapi()["paths"])
 
 
 def test_detects_huawei_scope_from_question() -> None:
@@ -158,3 +171,72 @@ def test_no_evidence_returns_controlled_refusal_without_qa_write(
     assert response.references == []
     assert response.retrieved_chunks == []
     assert before == after == 0
+
+
+def test_retrieval_lab_routes_are_not_registered_when_disabled() -> None:
+    paths = registered_api_paths(retrieval_lab_enabled=False)
+    assert "/api/retrieval/scope/r1-status" not in paths
+    assert "/api/system/retrieval-quality/r5/summary" not in paths
+
+
+def test_retrieval_lab_routes_are_registered_when_enabled() -> None:
+    paths = registered_api_paths(retrieval_lab_enabled=True)
+    assert "/api/retrieval/scope/r1-status" in paths
+    assert "/api/retrieval/scope/r4-status" in paths
+    assert "/api/system/retrieval-quality/r5/summary" in paths
+
+
+def test_production_status_uses_database_evidence_without_runtime_artifacts(
+    db_session,
+    approved_document,
+    monkeypatch,
+) -> None:
+    huawei_document, huawei_chunk = approved_document(
+        manufacturer="huawei",
+        product_series="SUN2000",
+    )
+    sungrow_document, _ = approved_document(
+        manufacturer="sungrow",
+        product_series="SG",
+    )
+    db_session.add(
+        QARecord(
+            question="SUN2000 low insulation resistance",
+            normalized_query="sun2000 low insulation resistance",
+            manufacturer="huawei",
+            product_series="SUN2000",
+            device_type="pv_inverter",
+            answer="Check DC insulation.",
+            references=[
+                {
+                    "document_id": str(huawei_document.id),
+                    "chunk_id": str(huawei_chunk.id),
+                }
+            ],
+            retrieved_chunks=[],
+            suggested_steps=[],
+            safety_notes=[],
+            related_history=[],
+            confidence=0.8,
+            trace_id="production-status-citation",
+        )
+    )
+    db_session.flush()
+
+    def reject_artifact_read(*_args, **_kwargs):
+        raise AssertionError("production status must not read runtime artifacts")
+
+    monkeypatch.setattr(Path, "read_text", reject_artifact_read)
+    response = get_system_status(db_session)
+    retrieval = response["data"]["retrieval"]
+
+    assert response["data"]["database_status"] == "online"
+    assert retrieval["approved_active_document_count"] == 2
+    assert retrieval["approved_active_chunk_count"] == 2
+    assert retrieval["manufacturers"] == ["huawei", "sungrow"]
+    assert retrieval["citation_count"] == 1
+    assert retrieval["valid_citation_count"] == 1
+    assert retrieval["citation_validity_rate"] == 1.0
+    assert retrieval["lab_enabled"] is False
+    assert "pilot_routing" not in response["data"]
+    assert sungrow_document.id is not None

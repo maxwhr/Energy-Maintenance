@@ -39,6 +39,7 @@ os.environ.update(
         "SECRET_KEY": "local-ci-only-signing-secret-32-characters",
         "SECURITY_REQUIRE_STRONG_PRODUCTION_CONFIG": "false",
         "RATE_LIMIT_ENABLED": "false",
+        "ENABLE_RETRIEVAL_LAB": "false",
         "MODEL_GATEWAY_DEFAULT_PROVIDER": "rule_based",
         "EXTERNAL_REAL_CALLS_ENABLED": "false",
         "CLOUD_LLM_ENABLED": "false",
