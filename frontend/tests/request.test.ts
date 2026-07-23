@@ -59,9 +59,17 @@ describe('API response handling', () => {
 
   it('unwraps a successful unified API response', () => {
     const result = axiosMock.handlers.fulfilled?.({
-      data: { code: 200, message: 'success', data: { ok: true } }
+      data: { code: 0, message: 'success', data: { ok: true } }
     })
     expect(result).toEqual({ ok: true })
+  })
+
+  it('does not accept code 200 as a successful business response', async () => {
+    await expect(
+      axiosMock.handlers.fulfilled?.({
+        data: { code: 200, message: 'legacy response rejected', data: null }
+      })
+    ).rejects.toThrow('legacy response rejected')
   })
 
   it('rejects a unified API business error', async () => {
@@ -78,5 +86,33 @@ describe('API response handling', () => {
     clearStoredToken()
     expect(getStoredToken()).toBe('')
     expect(localStorage.getItem('user_info')).toBeNull()
+  })
+
+  it('keeps the token after a 403 response', async () => {
+    setStoredToken('active-token')
+    await expect(
+      axiosMock.handlers.rejected?.({
+        response: {
+          status: 403,
+          data: { code: 40302, message: 'Permission denied', data: null }
+        }
+      })
+    ).rejects.toThrow('Permission denied')
+    expect(getStoredToken()).toBe('active-token')
+  })
+
+  it('uses the backend validation message for a 422 response', async () => {
+    await expect(
+      axiosMock.handlers.rejected?.({
+        response: {
+          status: 422,
+          data: {
+            code: 42200,
+            message: 'Request validation failed: body.username required',
+            data: null
+          }
+        }
+      })
+    ).rejects.toThrow('Request validation failed: body.username required')
   })
 })

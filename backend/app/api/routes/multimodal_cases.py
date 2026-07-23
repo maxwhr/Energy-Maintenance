@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
 from app.repositories.multimodal_case_repository import MultimodalCaseRepository
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.multimodal_case import (
     EvidenceDecisionRequest,
     MultimodalAnalyzeRequest,
@@ -36,11 +37,9 @@ from app.services.multimodal_case_state_service import (
 router = APIRouter(prefix="/multimodal/cases", tags=["multimodal-maintenance-cases"])
 
 
-def _error(exc: Exception, code: int) -> dict:
-    return error_response(str(exc), code)
 
 
-@router.post("")
+@router.post("", status_code=201)
 def create_case(
     payload: MultimodalCaseCreate,
     db: Session = Depends(get_db),
@@ -49,7 +48,7 @@ def create_case(
     try:
         result = MultimodalCaseStateService(db).create(payload, current_user)
     except (MultimodalCaseError, MultimodalCasePermissionError) as exc:
-        return _error(exc, 4002501)
+        raise BusinessException.from_service_error(exc, 4002501) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -66,7 +65,7 @@ def list_cases(
             current_user, status=status, page=page, page_size=page_size
         )
     except (MultimodalCaseError, MultimodalCasePermissionError) as exc:
-        return _error(exc, 4002502)
+        raise BusinessException.from_service_error(exc, 4002502) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -80,11 +79,11 @@ def get_case(
     try:
         item = service.get(case_id, current_user)
     except (MultimodalCaseError, MultimodalCasePermissionError) as exc:
-        return _error(exc, 4042501)
+        raise BusinessException.from_service_error(exc, 4042501) from exc
     return success_response(service.to_read(item).model_dump(mode="json"))
 
 
-@router.post("/{case_id}/media")
+@router.post("/{case_id}/media", status_code=201)
 async def upload_case_media(
     case_id: str,
     file: UploadFile = File(...),
@@ -118,7 +117,7 @@ async def upload_case_media(
         result["deduplicated"] = bool(uploaded.get("deduplicated"))
         result["ocr_status"] = uploaded["ocr"].status
     except (MultimodalCaseError, MultimodalCasePermissionError, MultimodalCaseOrchestratorError, MediaServiceError) as exc:
-        return _error(exc, 4002503)
+        raise BusinessException.from_service_error(exc, 4002503) from exc
     return success_response(result)
 
 
@@ -132,7 +131,7 @@ def list_case_media(
         case = MultimodalCaseStateService(db).get(case_id, current_user)
         items = MultimodalCaseOrchestratorService(db).list_media(case)
     except (MultimodalCaseError, MultimodalCasePermissionError) as exc:
-        return _error(exc, 4042502)
+        raise BusinessException.from_service_error(exc, 4042502) from exc
     return success_response({"items": items, "total": len(items)})
 
 
@@ -144,12 +143,12 @@ def analyze_case(
     current_user: User = Depends(require_roles("admin", "expert", "engineer")),
 ) -> dict:
     if payload.mock_run and current_user.role not in {"admin", "expert"}:
-        return error_response("mock_run requires expert or admin role", 4032501)
+        raise BusinessException('mock_run requires expert or admin role', 4032501, http_status=403)
     try:
         case = MultimodalCaseStateService(db).get(case_id, current_user)
         result = MultimodalCaseOrchestratorService(db).analyze(case, payload, current_user)
     except (MultimodalCaseError, MultimodalCasePermissionError, MultimodalCaseOrchestratorError) as exc:
-        return _error(exc, 4002504)
+        raise BusinessException.from_service_error(exc, 4002504) from exc
     return success_response(result)
 
 
@@ -163,12 +162,12 @@ def get_case_job(
     try:
         case = MultimodalCaseStateService(db).get(case_id, current_user)
     except (MultimodalCaseError, MultimodalCasePermissionError) as exc:
-        return _error(exc, 4042503)
+        raise BusinessException.from_service_error(exc, 4042503) from exc
     if job_id not in (case.analysis_job_ids or []):
-        return error_response("Analysis job not found for this case", 4042504)
+        raise BusinessException('Analysis job not found for this case', 4042504, http_status=404)
     run = MultimodalCaseRepository(db).get_agent_run(job_id)
     if not run:
-        return error_response("Analysis job not found", 4042504)
+        raise BusinessException('Analysis job not found', 4042504, http_status=404)
     return success_response({
         "job_id": run.run_id,
         "status": run.status,
@@ -189,7 +188,7 @@ def list_case_evidence(
     try:
         MultimodalCaseStateService(db).get(case_id, current_user)
     except (MultimodalCaseError, MultimodalCasePermissionError) as exc:
-        return _error(exc, 4042505)
+        raise BusinessException.from_service_error(exc, 4042505) from exc
     repository = MultimodalCaseRepository(db)
     evidence = [MultimodalEvidenceRead.model_validate(item).model_dump(mode="json") for item in repository.list_evidence(case_id)]
     conflicts = [{
@@ -216,7 +215,7 @@ def clarify_case(
         case = service.get(case_id, current_user)
         result = service.clarify(case, payload, current_user)
     except (MultimodalCaseError, MultimodalCasePermissionError) as exc:
-        return _error(exc, 4002505)
+        raise BusinessException.from_service_error(exc, 4002505) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -234,7 +233,7 @@ def _decide_evidence(
         case = service.get(case_id, user)
         result = service.decide_evidence(case, evidence_id, payload, user, accept=accept)
     except (MultimodalCaseError, MultimodalCasePermissionError) as exc:
-        return _error(exc, 4002506 if accept else 4002507)
+        raise BusinessException.from_service_error(exc, 4002506 if accept else 4002507) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -271,7 +270,7 @@ def retrieve_case(
         case = MultimodalCaseStateService(db).get(case_id, current_user)
         result = MultimodalCaseOrchestratorService(db).retrieve(case, payload, current_user)
     except (MultimodalCaseError, MultimodalCasePermissionError, MultimodalCaseOrchestratorError, ValueError) as exc:
-        return _error(exc, 4002508)
+        raise BusinessException.from_service_error(exc, 4002508) from exc
     return success_response(result)
 
 
@@ -286,7 +285,7 @@ def diagnose_case(
         case = MultimodalCaseStateService(db).get(case_id, current_user)
         result = MultimodalCaseOrchestratorService(db).diagnose(case, payload, current_user)
     except (MultimodalCaseError, MultimodalCasePermissionError, MultimodalCaseOrchestratorError) as exc:
-        return _error(exc, 4002509)
+        raise BusinessException.from_service_error(exc, 4002509) from exc
     return success_response(result)
 
 
@@ -301,7 +300,7 @@ def create_sop_draft(
         case = MultimodalCaseStateService(db).get(case_id, current_user)
         result = MultimodalCaseOrchestratorService(db).create_sop_draft(case, payload, current_user)
     except (MultimodalCaseError, MultimodalCasePermissionError, MultimodalCaseOrchestratorError) as exc:
-        return _error(exc, 4002510)
+        raise BusinessException.from_service_error(exc, 4002510) from exc
     return success_response(result)
 
 
@@ -316,7 +315,7 @@ def create_task_draft(
         case = MultimodalCaseStateService(db).get(case_id, current_user)
         result = MultimodalCaseOrchestratorService(db).create_task_draft(case, payload, current_user)
     except (MultimodalCaseError, MultimodalCasePermissionError, MultimodalCaseOrchestratorError) as exc:
-        return _error(exc, 4002511)
+        raise BusinessException.from_service_error(exc, 4002511) from exc
     return success_response(result)
 
 
@@ -330,5 +329,5 @@ def get_case_audit(
         case = MultimodalCaseStateService(db).get(case_id, current_user)
         items = MultimodalCaseOrchestratorService(db).audit(case)
     except (MultimodalCaseError, MultimodalCasePermissionError) as exc:
-        return _error(exc, 4042506)
+        raise BusinessException.from_service_error(exc, 4042506) from exc
     return success_response({"items": items, "total": len(items)})

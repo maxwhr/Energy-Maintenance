@@ -1,13 +1,14 @@
 from datetime import datetime, timezone
 from time import perf_counter
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.exceptions import BusinessException
 from app.core.retrieval_lab_config import get_retrieval_lab_settings
 from app.core.security_config import collect_security_status
 from app.models import (
@@ -185,7 +186,11 @@ def get_retrieval_performance_summary(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="admin role required")
+        raise BusinessException(
+            "Admin role required",
+            40303,
+            http_status=403,
+        )
     rows = RagPerformanceTraceService.recent()[-50:]
     totals = sorted(float(row.get("total_ms") or 0.0) for row in rows)
     p50 = totals[(len(totals) - 1) // 2] if totals else 0.0

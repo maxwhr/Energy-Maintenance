@@ -1,9 +1,8 @@
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from app.api.routes.agents import router as agents_router
 from app.api.routes.auth import router as auth_router
@@ -29,6 +28,13 @@ from app.api.routes.system import router as system_router
 from app.api.routes.users import router as users_router
 from app.api.routes.vector_search import router as vector_search_router
 from app.core.config import get_settings
+from app.core.exceptions import (
+    BusinessException,
+    business_exception_handler,
+    http_exception_handler,
+    unhandled_exception_handler,
+    validation_exception_handler,
+)
 from app.core.retrieval_lab_config import get_retrieval_lab_settings
 from app.core.security_config import enforce_startup_security
 from app.core.security_middleware import InMemoryRateLimitMiddleware, RequestSizeLimitMiddleware
@@ -104,31 +110,10 @@ api_router = create_api_router(
 
 app.include_router(api_router)
 
-
-@app.exception_handler(HTTPException)
-async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
-    if isinstance(exc.detail, dict) and {"code", "message", "data"}.issubset(exc.detail):
-        return JSONResponse(status_code=exc.status_code, content=exc.detail)
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "code": exc.status_code,
-            "message": str(exc.detail),
-            "data": None,
-        },
-    )
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
-    return JSONResponse(
-        status_code=422,
-        content={
-            "code": 422,
-            "message": "Request validation failed",
-            "data": exc.errors(),
-        },
-    )
+app.add_exception_handler(BusinessException, business_exception_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
 
 
 register_static_frontend(app)

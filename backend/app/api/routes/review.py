@@ -6,9 +6,10 @@ from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.review import (
     KnowledgeReviewActionRequest,
     VendorOfficialBatchApproveRequest,
@@ -49,7 +50,7 @@ def list_knowledge_for_review(
             page_size=page_size,
         )
     except ReviewServiceError as exc:
-        return error_response(str(exc), 40090)
+        raise BusinessException.from_service_error(exc, 40090) from exc
     return success_response(data)
 
 
@@ -65,9 +66,9 @@ def flag_vendor_official_document(
             document_id, action=payload.action, comment=payload.comment, reviewer=current_user
         )
     except ReviewPermissionError as exc:
-        return error_response(str(exc), 40395)
+        raise BusinessException.from_service_error(exc, 40395) from exc
     except ReviewServiceError as exc:
-        return error_response(str(exc), 40095)
+        raise BusinessException.from_service_error(exc, 40095) from exc
     return success_response(data)
 
 
@@ -80,7 +81,7 @@ def get_knowledge_review_detail(
     try:
         data = ReviewService(db).get_knowledge_detail(document_id)
     except ReviewServiceError as exc:
-        return error_response(str(exc), 40490)
+        raise BusinessException.from_service_error(exc, 40490) from exc
     return success_response(data)
 
 
@@ -99,9 +100,9 @@ def withdraw_vendor_official_approval(
             reviewer=current_user,
         )
     except ReviewPermissionError as exc:
-        return error_response(str(exc), 40396)
+        raise BusinessException.from_service_error(exc, 40396) from exc
     except ReviewServiceError as exc:
-        return error_response(str(exc), 40096)
+        raise BusinessException.from_service_error(exc, 40096) from exc
     return success_response(data)
 
 
@@ -115,9 +116,9 @@ def approve_knowledge_document(
     try:
         data = ReviewService(db).approve_document(document_id, comment=payload.comment, reviewer=current_user)
     except ReviewPermissionError as exc:
-        return error_response(str(exc), 40390)
+        raise BusinessException.from_service_error(exc, 40390) from exc
     except ReviewServiceError as exc:
-        return error_response(str(exc), 40091)
+        raise BusinessException.from_service_error(exc, 40091) from exc
     return success_response(data)
 
 
@@ -132,9 +133,9 @@ def batch_approve_vendor_official_for_pilot(
             payload.document_ids, comment=payload.comment, reviewer=current_user
         )
     except ReviewPermissionError as exc:
-        return error_response(str(exc), 40393)
+        raise BusinessException.from_service_error(exc, 40393) from exc
     except ReviewServiceError as exc:
-        return error_response(str(exc), 40094)
+        raise BusinessException.from_service_error(exc, 40094) from exc
     return success_response(data)
 
 
@@ -148,9 +149,9 @@ def reject_knowledge_document(
     try:
         data = ReviewService(db).reject_document(document_id, comment=payload.comment, reviewer=current_user)
     except ReviewPermissionError as exc:
-        return error_response(str(exc), 40391)
+        raise BusinessException.from_service_error(exc, 40391) from exc
     except ReviewServiceError as exc:
-        return error_response(str(exc), 40092)
+        raise BusinessException.from_service_error(exc, 40092) from exc
     return success_response(data)
 
 
@@ -168,7 +169,7 @@ def archive_knowledge_document(
             reviewer=current_user,
         )
     except ReviewPermissionError as exc:
-        return error_response(str(exc), 40392)
+        raise BusinessException.from_service_error(exc, 40392) from exc
     except ReviewServiceError as exc:
-        return error_response(str(exc), 40093)
+        raise BusinessException.from_service_error(exc, 40093) from exc
     return success_response(data)

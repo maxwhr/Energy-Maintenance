@@ -7,9 +7,10 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.media import MediaUploadResponse
 from app.services.media_service import MediaService, MediaServiceError
 from app.services.ocr_service import OCRService, OCRServiceError
@@ -22,7 +23,7 @@ def _multimodal_matches(media_id: UUID, field: str, db: Session) -> dict:
     try:
         result = MultimodalRetrievalService(db).retrieve(media_id)
     except MultimodalRetrievalServiceError as exc:
-        return error_response(str(exc), 40035)
+        raise BusinessException.from_service_error(exc, 40035) from exc
     return success_response({
         "media_id": str(media_id),
         "capability_label": result.capability_label,
@@ -58,7 +59,7 @@ def get_media_case_matches(
     return _multimodal_matches(media_id, "case_matches", db)
 
 
-@router.post("/upload")
+@router.post("/upload", status_code=201)
 async def upload_media(
     file: UploadFile = File(...),
     media_type: str = Form("fault_image"),
@@ -88,7 +89,7 @@ async def upload_media(
             current_user=current_user,
         )
     except MediaServiceError as exc:
-        return error_response(str(exc), 40030)
+        raise BusinessException.from_service_error(exc, 40030) from exc
 
     media = result["media"]
     ocr = result["ocr"]
@@ -154,7 +155,7 @@ def list_media(
             page_size=page_size,
         )
     except MediaServiceError as exc:
-        return error_response(str(exc), 40031)
+        raise BusinessException.from_service_error(exc, 40031) from exc
     return success_response(
         {
             "items": [MediaService(db).media_payload(media) for media in result["items"]],
@@ -174,7 +175,7 @@ def recognize_media_ocr(
     try:
         result = OCRService(db).recognize_media(media_id)
     except OCRServiceError as exc:
-        return error_response(str(exc), 40032)
+        raise BusinessException.from_service_error(exc, 40032) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -187,7 +188,7 @@ def get_media_ocr(
     try:
         result = OCRService(db).get_media_ocr(media_id)
     except OCRServiceError as exc:
-        return error_response(str(exc), 40432)
+        raise BusinessException.from_service_error(exc, 40432) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -200,11 +201,11 @@ def get_media_content(
     service = MediaService(db)
     media = service.get_media(media_id)
     if not media:
-        return error_response("Media item not found", 40430)
+        raise BusinessException('Media item not found', 40430, http_status=404)
     try:
         path = service.resolve_file_path(media)
     except MediaServiceError as exc:
-        return error_response(str(exc), 40431)
+        raise BusinessException.from_service_error(exc, 40431) from exc
     return FileResponse(
         path,
         media_type=media.mime_type or "application/octet-stream",
@@ -222,5 +223,5 @@ def get_media(
     service = MediaService(db)
     media = service.get_media(media_id)
     if not media:
-        return error_response("Media item not found", 40430)
+        raise BusinessException('Media item not found', 40430, http_status=404)
     return success_response(service.media_payload(media))

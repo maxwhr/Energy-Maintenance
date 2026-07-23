@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.multimodal_evidence import (
     MediaAIAnalysisReview,
     MediaEvidenceLinkCreate,
@@ -34,7 +35,7 @@ def retrieve_multimodal_matches(
     try:
         result = MultimodalRetrievalService(db).retrieve(payload.media_id, top_k=payload.top_k)
     except MultimodalRetrievalServiceError as exc:
-        return error_response(str(exc), 400120)
+        raise BusinessException.from_service_error(exc, 400120) from exc
     data = result.model_dump(mode="json")
     if not payload.include_manuals:
         data["manual_matches"] = []
@@ -64,11 +65,11 @@ def list_media_jobs(
             page_size=page_size,
         )
     except MultimodalEvidenceServiceError as exc:
-        return error_response(str(exc), 400110)
+        raise BusinessException.from_service_error(exc, 400110) from exc
     return success_response(result)
 
 
-@router.post("/media/{media_id}/jobs")
+@router.post("/media/{media_id}/jobs", status_code=201)
 def create_media_job(
     media_id: UUID,
     payload: MediaProcessingJobCreate,
@@ -76,11 +77,11 @@ def create_media_job(
     current_user: User = Depends(require_roles("admin", "expert", "engineer")),
 ) -> dict:
     if payload.mock_run and current_user.role not in {"admin", "expert"}:
-        return error_response("Permission denied for mock_run", 403119)
+        raise BusinessException('Permission denied for mock_run', 403119, http_status=403)
     try:
         result = MultimodalEvidenceService(db).create_processing_job(media_id, payload, current_user)
     except MultimodalEvidenceServiceError as exc:
-        return error_response(str(exc), 400111)
+        raise BusinessException.from_service_error(exc, 400111) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -92,7 +93,7 @@ def get_media_job(
 ) -> dict:
     result = MultimodalEvidenceService(db).get_job(job_id)
     if not result:
-        return error_response("Media processing job not found", 404110)
+        raise BusinessException('Media processing job not found', 404110, http_status=404)
     return success_response(result.model_dump(mode="json"))
 
 
@@ -105,7 +106,7 @@ def cancel_media_job(
     try:
         result = MultimodalEvidenceService(db).cancel_job(job_id, current_user)
     except MultimodalEvidenceServiceError as exc:
-        return error_response(str(exc), 400112)
+        raise BusinessException.from_service_error(exc, 400112) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -126,7 +127,7 @@ def list_media_ocr_results(
             page_size=page_size,
         )
     except MultimodalEvidenceServiceError as exc:
-        return error_response(str(exc), 400113)
+        raise BusinessException.from_service_error(exc, 400113) from exc
     return success_response(result)
 
 
@@ -138,7 +139,7 @@ def get_ocr_result(
 ) -> dict:
     result = MultimodalEvidenceService(db).get_ocr_result(result_id)
     if not result:
-        return error_response("OCR result not found", 404111)
+        raise BusinessException('OCR result not found', 404111, http_status=404)
     return success_response(result.model_dump(mode="json"))
 
 
@@ -161,7 +162,7 @@ def list_media_analyses(
             page_size=page_size,
         )
     except MultimodalEvidenceServiceError as exc:
-        return error_response(str(exc), 400114)
+        raise BusinessException.from_service_error(exc, 400114) from exc
     return success_response(result)
 
 
@@ -173,7 +174,7 @@ def get_analysis(
 ) -> dict:
     result = MultimodalEvidenceService(db).get_ai_analysis(analysis_id)
     if not result:
-        return error_response("AI analysis not found", 404112)
+        raise BusinessException('AI analysis not found', 404112, http_status=404)
     return success_response(result.model_dump(mode="json"))
 
 
@@ -187,7 +188,7 @@ def review_analysis(
     try:
         result = MultimodalEvidenceService(db).review_ai_analysis(analysis_id, payload, current_user)
     except MultimodalEvidenceServiceError as exc:
-        return error_response(str(exc), 400115)
+        raise BusinessException.from_service_error(exc, 400115) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -210,11 +211,11 @@ def list_evidence_links(
             page_size=page_size,
         )
     except MultimodalEvidenceServiceError as exc:
-        return error_response(str(exc), 400116)
+        raise BusinessException.from_service_error(exc, 400116) from exc
     return success_response(result)
 
 
-@router.post("/evidence-links")
+@router.post("/evidence-links", status_code=201)
 def create_evidence_link(
     payload: MediaEvidenceLinkCreate,
     db: Session = Depends(get_db),
@@ -223,7 +224,7 @@ def create_evidence_link(
     try:
         result = MultimodalEvidenceService(db).create_evidence_link(payload, current_user)
     except MultimodalEvidenceServiceError as exc:
-        return error_response(str(exc), 400117)
+        raise BusinessException.from_service_error(exc, 400117) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -236,5 +237,5 @@ def get_media_multimodal_summary(
     try:
         result = MultimodalEvidenceService(db).get_media_multimodal_summary(media_id)
     except MultimodalEvidenceServiceError as exc:
-        return error_response(str(exc), 400118)
+        raise BusinessException.from_service_error(exc, 400118) from exc
     return success_response(result.model_dump(mode="json"))

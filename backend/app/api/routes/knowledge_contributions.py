@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.review import (
     KnowledgeContributionActionRequest,
     KnowledgeContributionCreate,
@@ -51,11 +52,11 @@ def list_contributions(
             page_size=page_size,
         )
     except KnowledgeContributionServiceError as exc:
-        return error_response(str(exc), 40095)
+        raise BusinessException.from_service_error(exc, 40095) from exc
     return success_response(data)
 
 
-@router.post("")
+@router.post("", status_code=201)
 def create_contribution(
     payload: KnowledgeContributionCreate,
     db: Session = Depends(get_db),
@@ -64,9 +65,9 @@ def create_contribution(
     try:
         data = KnowledgeContributionService(db).create_contribution(payload, current_user=current_user)
     except KnowledgeContributionPermissionError as exc:
-        return error_response(str(exc), 40395)
+        raise BusinessException.from_service_error(exc, 40395) from exc
     except KnowledgeContributionServiceError as exc:
-        return error_response(str(exc), 40096)
+        raise BusinessException.from_service_error(exc, 40096) from exc
     return success_response(data)
 
 
@@ -79,9 +80,9 @@ def get_contribution(
     try:
         data = KnowledgeContributionService(db).get_contribution(contribution_id, current_user=current_user)
     except KnowledgeContributionPermissionError as exc:
-        return error_response(str(exc), 40396)
+        raise BusinessException.from_service_error(exc, 40396) from exc
     except KnowledgeContributionServiceError as exc:
-        return error_response(str(exc), 40496)
+        raise BusinessException.from_service_error(exc, 40496) from exc
     return success_response(data)
 
 
@@ -99,9 +100,9 @@ def update_contribution(
             current_user=current_user,
         )
     except KnowledgeContributionPermissionError as exc:
-        return error_response(str(exc), 40397)
+        raise BusinessException.from_service_error(exc, 40397) from exc
     except KnowledgeContributionServiceError as exc:
-        return error_response(str(exc), 40097)
+        raise BusinessException.from_service_error(exc, 40097) from exc
     return success_response(data)
 
 
@@ -114,9 +115,9 @@ def submit_contribution(
     try:
         data = KnowledgeContributionService(db).submit_contribution(contribution_id, current_user=current_user)
     except KnowledgeContributionPermissionError as exc:
-        return error_response(str(exc), 40398)
+        raise BusinessException.from_service_error(exc, 40398) from exc
     except KnowledgeContributionServiceError as exc:
-        return error_response(str(exc), 40098)
+        raise BusinessException.from_service_error(exc, 40098) from exc
     return success_response(data)
 
 
@@ -134,9 +135,9 @@ def request_changes(
             comment=payload.comment,
         )
     except KnowledgeContributionPermissionError as exc:
-        return error_response(str(exc), 40399)
+        raise BusinessException.from_service_error(exc, 40399) from exc
     except KnowledgeContributionServiceError as exc:
-        return error_response(str(exc), 40099)
+        raise BusinessException.from_service_error(exc, 40099) from exc
     return success_response(data)
 
 
@@ -154,9 +155,9 @@ def approve_contribution(
             comment=payload.comment,
         )
     except KnowledgeContributionPermissionError as exc:
-        return error_response(str(exc), 403100)
+        raise BusinessException.from_service_error(exc, 403100) from exc
     except KnowledgeContributionServiceError as exc:
-        return error_response(str(exc), 400100)
+        raise BusinessException.from_service_error(exc, 400100) from exc
     return success_response(data)
 
 
@@ -174,9 +175,9 @@ def reject_contribution(
             comment=payload.comment,
         )
     except KnowledgeContributionPermissionError as exc:
-        return error_response(str(exc), 403101)
+        raise BusinessException.from_service_error(exc, 403101) from exc
     except KnowledgeContributionServiceError as exc:
-        return error_response(str(exc), 400101)
+        raise BusinessException.from_service_error(exc, 400101) from exc
     return success_response(data)
 
 
@@ -194,9 +195,9 @@ def convert_contribution(
             comment=payload.comment,
         )
     except KnowledgeContributionPermissionError as exc:
-        return error_response(str(exc), 403102)
+        raise BusinessException.from_service_error(exc, 403102) from exc
     except KnowledgeContributionServiceError as exc:
-        return error_response(str(exc), 400102)
+        raise BusinessException.from_service_error(exc, 400102) from exc
     return success_response(data)
 
 
@@ -214,7 +215,7 @@ def archive_contribution(
             comment=payload.comment,
         )
     except KnowledgeContributionPermissionError as exc:
-        return error_response(str(exc), 403103)
+        raise BusinessException.from_service_error(exc, 403103) from exc
     except KnowledgeContributionServiceError as exc:
-        return error_response(str(exc), 400103)
+        raise BusinessException.from_service_error(exc, 400103) from exc
     return success_response(data)

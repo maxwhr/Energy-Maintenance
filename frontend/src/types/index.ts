@@ -2,9 +2,8 @@ export type UserRole = 'admin' | 'expert' | 'engineer' | 'viewer'
 
 export interface ApiResponse<T = unknown> {
   code: number
-  message?: string
-  msg?: string
-  data: T
+  message: string
+  data: T | null
 }
 
 export * from './externalApi'

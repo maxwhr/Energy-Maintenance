@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.vector_index import (
     IndexRequest, OrphanReconcileRequest, ReindexApprovedRequest, ReindexStaleRequest,
     VectorIndexRunRead, VectorTestQueryRequest,
@@ -59,7 +60,7 @@ def reconcile_vector_orphans(
     try:
         result = VectorIndexService(db).reindex_stale(current_user=current_user, limit=payload.limit)
     except VectorIndexServiceError as exc:
-        return error_response(str(exc), 40084)
+        raise BusinessException.from_service_error(exc, 40084) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -73,7 +74,7 @@ def reindex_approved(
             current_user=current_user, dry_run=payload.dry_run, test_only=payload.test_only, limit=payload.limit,
         )
     except VectorIndexServiceError as exc:
-        return error_response(str(exc), 40085)
+        raise BusinessException.from_service_error(exc, 40085) from exc
     return success_response(result)
 
 
@@ -103,7 +104,7 @@ def get_vector_index_run(
 ) -> dict:
     run = VectorIndexService(db).get_run(run_id)
     if not run:
-        return error_response("Vector index run not found", 40480)
+        raise BusinessException('Vector index run not found', 40480, http_status=404)
     return success_response(VectorIndexRunRead.model_validate(run).model_dump(mode="json"))
 
 
@@ -142,7 +143,7 @@ def index_document(
             force=payload.force,
         )
     except VectorIndexServiceError as exc:
-        return error_response(str(exc), 40080)
+        raise BusinessException.from_service_error(exc, 40080) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -160,7 +161,7 @@ def reindex_document(
             vector_backend=payload.vector_backend, force=True,
         )
     except VectorIndexServiceError as exc:
-        return error_response(str(exc), 40086)
+        raise BusinessException.from_service_error(exc, 40086) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -181,7 +182,7 @@ def index_chunk(
             force=payload.force,
         )
     except VectorIndexServiceError as exc:
-        return error_response(str(exc), 40081)
+        raise BusinessException.from_service_error(exc, 40081) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -199,7 +200,7 @@ def reindex_stale(
             limit=payload.limit,
         )
     except VectorIndexServiceError as exc:
-        return error_response(str(exc), 40082)
+        raise BusinessException.from_service_error(exc, 40082) from exc
     return success_response(result.model_dump(mode="json"))
 
 

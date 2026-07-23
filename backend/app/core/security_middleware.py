@@ -34,7 +34,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=413,
                 content={
-                    "code": 413,
+                    "code": 41300,
                     "message": "Request body is too large",
                     "data": None,
                 },
@@ -70,7 +70,7 @@ class InMemoryRateLimitMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=429,
                 content={
-                    "code": 429,
+                    "code": 42900,
                     "message": "Too many requests",
                     "data": None,
                 },

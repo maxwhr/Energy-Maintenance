@@ -3,11 +3,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.security import TokenError, TokenExpiredError, decode_access_token
 from app.models.system import User
 from app.repositories.user_repository import UserRepository
@@ -16,14 +17,15 @@ from app.repositories.user_repository import UserRepository
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def api_exception(status_code: int, code: int, message: str) -> HTTPException:
-    return HTTPException(
-        status_code=status_code,
-        detail={
-            "code": code,
-            "message": message,
-            "data": None,
-        },
+def api_exception(
+    status_code: int,
+    code: int,
+    message: str,
+) -> BusinessException:
+    return BusinessException(
+        message=message,
+        business_code=code,
+        http_status=status_code,
     )
 
 

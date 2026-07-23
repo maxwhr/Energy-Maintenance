@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.maintenance_task import (
     MaintenanceTaskAssignRequest,
     MaintenanceTaskCancelRequest,
@@ -54,7 +55,7 @@ def list_maintenance_tasks(
             current_user=current_user,
         )
     except MaintenanceTaskServiceError as exc:
-        return error_response(str(exc), 40100)
+        raise BusinessException.from_service_error(exc, 40100, default_status=400) from exc
     return success_response(result)
 
 
@@ -74,7 +75,7 @@ def list_assignable_users(
     try:
         result = MaintenanceTaskService(db).list_assignable_users(current_user)
     except MaintenanceTaskServiceError as exc:
-        return error_response(str(exc), 40107)
+        raise BusinessException.from_service_error(exc, 40107, default_status=400) from exc
     return success_response(result)
 
 
@@ -87,13 +88,13 @@ def get_maintenance_task_detail(
     try:
         result = MaintenanceTaskService(db).get_detail(task_id, current_user)
     except MaintenanceTaskServiceError as exc:
-        return error_response(str(exc), 40310)
+        raise BusinessException.from_service_error(exc, 40310) from exc
     if not result:
-        return error_response("Maintenance task not found", 40410)
+        raise BusinessException('Maintenance task not found', 40410, http_status=404)
     return success_response(result)
 
 
-@router.post("")
+@router.post("", status_code=201)
 def create_maintenance_task(
     payload: MaintenanceTaskCreateRequest,
     db: Session = Depends(get_db),
@@ -102,7 +103,7 @@ def create_maintenance_task(
     try:
         result = MaintenanceTaskService(db).create_task(payload, current_user)
     except MaintenanceTaskServiceError as exc:
-        return error_response(str(exc), 40101)
+        raise BusinessException.from_service_error(exc, 40101, default_status=400) from exc
     return success_response(result)
 
 
@@ -116,7 +117,7 @@ def update_maintenance_task(
     try:
         result = MaintenanceTaskService(db).update_task(task_id, payload, current_user)
     except MaintenanceTaskServiceError as exc:
-        return error_response(str(exc), 40102)
+        raise BusinessException.from_service_error(exc, 40102, default_status=400) from exc
     return success_response(result)
 
 
@@ -130,7 +131,7 @@ def assign_maintenance_task(
     try:
         result = MaintenanceTaskService(db).assign_task(task_id, payload, current_user)
     except MaintenanceTaskServiceError as exc:
-        return error_response(str(exc), 40103)
+        raise BusinessException.from_service_error(exc, 40103, default_status=400) from exc
     return success_response(result)
 
 
@@ -143,7 +144,7 @@ def start_maintenance_task(
     try:
         result = MaintenanceTaskService(db).start_task(task_id, current_user)
     except MaintenanceTaskServiceError as exc:
-        return error_response(str(exc), 40104)
+        raise BusinessException.from_service_error(exc, 40104, default_status=400) from exc
     return success_response(result)
 
 
@@ -157,7 +158,7 @@ def complete_maintenance_task(
     try:
         result = MaintenanceTaskService(db).complete_task(task_id, payload, current_user)
     except MaintenanceTaskServiceError as exc:
-        return error_response(str(exc), 40105)
+        raise BusinessException.from_service_error(exc, 40105, default_status=400) from exc
     return success_response(result)
 
 
@@ -171,5 +172,5 @@ def cancel_maintenance_task(
     try:
         result = MaintenanceTaskService(db).cancel_task(task_id, payload, current_user)
     except MaintenanceTaskServiceError as exc:
-        return error_response(str(exc), 40106)
+        raise BusinessException.from_service_error(exc, 40106, default_status=400) from exc
     return success_response(result)

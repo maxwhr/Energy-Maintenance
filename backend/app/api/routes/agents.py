@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
 from app.schemas.agent import (
@@ -15,7 +16,7 @@ from app.schemas.agent import (
     AgentRunCreateRequest,
     AgentToolExecuteRequest,
 )
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.services.agent_approval_service import (
     AgentApprovalPermissionError,
     AgentApprovalService,
@@ -55,7 +56,7 @@ def get_agent_definition(
 ) -> dict:
     item = AgentToolRegistryService(db).get_definition(agent_code)
     if not item:
-        return error_response("Agent definition not found", 40480)
+        raise BusinessException('Agent definition not found', 40480, http_status=404)
     return success_response(item.model_dump(mode="json"))
 
 
@@ -89,11 +90,11 @@ def list_agent_runs(
             page_size=page_size,
         )
     except AgentRuntimeServiceError as exc:
-        return error_response(str(exc), 40080)
+        raise BusinessException.from_service_error(exc, 40080) from exc
     return success_response(result)
 
 
-@router.post("/runs")
+@router.post("/runs", status_code=201)
 def create_agent_run(
     payload: AgentRunCreateRequest,
     db: Session = Depends(get_db),
@@ -102,9 +103,9 @@ def create_agent_run(
     try:
         result = AgentRuntimeService(db).create_run(payload, current_user=current_user)
     except AgentRuntimePermissionError as exc:
-        return error_response(str(exc), 40380)
+        raise BusinessException.from_service_error(exc, 40380) from exc
     except AgentRuntimeServiceError as exc:
-        return error_response(str(exc), 40081)
+        raise BusinessException.from_service_error(exc, 40081) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -117,9 +118,9 @@ def get_agent_run(
     try:
         result = AgentRuntimeService(db).get_run_detail(run_id, current_user=current_user)
     except AgentRuntimePermissionError as exc:
-        return error_response(str(exc), 40381)
+        raise BusinessException.from_service_error(exc, 40381) from exc
     except AgentRuntimeServiceError as exc:
-        return error_response(str(exc), 40481)
+        raise BusinessException.from_service_error(exc, 40481) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -132,9 +133,9 @@ def get_agent_run_timeline(
     try:
         result = AgentRuntimeService(db).get_run_timeline(run_id, current_user=current_user)
     except AgentRuntimePermissionError as exc:
-        return error_response(str(exc), 40391)
+        raise BusinessException.from_service_error(exc, 40391) from exc
     except AgentRuntimeServiceError as exc:
-        return error_response(str(exc), 40491)
+        raise BusinessException.from_service_error(exc, 40491) from exc
     return success_response(result)
 
 
@@ -147,9 +148,9 @@ def cancel_agent_run(
     try:
         result = AgentRuntimeService(db).cancel_run(run_id, current_user=current_user)
     except AgentRuntimePermissionError as exc:
-        return error_response(str(exc), 40382)
+        raise BusinessException.from_service_error(exc, 40382) from exc
     except AgentRuntimeServiceError as exc:
-        return error_response(str(exc), 40082)
+        raise BusinessException.from_service_error(exc, 40082) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -163,9 +164,9 @@ def execute_agent_run_tool(
     try:
         result = AgentRuntimeService(db).execute_tool_for_run(run_id, payload, current_user=current_user)
     except AgentRuntimePermissionError as exc:
-        return error_response(str(exc), 40390)
+        raise BusinessException.from_service_error(exc, 40390) from exc
     except AgentRuntimeServiceError as exc:
-        return error_response(str(exc), 40090)
+        raise BusinessException.from_service_error(exc, 40090) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -178,9 +179,9 @@ def list_agent_run_steps(
     try:
         result = AgentRuntimeService(db).list_steps(run_id, current_user=current_user)
     except AgentRuntimePermissionError as exc:
-        return error_response(str(exc), 40383)
+        raise BusinessException.from_service_error(exc, 40383) from exc
     except AgentRuntimeServiceError as exc:
-        return error_response(str(exc), 40483)
+        raise BusinessException.from_service_error(exc, 40483) from exc
     return success_response([item.model_dump(mode="json") for item in result])
 
 
@@ -193,9 +194,9 @@ def list_agent_run_tool_calls(
     try:
         result = AgentRuntimeService(db).list_tool_calls(run_id, current_user=current_user)
     except AgentRuntimePermissionError as exc:
-        return error_response(str(exc), 40384)
+        raise BusinessException.from_service_error(exc, 40384) from exc
     except AgentRuntimeServiceError as exc:
-        return error_response(str(exc), 40484)
+        raise BusinessException.from_service_error(exc, 40484) from exc
     return success_response([item.model_dump(mode="json") for item in result])
 
 
@@ -208,9 +209,9 @@ def list_agent_run_approvals(
     try:
         result = AgentRuntimeService(db).list_approvals(run_id, current_user=current_user)
     except AgentRuntimePermissionError as exc:
-        return error_response(str(exc), 40385)
+        raise BusinessException.from_service_error(exc, 40385) from exc
     except AgentRuntimeServiceError as exc:
-        return error_response(str(exc), 40485)
+        raise BusinessException.from_service_error(exc, 40485) from exc
     return success_response([item.model_dump(mode="json") for item in result])
 
 
@@ -228,9 +229,9 @@ def approve_agent_approval(
             comment=payload.review_comment if payload else None,
         )
     except AgentApprovalPermissionError as exc:
-        return error_response(str(exc), 40386)
+        raise BusinessException.from_service_error(exc, 40386) from exc
     except AgentApprovalServiceError as exc:
-        return error_response(str(exc), 40086)
+        raise BusinessException.from_service_error(exc, 40086) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -248,9 +249,9 @@ def reject_agent_approval(
             comment=payload.review_comment if payload else None,
         )
     except AgentApprovalPermissionError as exc:
-        return error_response(str(exc), 40387)
+        raise BusinessException.from_service_error(exc, 40387) from exc
     except AgentApprovalServiceError as exc:
-        return error_response(str(exc), 40087)
+        raise BusinessException.from_service_error(exc, 40087) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -263,9 +264,9 @@ def list_agent_run_artifacts(
     try:
         result = AgentRuntimeService(db).list_artifacts(run_id, current_user=current_user)
     except AgentRuntimePermissionError as exc:
-        return error_response(str(exc), 40388)
+        raise BusinessException.from_service_error(exc, 40388) from exc
     except AgentRuntimeServiceError as exc:
-        return error_response(str(exc), 40488)
+        raise BusinessException.from_service_error(exc, 40488) from exc
     return success_response([item.model_dump(mode="json") for item in result])
 
 
@@ -287,7 +288,7 @@ def list_agent_events(
             page_size=page_size,
         )
     except AgentRuntimeServiceError as exc:
-        return error_response(str(exc), 40089)
+        raise BusinessException.from_service_error(exc, 40089) from exc
     return success_response(result)
 
 
@@ -303,9 +304,9 @@ def get_agent_artifact_conversion_status(
             current_user=current_user,
         )
     except AgentArtifactConversionPermissionError as exc:
-        return error_response(str(exc), 40392)
+        raise BusinessException.from_service_error(exc, 40392) from exc
     except AgentArtifactConversionServiceError as exc:
-        return error_response(str(exc), 40092)
+        raise BusinessException.from_service_error(exc, 40092) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -323,9 +324,9 @@ def convert_agent_artifact(
             current_user=current_user,
         )
     except AgentArtifactConversionPermissionError as exc:
-        return error_response(str(exc), 40393)
+        raise BusinessException.from_service_error(exc, 40393) from exc
     except AgentArtifactConversionServiceError as exc:
-        return error_response(str(exc), 40093)
+        raise BusinessException.from_service_error(exc, 40093) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -345,7 +346,7 @@ def list_agent_artifact_conversions(
             page_size=page_size,
         )
     except AgentArtifactConversionServiceError as exc:
-        return error_response(str(exc), 40094)
+        raise BusinessException.from_service_error(exc, 40094) from exc
     return success_response(result)
 
 
@@ -361,9 +362,9 @@ def list_agent_run_conversions(
             current_user=current_user,
         )
     except AgentArtifactConversionPermissionError as exc:
-        return error_response(str(exc), 40396)
+        raise BusinessException.from_service_error(exc, 40396) from exc
     except AgentArtifactConversionServiceError as exc:
-        return error_response(str(exc), 40496)
+        raise BusinessException.from_service_error(exc, 40496) from exc
     return success_response([item.model_dump(mode="json") for item in result])
 
 
@@ -379,9 +380,9 @@ def list_agent_artifact_conversion_history(
             current_user=current_user,
         )
     except AgentArtifactConversionPermissionError as exc:
-        return error_response(str(exc), 40397)
+        raise BusinessException.from_service_error(exc, 40397) from exc
     except AgentArtifactConversionServiceError as exc:
-        return error_response(str(exc), 40497)
+        raise BusinessException.from_service_error(exc, 40497) from exc
     return success_response([item.model_dump(mode="json") for item in result])
 
 
@@ -397,9 +398,9 @@ def get_agent_artifact_conversion_detail(
             current_user=current_user,
         )
     except AgentArtifactConversionPermissionError as exc:
-        return error_response(str(exc), 40398)
+        raise BusinessException.from_service_error(exc, 40398) from exc
     except AgentArtifactConversionServiceError as exc:
-        return error_response(str(exc), 40498)
+        raise BusinessException.from_service_error(exc, 40498) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -417,9 +418,9 @@ def void_agent_artifact_conversion(
             reason=payload.reason if payload else None,
         )
     except AgentArtifactConversionPermissionError as exc:
-        return error_response(str(exc), 40399)
+        raise BusinessException.from_service_error(exc, 40399) from exc
     except AgentArtifactConversionServiceError as exc:
-        return error_response(str(exc), 40099)
+        raise BusinessException.from_service_error(exc, 40099) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -435,7 +436,7 @@ def get_agent_artifact_conversion(
             current_user=current_user,
         )
     except AgentArtifactConversionPermissionError as exc:
-        return error_response(str(exc), 40395)
+        raise BusinessException.from_service_error(exc, 40395) from exc
     except AgentArtifactConversionServiceError as exc:
-        return error_response(str(exc), 40495)
+        raise BusinessException.from_service_error(exc, 40495) from exc
     return success_response(result.model_dump(mode="json"))

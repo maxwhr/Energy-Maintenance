@@ -6,16 +6,17 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.correction import CorrectionCreateRequest, CorrectionResolveRequest
 from app.services.correction_service import CorrectionPermissionError, CorrectionService, CorrectionServiceError
 
 router = APIRouter(prefix="/corrections", tags=["corrections"])
 
 
-@router.post("")
+@router.post("", status_code=201)
 def create_correction(
     payload: CorrectionCreateRequest,
     db: Session = Depends(get_db),
@@ -24,9 +25,9 @@ def create_correction(
     try:
         data = CorrectionService(db).create_correction(payload, current_user=current_user)
     except CorrectionPermissionError as exc:
-        return error_response(str(exc), 40380)
+        raise BusinessException.from_service_error(exc, 40380) from exc
     except CorrectionServiceError as exc:
-        return error_response(str(exc), 40080)
+        raise BusinessException.from_service_error(exc, 40080) from exc
     return success_response(data)
 
 
@@ -50,7 +51,7 @@ def list_corrections(
             page_size=page_size,
         )
     except CorrectionServiceError as exc:
-        return error_response(str(exc), 40081)
+        raise BusinessException.from_service_error(exc, 40081) from exc
     return success_response(data)
 
 
@@ -63,7 +64,7 @@ def get_correction_detail(
     try:
         data = CorrectionService(db).get_correction(correction_id, current_user=current_user)
     except CorrectionServiceError as exc:
-        return error_response(str(exc), 40480)
+        raise BusinessException.from_service_error(exc, 40480) from exc
     return success_response(data)
 
 
@@ -81,7 +82,7 @@ def resolve_correction(
             current_user=current_user,
         )
     except CorrectionPermissionError as exc:
-        return error_response(str(exc), 40381)
+        raise BusinessException.from_service_error(exc, 40381) from exc
     except CorrectionServiceError as exc:
-        return error_response(str(exc), 40082)
+        raise BusinessException.from_service_error(exc, 40082) from exc
     return success_response(data)

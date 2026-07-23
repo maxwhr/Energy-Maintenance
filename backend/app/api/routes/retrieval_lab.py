@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.retrieval_evaluation import (
     RetrievalEvaluationCaseCreate,
     RetrievalEvaluationRequest,
@@ -85,7 +86,7 @@ def evaluate_retrieval(
     try:
         result = RetrievalEvaluationService(db).evaluate(payload, current_user)
     except RetrievalEvaluationServiceError as exc:
-        return error_response(str(exc), 40075)
+        raise BusinessException.from_service_error(exc, 40075) from exc
     return success_response(result)
 
 
@@ -111,11 +112,13 @@ def get_evaluation_run(
     _: User = Depends(get_current_user),
 ) -> dict:
     result = RetrievalEvaluationService(db).get_run(run_id)
-    return (
-        success_response(result)
-        if result
-        else error_response("Evaluation run not found", 40475)
-    )
+    if not result:
+        raise BusinessException(
+            "Evaluation run not found",
+            40475,
+            http_status=404,
+        )
+    return success_response(result)
 
 
 @router.get("/retrieval/evaluation-cases")
@@ -135,7 +138,7 @@ def list_evaluation_cases(
     )
 
 
-@router.post("/retrieval/evaluation-cases")
+@router.post("/retrieval/evaluation-cases", status_code=201)
 def create_evaluation_case(
     payload: RetrievalEvaluationCaseCreate,
     db: Session = Depends(get_db),
@@ -147,7 +150,7 @@ def create_evaluation_case(
             current_user,
         )
     except RetrievalEvaluationServiceError as exc:
-        return error_response(str(exc), 40076)
+        raise BusinessException.from_service_error(exc, 40076) from exc
     return success_response(result)
 
 
@@ -246,7 +249,7 @@ def engineering_review_case(
             )
         )
     except RetrievalPilotServiceError as exc:
-        return error_response(str(exc), 40077)
+        raise BusinessException.from_service_error(exc, 40077) from exc
 
 
 @router.post("/retrieval/benchmark/cases/{case_id}/expert-review")
@@ -266,7 +269,7 @@ def expert_review_case(
             )
         )
     except RetrievalPilotServiceError as exc:
-        return error_response(str(exc), 40078)
+        raise BusinessException.from_service_error(exc, 40078) from exc
 
 
 @router.get("/retrieval/benchmark/review-progress")
@@ -291,7 +294,7 @@ def benchmark_freeze(
             )
         )
     except RetrievalPilotServiceError as exc:
-        return error_response(str(exc), 40079)
+        raise BusinessException.from_service_error(exc, 40079) from exc
 
 
 @router.get("/retrieval/benchmark/freezes")
@@ -316,10 +319,10 @@ def benchmark_run_official(
             )
         )
     except RetrievalPilotServiceError as exc:
-        return error_response(str(exc), 40080)
+        raise BusinessException.from_service_error(exc, 40080) from exc
 
 
-@router.post("/retrieval/pilot-sessions")
+@router.post("/retrieval/pilot-sessions", status_code=201)
 def create_pilot_session(
     payload: PilotSessionCreate,
     db: Session = Depends(get_db),
@@ -330,7 +333,7 @@ def create_pilot_session(
             RetrievalPilotService(db).create_session(payload, user)
         )
     except RetrievalPilotServiceError as exc:
-        return error_response(str(exc), 40081)
+        raise BusinessException.from_service_error(exc, 40081) from exc
 
 
 @router.get("/retrieval/pilot-sessions/{session_id}")
@@ -344,7 +347,7 @@ def get_pilot_session(
             RetrievalPilotService(db).get_session(session_id)
         )
     except RetrievalPilotServiceError as exc:
-        return error_response(str(exc), 40481)
+        raise BusinessException.from_service_error(exc, 40481) from exc
 
 
 @router.post("/retrieval/pilot-sessions/{session_id}/activate")
@@ -358,7 +361,7 @@ def activate_pilot_session(
             RetrievalPilotService(db).activate_session(session_id, user)
         )
     except RetrievalPilotServiceError as exc:
-        return error_response(str(exc), 40082)
+        raise BusinessException.from_service_error(exc, 40082) from exc
 
 
 @router.post("/retrieval/pilot-sessions/{session_id}/rollback")
@@ -377,7 +380,7 @@ def rollback_pilot_session(
             )
         )
     except RetrievalPilotServiceError as exc:
-        return error_response(str(exc), 40083)
+        raise BusinessException.from_service_error(exc, 40083) from exc
 
 
 @router.post("/retrieval/pilot-sessions/{session_id}/close")
@@ -391,4 +394,4 @@ def close_pilot_session(
             RetrievalPilotService(db).close_session(session_id, user)
         )
     except RetrievalPilotServiceError as exc:
-        return error_response(str(exc), 40084)
+        raise BusinessException.from_service_error(exc, 40084) from exc

@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.external_api import (
     ExternalApiDryRunRequest,
     ExternalApiMockRunRequest,
@@ -43,7 +44,7 @@ def get_external_api_provider(
 ) -> dict:
     item = ExternalApiGateway(db).get_provider(provider_code)
     if not item:
-        return error_response("External API provider not found", 40495)
+        raise BusinessException('External API provider not found', 40495, http_status=404)
     return success_response(item.model_dump(mode="json"))
 
 
@@ -78,7 +79,7 @@ def check_external_api_provider(
         db.commit()
     except ExternalApiGatewayError as exc:
         db.rollback()
-        return error_response(str(exc), 40095)
+        raise BusinessException.from_service_error(exc, 40095) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -93,7 +94,7 @@ def dry_run_external_api(
         db.commit()
     except ExternalApiGatewayError as exc:
         db.rollback()
-        return error_response(str(exc), 40096)
+        raise BusinessException.from_service_error(exc, 40096) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -108,7 +109,7 @@ def mock_run_external_api(
         db.commit()
     except ExternalApiGatewayError as exc:
         db.rollback()
-        return error_response(str(exc), 40099)
+        raise BusinessException.from_service_error(exc, 40099) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -123,7 +124,7 @@ def real_run_external_api(
         db.commit()
     except ExternalApiGatewayError as exc:
         db.rollback()
-        return error_response(str(exc), 40100)
+        raise BusinessException.from_service_error(exc, 40100, default_status=400) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -143,7 +144,7 @@ def check_real_external_api(
         db.commit()
     except ExternalApiGatewayError as exc:
         db.rollback()
-        return error_response(str(exc), 40101)
+        raise BusinessException.from_service_error(exc, 40101, default_status=400) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -170,7 +171,7 @@ def list_external_api_logs(
             page_size=page_size,
         )
     except ExternalApiGatewayError as exc:
-        return error_response(str(exc), 40097)
+        raise BusinessException.from_service_error(exc, 40097) from exc
     return success_response(result)
 
 
@@ -182,7 +183,7 @@ def get_external_api_log(
 ) -> dict:
     item = ExternalApiGateway(db).get_log(trace_id)
     if not item:
-        return error_response("External API call log not found", 40496)
+        raise BusinessException('External API call log not found', 40496, http_status=404)
     return success_response(item)
 
 
@@ -201,5 +202,5 @@ def list_external_api_health_checks(
             page_size=page_size,
         )
     except ExternalApiGatewayError as exc:
-        return error_response(str(exc), 40098)
+        raise BusinessException.from_service_error(exc, 40098) from exc
     return success_response(result)

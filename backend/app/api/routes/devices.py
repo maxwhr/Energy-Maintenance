@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_roles
+from app.core.exceptions import BusinessException
 from app.models import User
 from app.schemas.device import (
     DeviceCreate,
@@ -16,27 +17,11 @@ from app.schemas.device import (
     DeviceStatisticsSummary,
     DeviceUpdate,
 )
+from app.schemas.common import success_response
 from app.services.device_history_service import DeviceHistoryService, DeviceHistoryServiceError
 from app.services.device_service import DeviceService, DeviceServiceError
 
 router = APIRouter(prefix="/devices", tags=["devices"])
-
-
-def ok(data: object | None = None, message: str = "success") -> dict:
-    return {
-        "code": 0,
-        "message": message,
-        "data": {} if data is None else data,
-    }
-
-
-def fail(message: str, code: int = 400) -> dict:
-    return {
-        "code": code,
-        "message": message,
-        "data": None,
-    }
-
 
 def device_payload(device) -> dict:
     return DeviceRead.model_validate(device).model_dump(mode="json")
@@ -52,7 +37,9 @@ def get_device_statistics_summary(
     _: User = Depends(get_current_user),
 ) -> dict:
     summary = DeviceService(db).statistics_summary()
-    return ok(DeviceStatisticsSummary(**summary).model_dump(mode="json"))
+    return success_response(
+        DeviceStatisticsSummary(**summary).model_dump(mode="json")
+    )
 
 
 @router.get("")
@@ -78,8 +65,8 @@ def list_devices(
             page_size=page_size,
         )
     except DeviceServiceError as exc:
-        return fail(str(exc), 40010)
-    return ok(
+        raise BusinessException.from_service_error(exc, 40010) from exc
+    return success_response(
         {
             "items": [device_payload(device) for device in result["items"]],
             "total": result["total"],
@@ -89,7 +76,7 @@ def list_devices(
     )
 
 
-@router.post("")
+@router.post("", status_code=status.HTTP_201_CREATED)
 def create_device(
     payload: DeviceCreate,
     db: Session = Depends(get_db),
@@ -98,8 +85,8 @@ def create_device(
     try:
         device = DeviceService(db).create_device(payload)
     except DeviceServiceError as exc:
-        return fail(str(exc), 40011)
-    return ok(device_payload(device))
+        raise BusinessException.from_service_error(exc, 40011) from exc
+    return success_response(device_payload(device))
 
 
 @router.get("/{device_id}")
@@ -110,8 +97,8 @@ def get_device(
 ) -> dict:
     device = DeviceService(db).get_device(device_id)
     if not device:
-        return fail("Device not found", 40410)
-    return ok(device_payload(device))
+        raise BusinessException("Device not found", 40410, http_status=404)
+    return success_response(device_payload(device))
 
 
 @router.put("/{device_id}")
@@ -124,8 +111,8 @@ def update_device(
     try:
         device = DeviceService(db).update_device(device_id, payload)
     except DeviceServiceError as exc:
-        return fail(str(exc), 40012)
-    return ok(device_payload(device))
+        raise BusinessException.from_service_error(exc, 40012) from exc
+    return success_response(device_payload(device))
 
 
 @router.post("/{device_id}/retire")
@@ -137,8 +124,8 @@ def retire_device(
     try:
         device = DeviceService(db).retire_device(device_id)
     except DeviceServiceError as exc:
-        return fail(str(exc), 40013)
-    return ok(device_payload(device))
+        raise BusinessException.from_service_error(exc, 40013) from exc
+    return success_response(device_payload(device))
 
 
 @router.get("/{device_id}/maintenance-records")
@@ -162,8 +149,8 @@ def list_device_maintenance_records(
             page_size=page_size,
         )
     except DeviceHistoryServiceError as exc:
-        return fail(str(exc), 40014)
-    return ok(
+        raise BusinessException.from_service_error(exc, 40014) from exc
+    return success_response(
         {
             "items": [maintenance_record_payload(record) for record in result["items"]],
             "total": result["total"],
@@ -173,7 +160,10 @@ def list_device_maintenance_records(
     )
 
 
-@router.post("/{device_id}/maintenance-records")
+@router.post(
+    "/{device_id}/maintenance-records",
+    status_code=status.HTTP_201_CREATED,
+)
 def create_device_maintenance_record(
     device_id: UUID,
     payload: DeviceMaintenanceRecordCreate,
@@ -187,5 +177,5 @@ def create_device_maintenance_record(
             current_user=current_user,
         )
     except DeviceHistoryServiceError as exc:
-        return fail(str(exc), 40015)
-    return ok(maintenance_record_payload(record))
+        raise BusinessException.from_service_error(exc, 40015) from exc
+    return success_response(maintenance_record_payload(record))

@@ -41,10 +41,10 @@ service.interceptors.response.use(
     if (!body || typeof body.code !== 'number') {
       return res.data
     }
-    if (body.code === 0 || body.code === 200) {
+    if (body.code === 0) {
       return body.data
     }
-    const message = body.message || body.msg || TEXT.request.fail
+    const message = body.message || TEXT.request.fail
     showToast(message, 'error')
     return Promise.reject(new Error(message))
   },
@@ -62,8 +62,9 @@ service.interceptors.response.use(
       }
       return Promise.reject(new Error(TEXT.request.authExpired))
     } else if (status === 403) {
-      showToast(TEXT.request.forbidden, 'error')
-      return Promise.reject(new Error(TEXT.request.forbidden))
+      const message = data?.message || TEXT.request.forbidden
+      showToast(message, 'error')
+      return Promise.reject(new Error(message))
     }
     const message = normalizeRequestError(err, status, data)
     showToast(message, 'error')
@@ -76,8 +77,11 @@ function normalizeRequestError(
   status?: number,
   data?: Partial<ApiResponse>
 ) {
-  if (status === 404) return '请求的资源不存在'
-  if (status === 422) return '提交内容格式不正确，请检查后重试'
+  if (status === 404) return data?.message || '请求的资源不存在'
+  if (status === 409) return data?.message || '当前状态与操作冲突，请刷新后重试'
+  if (status === 422) {
+    return data?.message || '提交内容格式不正确，请检查后重试'
+  }
   if (status && status >= 500) return TEXT.request.serverError
   if (err.code === 'ECONNABORTED' || err.message?.toLowerCase().includes('timeout')) {
     return '请求超时，请稍后重试'
@@ -85,7 +89,7 @@ function normalizeRequestError(
   if (err.code === 'ERR_NETWORK' || err.message?.toLowerCase() === 'network error') {
     return '无法连接后端服务，请检查服务状态'
   }
-  return data?.message || data?.msg || err.message || TEXT.request.serverError
+  return data?.message || err.message || TEXT.request.serverError
 }
 
 const request = {

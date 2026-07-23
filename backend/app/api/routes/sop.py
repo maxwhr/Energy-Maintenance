@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.sop import SOPExecutionRecordCreate, SOPExecutionRecordUpdate, SOPGenerateRequest, SOPTemplateCreate, SOPTemplateUpdate
 from app.services.sop_execution_service import SOPExecutionService, SOPExecutionServiceError
 from app.services.sop_service import SOPService, SOPServiceError
@@ -44,7 +45,7 @@ def list_sop_templates(
             page_size=page_size,
         )
     except SOPServiceError as exc:
-        return error_response(str(exc), 40090)
+        raise BusinessException.from_service_error(exc, 40090) from exc
     return success_response(result)
 
 
@@ -56,11 +57,11 @@ def get_sop_template(
 ) -> dict:
     result = SOPService(db).get_template(template_id)
     if not result:
-        return error_response("SOP template not found", 40490)
+        raise BusinessException('SOP template not found', 40490, http_status=404)
     return success_response(result)
 
 
-@router.post("/templates")
+@router.post("/templates", status_code=201)
 def create_sop_template(
     payload: SOPTemplateCreate,
     db: Session = Depends(get_db),
@@ -69,7 +70,7 @@ def create_sop_template(
     try:
         result = SOPService(db).create_template(payload, current_user)
     except SOPServiceError as exc:
-        return error_response(str(exc), 40091)
+        raise BusinessException.from_service_error(exc, 40091) from exc
     return success_response(result)
 
 
@@ -83,7 +84,7 @@ def update_sop_template(
     try:
         result = SOPService(db).update_template(template_id, payload, current_user)
     except SOPServiceError as exc:
-        return error_response(str(exc), 40092)
+        raise BusinessException.from_service_error(exc, 40092) from exc
     return success_response(result)
 
 
@@ -96,7 +97,7 @@ def archive_sop_template(
     try:
         result = SOPService(db).archive_template(template_id, current_user)
     except SOPServiceError as exc:
-        return error_response(str(exc), 40093)
+        raise BusinessException.from_service_error(exc, 40093) from exc
     return success_response(result)
 
 
@@ -109,7 +110,7 @@ def generate_sop(
     try:
         result = SOPService(db).generate(payload, current_user)
     except SOPServiceError as exc:
-        return error_response(str(exc), 40094)
+        raise BusinessException.from_service_error(exc, 40094) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -134,7 +135,7 @@ def list_sop_executions(
             page_size=page_size,
         )
     except SOPExecutionServiceError as exc:
-        return error_response(str(exc), 40095)
+        raise BusinessException.from_service_error(exc, 40095) from exc
     return success_response(result)
 
 
@@ -147,13 +148,13 @@ def get_sop_execution(
     try:
         result = SOPExecutionService(db).get_execution(execution_id, current_user)
     except SOPExecutionServiceError as exc:
-        return error_response(str(exc), 40390)
+        raise BusinessException.from_service_error(exc, 40390) from exc
     if not result:
-        return error_response("SOP execution record not found", 40491)
+        raise BusinessException('SOP execution record not found', 40491, http_status=404)
     return success_response(result)
 
 
-@router.post("/executions")
+@router.post("/executions", status_code=201)
 def create_sop_execution(
     payload: SOPExecutionRecordCreate,
     db: Session = Depends(get_db),
@@ -162,7 +163,7 @@ def create_sop_execution(
     try:
         result = SOPExecutionService(db).create_execution(payload, current_user)
     except SOPExecutionServiceError as exc:
-        return error_response(str(exc), 40096)
+        raise BusinessException.from_service_error(exc, 40096) from exc
     return success_response(result)
 
 
@@ -176,5 +177,5 @@ def update_sop_execution(
     try:
         result = SOPExecutionService(db).update_execution(execution_id, payload, current_user)
     except SOPExecutionServiceError as exc:
-        return error_response(str(exc), 40097)
+        raise BusinessException.from_service_error(exc, 40097) from exc
     return success_response(result)

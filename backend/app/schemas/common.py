@@ -1,25 +1,20 @@
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
 
 
-class ApiResponse(BaseModel):
-    code: int = 200
+T = TypeVar("T")
+
+
+class ApiResponse(BaseModel, Generic[T]):
+    code: int = 0
     message: str = "success"
-    data: Any = None
+    data: T | None = None
 
 
 def success_response(data: Any | None = None, message: str = "success") -> dict:
     return {
-        "code": 200,
+        "code": 0,
         "message": message,
         "data": {} if data is None else data,
-    }
-
-
-def error_response(message: str, code: int = 400) -> dict:
-    return {
-        "code": code,
-        "message": message,
-        "data": None,
     }

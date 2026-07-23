@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.services.record_center_service import RecordCenterService, RecordCenterServiceError
 
 router = APIRouter(prefix="/record-center", tags=["record-center"])
@@ -64,7 +65,7 @@ def search_records(
             page_size=page_size,
         )
     except RecordCenterServiceError as exc:
-        return error_response(str(exc), 40080)
+        raise BusinessException.from_service_error(exc, 40080) from exc
     return success_response(data)
 
 
@@ -78,7 +79,7 @@ def get_record_detail(
     try:
         data = RecordCenterService(db).detail(record_type=record_type, record_id=record_id)
     except RecordCenterServiceError as exc:
-        return error_response(str(exc), 40480)
+        raise BusinessException.from_service_error(exc, 40480) from exc
     return success_response(data)
 
 
@@ -101,5 +102,5 @@ def get_device_timeline(
             limit=limit,
         )
     except RecordCenterServiceError as exc:
-        return error_response(str(exc), 40481)
+        raise BusinessException.from_service_error(exc, 40481) from exc
     return success_response(data)

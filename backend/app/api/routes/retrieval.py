@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user
 from app.core.retrieval_lab_config import get_retrieval_lab_settings
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.query_aware_retrieval import QueryAwareSearchRequest, RerankRequest
 from app.schemas.query_understanding import (
     ClarificationRequest,
@@ -81,7 +82,7 @@ def query_retrieval(
                 mode="json"
             )
     except RetrievalServiceError as exc:
-        return error_response(str(exc), 40070)
+        raise BusinessException.from_service_error(exc, 40070) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -145,7 +146,7 @@ def query_aware_search(
         ConversationContextError,
         ValueError,
     ) as exc:
-        return error_response(str(exc), 40085)
+        raise BusinessException.from_service_error(exc, 40085) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -161,7 +162,7 @@ def clarify_retrieval_query(
             current_user=current_user,
         ).clarify(payload)
     except (ConversationContextError, ValueError) as exc:
-        return error_response(str(exc), 40086)
+        raise BusinessException.from_service_error(exc, 40086) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -182,7 +183,7 @@ def rerank_retrieval_candidates(
             allow_real_api=payload.allow_real_api,
         )
     except (ValueError, ConversationContextError) as exc:
-        return error_response(str(exc), 40087)
+        raise BusinessException.from_service_error(exc, 40087) from exc
     return success_response(result)
 
 
@@ -207,7 +208,7 @@ def list_retrieval_records(
             page_size=page_size,
         )
     except RetrievalServiceError as exc:
-        return error_response(str(exc), 40071)
+        raise BusinessException.from_service_error(exc, 40071) from exc
     return success_response(result)
 
 
@@ -219,5 +220,5 @@ def get_retrieval_record(
 ) -> dict:
     result = RetrievalService(db).get_record_detail(trace_id)
     if not result:
-        return error_response("Retrieval record not found", 40470)
+        raise BusinessException('Retrieval record not found', 40470, http_status=404)
     return success_response(result)

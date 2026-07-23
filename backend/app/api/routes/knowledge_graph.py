@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.knowledge_graph import (
     KGEdgeCreate,
     KGEdgeUpdate,
@@ -36,7 +37,7 @@ def get_overview(
     try:
         data = KnowledgeGraphService(db).overview(current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403180)
+        raise BusinessException.from_service_error(exc, 403180) from exc
     return success_response(data)
 
 
@@ -68,7 +69,7 @@ def get_graph(
             include_source_nodes=include_source_nodes,
         )
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403205)
+        raise BusinessException.from_service_error(exc, 403205) from exc
     return success_response(data)
 
 
@@ -86,9 +87,9 @@ def bootstrap_graph(
             max_chunks_per_document=max_chunks_per_document,
         )
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403208)
+        raise BusinessException.from_service_error(exc, 403208) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 400208)
+        raise BusinessException.from_service_error(exc, 400208) from exc
     return success_response(data)
 
 
@@ -114,7 +115,7 @@ def search_graph(
             limit=limit,
         )
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403206)
+        raise BusinessException.from_service_error(exc, 403206) from exc
     return success_response(data)
 
 
@@ -148,7 +149,7 @@ def get_business_context(
             limit=limit,
         )
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403207)
+        raise BusinessException.from_service_error(exc, 403207) from exc
     return success_response(data)
 
 
@@ -178,11 +179,11 @@ def list_nodes(
             page_size=page_size,
         )
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403181)
+        raise BusinessException.from_service_error(exc, 403181) from exc
     return success_response(data)
 
 
-@router.post("/nodes")
+@router.post("/nodes", status_code=201)
 def create_node(
     payload: KGNodeCreate,
     db: Session = Depends(get_db),
@@ -191,9 +192,9 @@ def create_node(
     try:
         data = KnowledgeGraphService(db).create_node(payload, current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403182)
+        raise BusinessException.from_service_error(exc, 403182) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 400182)
+        raise BusinessException.from_service_error(exc, 400182) from exc
     return success_response(data)
 
 
@@ -206,9 +207,9 @@ def get_node(
     try:
         data = KnowledgeGraphService(db).get_node(node_id, current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403183)
+        raise BusinessException.from_service_error(exc, 403183) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 404183)
+        raise BusinessException.from_service_error(exc, 404183) from exc
     return success_response(data)
 
 
@@ -222,9 +223,9 @@ def update_node(
     try:
         data = KnowledgeGraphService(db).update_node(node_id, payload, current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403184)
+        raise BusinessException.from_service_error(exc, 403184) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 400184)
+        raise BusinessException.from_service_error(exc, 400184) from exc
     return success_response(data)
 
 
@@ -237,9 +238,9 @@ def archive_node(
     try:
         data = KnowledgeGraphService(db).archive_node(node_id, current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403185)
+        raise BusinessException.from_service_error(exc, 403185) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 400185)
+        raise BusinessException.from_service_error(exc, 400185) from exc
     return success_response(data)
 
 
@@ -253,9 +254,9 @@ def merge_node(
     try:
         data = KnowledgeGraphService(db).merge_node(node_id, payload, current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403186)
+        raise BusinessException.from_service_error(exc, 403186) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 400186)
+        raise BusinessException.from_service_error(exc, 400186) from exc
     return success_response(data)
 
 
@@ -283,11 +284,11 @@ def list_edges(
             page_size=page_size,
         )
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403187)
+        raise BusinessException.from_service_error(exc, 403187) from exc
     return success_response(data)
 
 
-@router.post("/edges")
+@router.post("/edges", status_code=201)
 def create_edge(
     payload: KGEdgeCreate,
     db: Session = Depends(get_db),
@@ -296,9 +297,9 @@ def create_edge(
     try:
         data = KnowledgeGraphService(db).create_edge(payload, current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403188)
+        raise BusinessException.from_service_error(exc, 403188) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 400188)
+        raise BusinessException.from_service_error(exc, 400188) from exc
     return success_response(data)
 
 
@@ -311,9 +312,9 @@ def get_edge(
     try:
         data = KnowledgeGraphService(db).get_edge(edge_id, current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403189)
+        raise BusinessException.from_service_error(exc, 403189) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 404189)
+        raise BusinessException.from_service_error(exc, 404189) from exc
     return success_response(data)
 
 
@@ -327,9 +328,9 @@ def update_edge(
     try:
         data = KnowledgeGraphService(db).update_edge(edge_id, payload, current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403190)
+        raise BusinessException.from_service_error(exc, 403190) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 400190)
+        raise BusinessException.from_service_error(exc, 400190) from exc
     return success_response(data)
 
 
@@ -342,9 +343,9 @@ def archive_edge(
     try:
         data = KnowledgeGraphService(db).archive_edge(edge_id, current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403191)
+        raise BusinessException.from_service_error(exc, 403191) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 400191)
+        raise BusinessException.from_service_error(exc, 400191) from exc
     return success_response(data)
 
 
@@ -372,11 +373,11 @@ def list_evidence(
             page_size=page_size,
         )
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403192)
+        raise BusinessException.from_service_error(exc, 403192) from exc
     return success_response(data)
 
 
-@router.post("/evidence")
+@router.post("/evidence", status_code=201)
 def create_evidence(
     payload: KGEvidenceCreate,
     db: Session = Depends(get_db),
@@ -385,9 +386,9 @@ def create_evidence(
     try:
         data = KnowledgeGraphService(db).create_evidence(payload, current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403193)
+        raise BusinessException.from_service_error(exc, 403193) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 400193)
+        raise BusinessException.from_service_error(exc, 400193) from exc
     return success_response(data)
 
 
@@ -401,9 +402,9 @@ def get_neighborhood(
     try:
         data = KnowledgeGraphService(db).neighborhood(node_id, current_user=current_user, depth=depth)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403194)
+        raise BusinessException.from_service_error(exc, 403194) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 404194)
+        raise BusinessException.from_service_error(exc, 404194) from exc
     return success_response(data)
 
 
@@ -423,9 +424,9 @@ def get_path(
             max_depth=max_depth,
         )
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403195)
+        raise BusinessException.from_service_error(exc, 403195) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 400195)
+        raise BusinessException.from_service_error(exc, 400195) from exc
     return success_response(data)
 
 
@@ -443,9 +444,9 @@ def extract_from_document(
             current_user=current_user,
         )
     except (KnowledgeGraphPermissionError, KGExtractionPermissionError) as exc:
-        return error_response(str(exc), 403196)
+        raise BusinessException.from_service_error(exc, 403196) from exc
     except (KnowledgeGraphServiceError, KGExtractionServiceError) as exc:
-        return error_response(str(exc), 400196)
+        raise BusinessException.from_service_error(exc, 400196) from exc
     return success_response(data)
 
 
@@ -463,9 +464,9 @@ def extract_from_contribution(
             current_user=current_user,
         )
     except (KnowledgeGraphPermissionError, KGExtractionPermissionError) as exc:
-        return error_response(str(exc), 403197)
+        raise BusinessException.from_service_error(exc, 403197) from exc
     except (KnowledgeGraphServiceError, KGExtractionServiceError) as exc:
-        return error_response(str(exc), 400197)
+        raise BusinessException.from_service_error(exc, 400197) from exc
     return success_response(data)
 
 
@@ -485,9 +486,9 @@ def extract_from_record(
             current_user=current_user,
         )
     except (KnowledgeGraphPermissionError, KGExtractionPermissionError) as exc:
-        return error_response(str(exc), 403198)
+        raise BusinessException.from_service_error(exc, 403198) from exc
     except (KnowledgeGraphServiceError, KGExtractionServiceError) as exc:
-        return error_response(str(exc), 400198)
+        raise BusinessException.from_service_error(exc, 400198) from exc
     return success_response(data)
 
 
@@ -509,7 +510,7 @@ def list_extraction_runs(
             page_size=page_size,
         )
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403199)
+        raise BusinessException.from_service_error(exc, 403199) from exc
     return success_response(data)
 
 
@@ -522,9 +523,9 @@ def get_extraction_run(
     try:
         data = KnowledgeGraphService(db).get_run(run_id, current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403200)
+        raise BusinessException.from_service_error(exc, 403200) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 404200)
+        raise BusinessException.from_service_error(exc, 404200) from exc
     return success_response(data)
 
 
@@ -548,7 +549,7 @@ def list_candidates(
             page_size=page_size,
         )
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403201)
+        raise BusinessException.from_service_error(exc, 403201) from exc
     return success_response(data)
 
 
@@ -561,9 +562,9 @@ def get_candidate(
     try:
         data = KnowledgeGraphService(db).get_candidate(candidate_id, current_user=current_user)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403202)
+        raise BusinessException.from_service_error(exc, 403202) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 404202)
+        raise BusinessException.from_service_error(exc, 404202) from exc
     return success_response(data)
 
 
@@ -577,9 +578,9 @@ def approve_candidate(
     try:
         data = KnowledgeGraphService(db).approve_candidate(candidate_id, current_user=current_user, comment=comment)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403203)
+        raise BusinessException.from_service_error(exc, 403203) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 400203)
+        raise BusinessException.from_service_error(exc, 400203) from exc
     return success_response(data)
 
 
@@ -593,7 +594,7 @@ def reject_candidate(
     try:
         data = KnowledgeGraphService(db).reject_candidate(candidate_id, current_user=current_user, comment=comment)
     except KnowledgeGraphPermissionError as exc:
-        return error_response(str(exc), 403204)
+        raise BusinessException.from_service_error(exc, 403204) from exc
     except KnowledgeGraphServiceError as exc:
-        return error_response(str(exc), 400204)
+        raise BusinessException.from_service_error(exc, 400204) from exc
     return success_response(data)

@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.model_gateway import ModelGatewayChatRequest, ModelGatewayTestRequest
 from app.services.model_gateway_service import ModelGatewayService, ModelGatewayServiceError
 
@@ -33,7 +34,7 @@ def test_model_gateway(
     try:
         result = ModelGatewayService(db).test(payload, current_user)
     except ModelGatewayServiceError as exc:
-        return error_response(str(exc), 40090)
+        raise BusinessException.from_service_error(exc, 40090) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -46,7 +47,7 @@ def chat_model_gateway(
     try:
         result = ModelGatewayService(db).chat(payload, current_user)
     except ModelGatewayServiceError as exc:
-        return error_response(str(exc), 40091)
+        raise BusinessException.from_service_error(exc, 40091) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -73,7 +74,7 @@ def list_model_call_logs(
             page_size=page_size,
         )
     except ModelGatewayServiceError as exc:
-        return error_response(str(exc), 40092)
+        raise BusinessException.from_service_error(exc, 40092) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -85,5 +86,5 @@ def get_model_call_log(
 ) -> dict:
     result = ModelGatewayService(db).get_log(log_id)
     if not result:
-        return error_response("Model call log not found", 40490)
+        raise BusinessException('Model call log not found', 40490, http_status=404)
     return success_response(result.model_dump(mode="json"))

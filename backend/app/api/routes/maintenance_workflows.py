@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.maintenance_workflow import (
     DiagnosisConfirmationRequest,
     DiagnosisDraftRequest,
@@ -43,11 +44,9 @@ router = APIRouter(prefix="/maintenance-workflows", tags=["maintenance-workflows
 WRITE_USER = require_roles("admin", "expert", "engineer")
 
 
-def _service_error(exc: Exception, code: int) -> dict:
-    return error_response(str(exc), code)
 
 
-@router.post("")
+@router.post("", status_code=201)
 def create_workflow(
     payload: MaintenanceWorkflowCreate,
     db: Session = Depends(get_db),
@@ -56,7 +55,7 @@ def create_workflow(
     try:
         return success_response(MaintenanceWorkflowService(db).create(payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002701)
+        raise BusinessException.from_service_error(exc, 4002701) from exc
 
 
 @router.get("")
@@ -78,7 +77,7 @@ def list_workflows(
         )
         return success_response(result)
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002702)
+        raise BusinessException.from_service_error(exc, 4002702) from exc
 
 
 @router.get("/{workflow_id}")
@@ -90,7 +89,7 @@ def get_workflow(
     try:
         return success_response(MaintenanceWorkflowService(db).detail(workflow_id, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4042701)
+        raise BusinessException.from_service_error(exc, 4042701) from exc
 
 
 @router.get("/{workflow_id}/status")
@@ -102,7 +101,7 @@ def get_workflow_status(
     try:
         return success_response(MaintenanceWorkflowService(db).status(workflow_id, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4042702)
+        raise BusinessException.from_service_error(exc, 4042702) from exc
 
 
 @router.get("/{workflow_id}/timeline")
@@ -114,7 +113,7 @@ def get_workflow_timeline(
     try:
         return success_response(MaintenanceWorkflowService(db).timeline(workflow_id, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4042703)
+        raise BusinessException.from_service_error(exc, 4042703) from exc
 
 
 @router.post("/{workflow_id}/diagnosis-draft")
@@ -127,7 +126,7 @@ def create_diagnosis_draft(
     try:
         return success_response(WorkflowDiagnosisService(db).create_draft(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002703)
+        raise BusinessException.from_service_error(exc, 4002703) from exc
 
 
 @router.post("/{workflow_id}/diagnosis-confirm")
@@ -140,7 +139,7 @@ def confirm_diagnosis(
     try:
         return success_response(DiagnosisConfirmationService(db).confirm(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002704)
+        raise BusinessException.from_service_error(exc, 4002704) from exc
 
 
 @router.post("/{workflow_id}/sop-draft")
@@ -153,7 +152,7 @@ def create_sop_draft(
     try:
         return success_response(WorkflowSopService(db).create_draft(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002705)
+        raise BusinessException.from_service_error(exc, 4002705) from exc
 
 
 @router.post("/{workflow_id}/sop-review")
@@ -166,7 +165,7 @@ def review_sop(
     try:
         return success_response(WorkflowSopService(db).review(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002706)
+        raise BusinessException.from_service_error(exc, 4002706) from exc
 
 
 @router.post("/{workflow_id}/task-draft")
@@ -179,7 +178,7 @@ def create_task_draft(
     try:
         return success_response(FormalTaskCreationService(db).create_task_draft(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002707)
+        raise BusinessException.from_service_error(exc, 4002707) from exc
 
 
 @router.post("/{workflow_id}/formal-task")
@@ -192,7 +191,7 @@ def create_formal_task(
     try:
         return success_response(FormalTaskCreationService(db).create_formal_task(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002708)
+        raise BusinessException.from_service_error(exc, 4002708) from exc
 
 
 @router.post("/{workflow_id}/task/start")
@@ -200,7 +199,7 @@ def start_task(workflow_id: str, payload: WorkflowTaskActionRequest, db: Session
     try:
         return success_response(TaskExecutionRecordService(db).start(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002709)
+        raise BusinessException.from_service_error(exc, 4002709) from exc
 
 
 @router.post("/{workflow_id}/task/pause")
@@ -208,7 +207,7 @@ def pause_task(workflow_id: str, payload: WorkflowTaskActionRequest, db: Session
     try:
         return success_response(TaskExecutionRecordService(db).pause(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002710)
+        raise BusinessException.from_service_error(exc, 4002710) from exc
 
 
 @router.post("/{workflow_id}/task/resume")
@@ -216,7 +215,7 @@ def resume_task(workflow_id: str, payload: WorkflowTaskActionRequest, db: Sessio
     try:
         return success_response(TaskExecutionRecordService(db).resume(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002711)
+        raise BusinessException.from_service_error(exc, 4002711) from exc
 
 
 @router.post("/{workflow_id}/task/records")
@@ -224,7 +223,7 @@ def add_task_record(workflow_id: str, payload: WorkflowTaskRecordCreate, db: Ses
     try:
         return success_response(TaskExecutionRecordService(db).add_record(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002712)
+        raise BusinessException.from_service_error(exc, 4002712) from exc
 
 
 @router.post("/{workflow_id}/task/steps/{step_id}")
@@ -232,7 +231,7 @@ def update_task_step(workflow_id: str, step_id: UUID, payload: WorkflowTaskStepU
     try:
         return success_response(TaskExecutionRecordService(db).update_step(workflow_id, step_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002713)
+        raise BusinessException.from_service_error(exc, 4002713) from exc
 
 
 @router.post("/{workflow_id}/task/verify")
@@ -240,7 +239,7 @@ def verify_task(workflow_id: str, payload: WorkflowTaskVerificationRequest, db: 
     try:
         return success_response(TaskCompletionVerificationService(db).verify(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002714)
+        raise BusinessException.from_service_error(exc, 4002714) from exc
 
 
 @router.post("/{workflow_id}/task/complete")
@@ -248,7 +247,7 @@ def complete_task(workflow_id: str, payload: WorkflowTaskCompleteRequest, db: Se
     try:
         return success_response(TaskCompletionVerificationService(db).complete(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002715)
+        raise BusinessException.from_service_error(exc, 4002715) from exc
 
 
 @router.post("/{workflow_id}/correction-candidate")
@@ -256,7 +255,7 @@ def create_correction_candidate(workflow_id: str, payload: WorkflowCorrectionCan
     try:
         return success_response(WorkflowCorrectionService(db).create_candidate(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002716)
+        raise BusinessException.from_service_error(exc, 4002716) from exc
 
 
 @router.get("/{workflow_id}/corrections")
@@ -264,7 +263,7 @@ def list_corrections(workflow_id: str, db: Session = Depends(get_db), current_us
     try:
         return success_response(WorkflowCorrectionService(db).list_candidates(workflow_id, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4042704)
+        raise BusinessException.from_service_error(exc, 4042704) from exc
 
 
 @router.post("/{workflow_id}/admin-action")
@@ -272,4 +271,4 @@ def admin_workflow_action(workflow_id: str, payload: WorkflowAdminActionRequest,
     try:
         return success_response(MaintenanceWorkflowService(db).admin_action(workflow_id, payload, current_user))
     except (MaintenanceWorkflowError, MaintenanceWorkflowPermissionError) as exc:
-        return _service_error(exc, 4002717)
+        raise BusinessException.from_service_error(exc, 4002717) from exc

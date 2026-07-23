@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import KnowledgeChunk, KnowledgeDocument, User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.knowledge import (
     KnowledgeChunkRead,
     KnowledgeDocumentRead,
@@ -30,8 +31,8 @@ def chunk_payload(chunk: KnowledgeChunk) -> dict:
     return KnowledgeChunkRead.model_validate(chunk).model_dump(mode="json")
 
 
-@router.post("/upload")
-@router.post("/documents/upload")
+@router.post("/upload", status_code=201)
+@router.post("/documents/upload", status_code=201)
 async def upload_document(
     file: UploadFile = File(...),
     manufacturer: str = Form(...),
@@ -57,7 +58,7 @@ async def upload_document(
             current_user=current_user,
         )
     except KnowledgeServiceError as exc:
-        return error_response(str(exc), 40020)
+        raise BusinessException.from_service_error(exc, 40020) from exc
 
     document = result["document"]
     response = KnowledgeDocumentUploadResponse(
@@ -101,7 +102,7 @@ def list_documents(
             page_size=page_size,
         )
     except KnowledgeServiceError as exc:
-        return error_response(str(exc), 40021)
+        raise BusinessException.from_service_error(exc, 40021) from exc
     return success_response(
         {
             "items": [document_payload(document) for document in result["items"]],
@@ -120,7 +121,7 @@ def get_document(
 ) -> dict:
     document = KnowledgeService(db).get_document(document_id)
     if not document:
-        return error_response("Knowledge document not found", 40420)
+        raise BusinessException('Knowledge document not found', 40420, http_status=404)
     return success_response(document_payload(document))
 
 
@@ -141,7 +142,7 @@ def list_document_chunks(
             page_size=page_size,
         )
     except KnowledgeServiceError as exc:
-        return error_response(str(exc), 40421)
+        raise BusinessException.from_service_error(exc, 40421) from exc
     return success_response(
         {
             "items": [chunk_payload(chunk) for chunk in result["items"]],
@@ -161,7 +162,7 @@ def reparse_document(
     try:
         result = KnowledgeService(db).reparse_document(document_id)
     except KnowledgeServiceError as exc:
-        return error_response(str(exc), 40022)
+        raise BusinessException.from_service_error(exc, 40022) from exc
     document = result["document"]
     response = KnowledgeDocumentUploadResponse(
         document_id=document.id,
@@ -186,5 +187,5 @@ def archive_document(
     try:
         document = KnowledgeService(db).archive_document(document_id)
     except KnowledgeServiceError as exc:
-        return error_response(str(exc), 40023)
+        raise BusinessException.from_service_error(exc, 40023) from exc
     return success_response(document_payload(document))

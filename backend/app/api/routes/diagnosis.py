@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import BusinessException
 from app.core.dependencies import get_current_user, require_roles
 from app.models import User
-from app.schemas.common import error_response, success_response
+from app.schemas.common import success_response
 from app.schemas.diagnosis import DiagnosisAnalyzeRequest
 from app.services.diagnosis_service import DiagnosisService, DiagnosisServiceError
 
@@ -25,7 +26,7 @@ def analyze_diagnosis(
     try:
         result = DiagnosisService(db).analyze(payload, current_user)
     except DiagnosisServiceError as exc:
-        return error_response(str(exc), 40080)
+        raise BusinessException.from_service_error(exc, 40080) from exc
     return success_response(result.model_dump(mode="json"))
 
 
@@ -54,7 +55,7 @@ def list_diagnosis_records(
             page_size=page_size,
         )
     except DiagnosisServiceError as exc:
-        return error_response(str(exc), 40081)
+        raise BusinessException.from_service_error(exc, 40081) from exc
     return success_response(result)
 
 
@@ -66,5 +67,5 @@ def get_diagnosis_record(
 ) -> dict:
     result = DiagnosisService(db).get_record_detail(trace_id)
     if not result:
-        return error_response("Diagnosis record not found", 40480)
+        raise BusinessException('Diagnosis record not found', 40480, http_status=404)
     return success_response(result)
