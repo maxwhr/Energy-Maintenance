@@ -1,33 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 from app.core.config import Settings
-
-
-PLACEHOLDER_VALUES = {
-    "",
-    "change-this-secret-in-production",
-    "energy-maintenance-local-dev-secret-change-me",
-    "changeme",
-    "change_me",
-    "password",
-    "admin",
-    "123456",
-}
-
-WEAK_ADMIN_PASSWORDS = {
-    "",
-    "admin",
-    "password",
-    "123456",
-    "admin123",
-    "admin123456",
-    "changeme",
-    "change_me",
-}
+from app.core.settings.validation import (
+    PLACEHOLDER_VALUES,
+    WEAK_ADMIN_PASSWORDS,
+    is_configured_secret,
+    path_is_writable,
+    provider_configuration_errors,
+)
 
 
 @dataclass(frozen=True)
@@ -39,19 +22,6 @@ class SecurityValidationResult:
 
 class SecurityConfigError(RuntimeError):
     pass
-
-
-def is_configured_secret(value: str | None) -> bool:
-    if value is None:
-        return False
-    stripped = str(value).strip()
-    if not stripped:
-        return False
-    if stripped.startswith("<FILL_") and stripped.endswith(">"):
-        return False
-    if stripped.lower() in PLACEHOLDER_VALUES:
-        return False
-    return True
 
 
 def validate_security_config(settings: Settings) -> SecurityValidationResult:
@@ -100,33 +70,12 @@ def validate_security_config(settings: Settings) -> SecurityValidationResult:
     if settings.RATE_LIMIT_ENABLED and settings.RATE_LIMIT_REQUESTS <= 0:
         errors.append("RATE_LIMIT_REQUESTS must be greater than zero when rate limiting is enabled")
 
-    if production and not _path_is_writable(settings.UPLOAD_DIR):
+    if production and not path_is_writable(settings.UPLOAD_DIR):
         errors.append("UPLOAD_DIR is not writable")
-    if production and not _path_is_writable(settings.LOG_DIR):
+    if production and not path_is_writable(settings.LOG_DIR):
         errors.append("LOG_DIR is not writable")
 
-    for enabled_attr, key_attr, url_attr, model_attr, name in [
-        ("DASHVECTOR_ENABLED", "DASHVECTOR_API_KEY", "DASHVECTOR_ENDPOINT", "DASHVECTOR_COLLECTION", "DashVector"),
-        (
-            "DASHSCOPE_RERANK_ENABLED",
-            "DASHSCOPE_API_KEY",
-            "DASHSCOPE_RERANK_BASE_URL",
-            "DASHSCOPE_RERANK_MODEL",
-            "DashScope Qwen3 Rerank",
-        ),
-        ("EMBEDDING_ENABLED", "EMBEDDING_API_KEY", "EMBEDDING_BASE_URL", "EMBEDDING_MODEL", "Embedding"),
-        ("CLOUD_LLM_ENABLED", "CLOUD_LLM_API_KEY", "CLOUD_LLM_BASE_URL", "CLOUD_LLM_MODEL", "Cloud LLM"),
-        ("MIMO_ENABLED", "MIMO_API_KEY", "MIMO_BASE_URL", "MIMO_MODEL", "MIMO"),
-        ("OCR_API_ENABLED", "OCR_API_KEY", "OCR_API_BASE_URL", "OCR_API_MODEL", "OCR API"),
-    ]:
-        if bool(getattr(settings, enabled_attr)):
-            missing = [
-                attr
-                for attr in (key_attr, url_attr, model_attr)
-                if not is_configured_secret(str(getattr(settings, attr, "")))
-            ]
-            if missing:
-                errors.append(f"{name} is enabled but not fully configured: {', '.join(missing)}")
+    errors.extend(provider_configuration_errors(settings))
 
     if errors and production and settings.SECURITY_REQUIRE_STRONG_PRODUCTION_CONFIG:
         return SecurityValidationResult(status="failed", errors=errors, warnings=warnings)
@@ -188,15 +137,3 @@ def collect_security_status(settings: Settings) -> dict[str, Any]:
         "external_real_call_enabled": external_real_call_enabled,
         "external_real_call_status": "enabled" if external_real_call_enabled else "blocked",
     }
-
-
-def _path_is_writable(path_value: str) -> bool:
-    try:
-        path = Path(path_value)
-        path.mkdir(parents=True, exist_ok=True)
-        probe = path / ".security_write_probe"
-        probe.write_text("ok", encoding="utf-8")
-        probe.unlink(missing_ok=True)
-        return True
-    except OSError:
-        return False
